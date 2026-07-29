@@ -1,0 +1,165 @@
+<% layout('layouts/boilerplate') %>
+
+    <div class="max-w-5xl mx-auto space-y-6">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <a href="/internships" class="text-xs font-semibold text-indigo-600 hover:underline">&larr; Back to
+                        Listings</a>
+                    <span class="text-slate-300">&bull;</span>
+                    <span
+                        class="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                        <%= (internship && internship.vacancies) ? internship.vacancies : 1 %> Openings
+                    </span>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-900 tracking-tight">
+                    <%= internship ? internship.title : 'Listing Applicants' %>
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    Applicant portal & AI candidate ranking for <%= internship ? (internship.companyName ||
+                        internship.company) : 'Organization' %>
+                </p>
+            </div>
+
+            <div class="bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl text-right">
+                <span class="block text-[10px] font-semibold text-indigo-500 uppercase tracking-wider">Total
+                    Applicants</span>
+                <span class="text-xl font-bold text-indigo-700">
+                    <%= Array.isArray(applications) ? applications.length : 0 %> Candidates
+                </span>
+            </div>
+        </div>
+
+        <% if (!applications || applications.length===0) { %>
+            <div class="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-sm">
+                <i class="ph-bold ph-users-three text-4xl text-slate-300 mb-2"></i>
+                <h3 class="text-base font-bold text-slate-800">No applicants yet</h3>
+                <p class="text-xs text-slate-500 mt-1">Applications will appear here once candidates start applying.</p>
+            </div>
+            <% } else { %>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-slate-900">Ranked Applicants (AI Skill Fit)</h3>
+                        <span class="text-xs text-slate-400">Sorted by highest match %</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4">
+                        <% applications.forEach((app, index)=> { %>
+                            <div
+                                class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+                                <div class="flex items-start gap-4">
+                                    <!-- Rank Badge -->
+                                    <div
+                                        class="w-8 h-8 rounded-full bg-slate-100 font-bold text-slate-600 text-xs flex items-center justify-center border border-slate-200 shrink-0">
+                                        #<%= index + 1 %>
+                                    </div>
+
+                                    <div class="space-y-1.5">
+                                        <div class="flex items-center gap-2">
+                                            <h4 class="text-base font-bold text-slate-900">
+                                                <%= (app.candidate && app.candidate.name) ? app.candidate.name
+                                                    : 'Unknown Candidate' %>
+                                            </h4>
+
+                                            <% if (app.candidate && app.candidate.age>= 18 && app.candidate.age <= 24) {
+                                                    %>
+                                                    <span
+                                                        class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                                                        PMIS Eligible
+                                                    </span>
+                                                    <% } %>
+                                        </div>
+
+                                        <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                                            <span>
+                                                <i class="ph-bold ph-graduation-cap text-indigo-500"></i>
+                                                <%= (app.candidate && app.candidate.education) ?
+                                                    (app.candidate.education.qualification || 'N/A' ) : 'N/A' %>
+                                            </span>
+                                            <span>&bull;</span>
+                                            <span>
+                                                <i class="ph-bold ph-map-pin text-rose-500"></i>
+                                                <%= (app.candidate && app.candidate.location) ?
+                                                    ((app.candidate.location.district ? app.candidate.location.district
+                                                    + ', ' : '' ) + (app.candidate.location.state || '' )) : 'N/A' %>
+                                            </span>
+                                            <span>&bull;</span>
+                                            <span>
+                                                Age: <%= (app.candidate && app.candidate.age) ? app.candidate.age
+                                                    : 'N/A' %>
+                                            </span>
+                                        </div>
+
+                                        <!-- Skills matching badges -->
+                                        <div class="flex flex-wrap gap-1.5 pt-1">
+                                            <% if (app.candidate && Array.isArray(app.candidate.skills)) { %>
+                                                <% app.candidate.skills.forEach(skill=> { %>
+                                                    <span
+                                                        class="text-[11px] font-medium bg-slate-100 border border-slate-200 text-slate-700 px-2 py-0.5 rounded">
+                                                        <%= skill %>
+                                                    </span>
+                                                    <% }) %>
+                                                        <% } %>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="flex items-center justify-between md:justify-end gap-4 pt-3 md:pt-0 border-t md:border-0 border-slate-100">
+
+                                    <!-- Match Score -->
+                                    <div class="text-center">
+                                        <span
+                                            class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Match
+                                            Fit</span>
+                                        <span
+                                            class="px-3 py-1 rounded-lg border text-xs font-bold <%= (app.matchScore || 0) >= 75 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : ((app.matchScore || 0) >= 40 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-rose-50 border-rose-200 text-rose-700') %>">
+                                            <%= app.matchScore || 0 %>%
+                                        </span>
+                                    </div>
+
+                                    <!-- Candidate Resume Button -->
+                                    <% const resumePath=app.candidate ? (app.candidate.resume ||
+                                        app.candidate.resumeUrl) : null; %>
+                                        <% if (resumePath) { %>
+                                            <a href="<%= resumePath %>" target="_blank"
+                                                class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                                                <i class="ph-bold ph-file-pdf text-sm"></i> Resume
+                                            </a>
+                                            <% } else { %>
+                                                <span
+                                                    class="px-3 py-1.5 bg-slate-100 text-slate-400 border border-slate-200 text-xs font-medium rounded-lg flex items-center gap-1">
+                                                    <i class="ph-bold ph-file-x text-sm"></i> No Resume
+                                                </span>
+                                                <% } %>
+
+                                                    <!-- Employer Actions Dropdown -->
+                                                    <form action="/company/applications/<%= app._id %>/status"
+                                                        method="POST" class="inline-block">
+                                                        <select name="status" onchange="this.form.submit()" class="px-3 py-1.5 text-xs font-semibold rounded-lg border shadow-sm cursor-pointer outline-none transition-colors <%= 
+                                                app.status === 'Shortlisted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                app.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                                app.status === 'Under Review' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                                'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                            %>">
+                                                            <option value="Submitted" <%=app.status==='Submitted'
+                                                                ? 'selected' : '' %>>Submitted</option>
+                                                            <option value="Under Review" <%=app.status==='Under Review'
+                                                                ? 'selected' : '' %>>Under Review</option>
+                                                            <option value="Shortlisted" <%=app.status==='Shortlisted'
+                                                                ? 'selected' : '' %>>Shortlisted</option>
+                                                            <option value="Rejected" <%=app.status==='Rejected'
+                                                                ? 'selected' : '' %>>Rejected</option>
+                                                        </select>
+                                                    </form>
+
+                                </div>
+
+                            </div>
+                            <% }) %>
+                    </div>
+                </div>
+                <% } %>
+    </div>

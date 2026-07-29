@@ -1,0 +1,141 @@
+<% layout('layouts/boilerplate') %>
+
+    <div class="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8 space-y-8">
+
+        <div class="bg-white shadow rounded-xl p-6 border border-gray-100 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+                <p class="text-gray-500 mt-1">Welcome back, <strong>
+                        <%= user.name %>
+                    </strong>!</p>
+            </div>
+            <span
+                class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                System Operational
+            </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Total Candidates</h3>
+                <p class="text-3xl font-extrabold text-gray-900 mt-2">
+                    <%= stats.candidates %>
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Registered Companies</h3>
+                <p class="text-3xl font-extrabold text-gray-900 mt-2">
+                    <%= stats.companies %>
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="text-sm font-semibold text-amber-600 uppercase tracking-wider">Pending Verifications</h3>
+                <p class="text-3xl font-extrabold text-amber-600 mt-2">
+                    <%= stats.pendingVerifications %>
+                </p>
+            </div>
+        </div>
+
+        <div class="bg-white shadow-sm rounded-xl border border-gray-100 overflow-hidden">
+            <div class="p-6 border-b border-gray-100">
+                <h2 class="text-xl font-bold text-gray-800">Pending Company Verification Requests</h2>
+            </div>
+
+            <% if (pendingCompanies && pendingCompanies.length> 0) { %>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase">
+                                <th class="py-3 px-6">Company Name</th>
+                                <th class="py-3 px-6">Email</th>
+                                <th class="py-3 px-6">CIN</th>
+                                <th class="py-3 px-6">Industry</th>
+                                <th class="py-3 px-6 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 text-sm">
+                            <% pendingCompanies.forEach(comp=> { %>
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="py-4 px-6 font-semibold text-gray-800">
+                                        <%= (comp.companyDetails && comp.companyDetails.companyName) ?
+                                            comp.companyDetails.companyName : comp.name %>
+                                    </td>
+                                    <td class="py-4 px-6 text-gray-600">
+                                        <%= comp.email %>
+                                    </td>
+                                    <td class="py-4 px-6 text-gray-600">
+                                        <%= (comp.companyDetails && comp.companyDetails.cin) ? comp.companyDetails.cin
+                                            : 'N/A' %>
+                                    </td>
+                                    <td class="py-4 px-6 text-gray-600">
+                                        <%= (comp.companyDetails && comp.companyDetails.industry) ?
+                                            comp.companyDetails.industry : 'N/A' %>
+                                    </td>
+                                    <td class="py-4 px-6 text-right flex justify-end gap-2">
+                                        <form action="/admin/approve-company/<%= comp._id %>" method="POST"
+                                            class="inline">
+                                            <button type="submit"
+                                                class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg transition">
+                                                Approve
+                                            </button>
+                                        </form>
+                                        <form action="/admin/reject-company/<%= comp._id %>" method="POST"
+                                            class="inline"
+                                            onsubmit="return confirm('Are you sure you want to reject this company?');">
+                                            <button type="submit"
+                                                class="bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg transition">
+                                                Reject
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+                <% } else { %>
+                    <div class="p-6 text-center text-gray-500">
+                        No pending company verifications!
+                    </div>
+                    <% } %>
+        </div>
+
+        <div class="bg-white shadow-sm rounded-xl border border-gray-100 overflow-hidden">
+            <div class="p-6 border-b border-gray-100">
+                <h2 class="text-xl font-bold text-gray-800">Recent System Users</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase">
+                            <th class="py-3 px-6">Name</th>
+                            <th class="py-3 px-6">Email</th>
+                            <th class="py-3 px-6">Role</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 text-sm">
+                        <% recentUsers.forEach(u=> { %>
+                            <tr class="hover:bg-gray-50 transition">
+                                <td class="py-3 px-6 font-medium text-gray-800">
+                                    <%= u.name %>
+                                </td>
+                                <td class="py-3 px-6 text-gray-600">
+                                    <%= u.email %>
+                                </td>
+                                <td class="py-3 px-6">
+                                    <span
+                                        class="px-2.5 py-1 rounded-full text-xs font-semibold 
+                                    <%= u.role === 'admin' ? 'bg-purple-100 text-purple-700' : (u.role === 'company' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700') %>">
+                                        <%= u.role %>
+                                    </span>
+                                </td>
+                            </tr>
+                            <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>

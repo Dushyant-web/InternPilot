@@ -1,0 +1,120 @@
+<% layout('layouts/boilerplate') %>
+
+    <div class="max-w-5xl mx-auto space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Application Tracker</h2>
+                <p class="text-xs text-slate-500 mt-1">Track real-time updates and AI fit scores for your applied
+                    opportunities.</p>
+            </div>
+
+            <a href="/internships"
+                class="inline-flex items-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-white font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm transition-colors">
+                <i class="ph-bold ph-magnifying-glass"></i>
+                Find More Internships
+            </a>
+        </div>
+
+        <% if (applications.length===0) { %>
+            <div class="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-sm">
+                <i class="ph-bold ph-paper-plane-tilt text-4xl text-slate-300 mb-2"></i>
+                <h3 class="text-base font-bold text-slate-800">No applications submitted yet</h3>
+                <p class="text-xs text-slate-500 mt-1 mb-4">Browse internships and click "Apply Now" to get started.</p>
+                <a href="/internships"
+                    class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold rounded-lg transition-colors">
+                    Browse Opportunities &rarr;
+                </a>
+            </div>
+            <% } else { %>
+                <div class="grid grid-cols-1 gap-4">
+                    <% applications.forEach(app=> { %>
+                        <div
+                            class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+                            <div class="space-y-2 max-w-xl">
+                                <div class="flex items-center gap-2">
+                                    <span
+                                        class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
+                                        <%= app.internship.sector || "General" %>
+                                    </span>
+                                    <span class="text-xs text-slate-400">&bull;</span>
+                                    <span class="text-xs text-slate-500 font-medium">
+                                        Applied on <%= new Date(app.appliedAt).toLocaleDateString('en-IN', {
+                                            day: 'numeric' , month: 'short' , year: 'numeric' }) %>
+                                    </span>
+                                </div>
+
+                                <h3 class="text-base font-bold text-slate-900 leading-snug">
+                                    <%= app.internship.title %>
+                                </h3>
+                                <p class="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                                    <i class="ph-bold ph-buildings text-slate-400"></i>
+                                    <%= app.internship.companyName %>
+                                </p>
+
+                                <div class="flex items-center gap-4 text-xs text-slate-500 pt-1">
+                                    <span class="flex items-center gap-1">
+                                        <i class="ph-bold ph-map-pin text-rose-500"></i>
+                                        <%= typeof app.internship.location==='object' && app.internship.location !==null
+                                            ? ((app.internship.location.district ? app.internship.location.district
+                                            + ', ' : '' ) + (app.internship.location.state || '' )) :
+                                            (app.internship.location || 'N/A' ) %>
+                                    </span>
+                                    <span>&bull;</span>
+                                    <span class="flex items-center gap-1 text-emerald-600 font-semibold">
+                                        <i class="ph-bold ph-currency-inr"></i>
+                                        ₹<%= app.internship.monthlyStipend ?
+                                            Number(app.internship.monthlyStipend).toLocaleString('en-IN') : '5,000' %> /
+                                            mo
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div
+                                class="flex items-center justify-between md:justify-end gap-6 pt-3 md:pt-0 border-t md:border-0 border-slate-100">
+                                <div class="text-center">
+                                    <span
+                                        class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">AI
+                                        Skill Fit</span>
+                                    <div
+                                        class="px-3 py-1 rounded-lg border text-xs font-bold <%= app.matchScore >= 75 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : (app.matchScore >= 40 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-rose-50 border-rose-200 text-rose-700') %>">
+                                        <%= app.matchScore %>% Match
+                                    </div>
+                                </div>
+
+                                <div class="text-right">
+                                    <span
+                                        class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Status</span>
+                                    <% if (app.status==='Submitted' ) { %>
+                                        <span
+                                            class="inline-flex items-center gap-1 text-xs font-medium text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Submitted
+                                        </span>
+                                        <% } else if (app.status==='Under Review' ) { %>
+                                            <span
+                                                class="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
+                                                <span
+                                                    class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                                Under Review
+                                            </span>
+                                            <% } else if (app.status==='Shortlisted' ) { %>
+                                                <span
+                                                    class="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                    Shortlisted
+                                                </span>
+                                                <% } else if (app.status==='Rejected' ) { %>
+                                                    <span
+                                                        class="inline-flex items-center gap-1 text-xs font-medium text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-md">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                                        Rejected
+                                                    </span>
+                                                    <% } %>
+                                </div>
+                            </div>
+
+                        </div>
+                        <% }) %>
+                </div>
+                <% } %>
+    </div>

@@ -1,0 +1,103 @@
+<!-- Top Tricolor Border Line -->
+<div class="h-1.5 bg-gradient-to-r from-orange-500 via-white to-emerald-600 w-full"></div>
+
+<!-- Official Government Header Bar -->
+<header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-20">
+
+            <!-- Left: Official Emblem & Platform Branding -->
+            <div class="flex items-center gap-4">
+                <!-- Ashoka Emblem -->
+                <div class="flex items-center">
+                    <img src="/images/emblem.jpg" alt="State Emblem of India"
+                        class="h-12 w-auto object-contain mix-blend-multiply" />
+                </div>
+
+                <div class="h-10 w-[1px] bg-slate-200 hidden sm:block"></div>
+
+                <!-- Platform Title & Ministry Badge -->
+                <div>
+                    <div class="flex items-center gap-2">
+                        <a href="/" class="text-xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+                            <span class="text-indigo-700">Intern</span>Pilot
+                        </a>
+                        <span
+                            class="text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200">
+                            PMIS
+                        </span>
+                    </div>
+                    <p class="text-[11px] font-medium text-slate-500 hidden sm:block">
+                        Prime Minister's Internship Scheme Portal
+                    </p>
+                </div>
+            </div>
+
+            <!-- Right: Navigation & User Auth Controls -->
+            <div class="flex items-center gap-4 sm:gap-6">
+                <!-- Navigation Links -->
+                <nav class="hidden md:flex items-center gap-5 text-xs font-semibold text-slate-600">
+                    <a href="/" class="hover:text-indigo-700 transition-colors">Home</a>
+                    <a href="/internships" class="hover:text-indigo-700 transition-colors">Opportunities</a>
+
+                    <% if (currentUser) { %>
+                        <% if (currentUser.role==='candidate' ) { %>
+                            <a href="/candidate/profile" class="hover:text-indigo-700 transition-colors">Candidate
+                                Profile</a>
+                            <a href="/candidate/applications" class="hover:text-indigo-700 transition-colors">My
+                                Applications</a>
+                            <% } else if (currentUser.role==='company' ) { %>
+                                <a href="/company/dashboard" class="hover:text-indigo-700 transition-colors">Company
+                                    Dashboard</a>
+                                <% } %>
+                                    <% } %>
+                </nav>
+
+                <div class="h-10 w-[1px] bg-slate-200 hidden md:block"></div>
+
+                <!-- Dynamic Auth Actions (Login / Register vs User Menu & Logout) -->
+                <div class="flex items-center gap-3">
+                    <% if (!currentUser) { %>
+                        <!-- Unauthenticated View -->
+                        <a href="/auth/login"
+                            class="text-xs font-semibold text-slate-700 hover:text-indigo-700 px-3 py-2 rounded-lg transition-colors">
+                            Log In
+                        </a>
+                        <a href="/auth/register"
+                            class="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-sm transition-all">
+                            Sign Up
+                        </a>
+                        <% } else { %>
+                            <!-- Authenticated View: User Info & Logout -->
+                            <div
+                                class="flex items-center gap-2 bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-lg">
+                                <% if (currentUser.avatar) { %>
+                                    <img src="<%= currentUser.avatar %>" alt="User Avatar"
+                                        class="h-6 w-6 rounded-full object-cover border border-slate-300" />
+                                    <% } else { %>
+                                        <div
+                                            class="h-6 w-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-bold">
+                                            <%= currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U' %>
+                                        </div>
+                                        <% } %>
+                                            <span class="text-xs font-semibold text-slate-700 max-w-[100px] truncate">
+                                                <%= currentUser.name %>
+                                            </span>
+                            </div>
+
+                            <a href="/auth/logout"
+                                class="text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-2 rounded-lg transition-colors">
+                                Log Out
+                            </a>
+                            <% } %>
+                </div>
+
+                <div class="hidden lg:flex items-center justify-center pl-2">
+                    <img src="/images/azadi-logo.jpg" alt="Azadi Ka Amrit Mahotsav"
+                        class="h-11 w-auto object-contain mix-blend-multiply contrast-125" />
+                </div>
+            </div>
+
+        </div>
+    </div>
+</header>

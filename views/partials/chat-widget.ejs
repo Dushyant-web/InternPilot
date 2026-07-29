@@ -1,0 +1,145 @@
+<div id="chat-widget-container" class="fixed bottom-6 right-6 z-50 font-sans">
+
+    <button id="chat-toggle-btn" onclick="toggleChatBox()"
+        class="bg-indigo-600 text-white p-4 rounded-full shadow-2xl hover:bg-indigo-700 transition-all duration-300 flex items-center gap-2 font-medium focus:outline-none focus:ring-4 focus:ring-indigo-300">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+        </svg>
+        <span class="hidden sm:inline">Ask AI Assistant</span>
+    </button>
+
+    <div id="chat-box"
+        class="hidden flex flex-col justify-between w-80 sm:w-96 h-[480px] bg-white border border-gray-200 rounded-2xl shadow-2xl absolute bottom-16 right-0 overflow-hidden transition-all transform scale-95 opacity-0 duration-200">
+
+        <div class="bg-indigo-600 text-white px-4 py-3 font-semibold flex justify-between items-center shadow-md">
+            <div class="flex items-center gap-2">
+                <span>InternPilot AI Assistant</span>
+            </div>
+            <button onclick="toggleChatBox()"
+                class="text-white hover:text-gray-200 text-xl font-bold focus:outline-none">&times;</button>
+        </div>
+
+        <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 text-sm bg-gray-50 flex flex-col">
+            <div
+                class="bg-white border border-gray-200 text-gray-800 p-3 rounded-xl shadow-sm max-w-[85%] self-start leading-relaxed">
+                Hello! I'm your AI career assistant. Ask me to find matching internships based on your resume skills
+                or check your eligibility!
+            </div>
+        </div>
+
+        <div class="p-3 border-t border-gray-200 flex bg-white gap-2 items-center">
+            <input type="text" id="chat-input" placeholder="Type a message..."
+                class="flex-1 border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50">
+            <button onclick="sendChatMessage()"
+                class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm hover:bg-indigo-700 font-medium transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                Send
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleChatBox() {
+        const box = document.getElementById('chat-box');
+        const isHidden = box.classList.contains('hidden');
+
+        if (isHidden) {
+            box.classList.remove('hidden');
+            setTimeout(() => {
+                box.classList.remove('scale-95', 'opacity-0');
+                box.classList.add('scale-100', 'opacity-100');
+            }, 10);
+            document.getElementById('chat-input').focus();
+        } else {
+            box.classList.remove('scale-100', 'opacity-100');
+            box.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                box.classList.add('hidden');
+            }, 200);
+        }
+    }
+
+    async function sendChatMessage() {
+        const input = document.getElementById('chat-input');
+        const container = document.getElementById('chat-messages');
+        const text = input.value.trim();
+        if (!text) return;
+
+        // Append user message bubble
+        container.innerHTML += `
+        <div class="bg-indigo-600 text-white p-3 rounded-xl max-w-[85%] self-end shadow-sm leading-relaxed">
+            ${escapeHtml(text)}
+        </div>`;
+        input.value = '';
+        container.scrollTop = container.scrollHeight;
+
+        // Add loading state indicator
+        const loadingId = 'loading-' + Date.now();
+        container.innerHTML += `
+        <div id="${loadingId}" class="bg-white border border-gray-200 text-gray-500 p-3 rounded-xl max-w-[85%] self-start shadow-sm italic flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
+            <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-100"></span>
+            <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-200"></span>
+            <span class="ml-1">Thinking...</span>
+        </div>`;
+        container.scrollTop = container.scrollHeight;
+
+        try {
+            const res = await fetch('/candidate/chat-query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            });
+            const data = await res.json();
+
+            // Remove loading indicator
+            document.getElementById(loadingId).remove();
+
+            // Format markdown response safely from Gemini
+            const formattedReply = formatMarkdown(data.reply || "Sorry, no response received.");
+
+            container.innerHTML += `
+            <div class="bg-white border border-gray-200 text-gray-800 p-3 rounded-xl max-w-[90%] self-start shadow-sm leading-relaxed space-y-1">
+                ${formattedReply}
+            </div>`;
+            container.scrollTop = container.scrollHeight;
+        } catch (err) {
+            document.getElementById(loadingId).remove();
+            container.innerHTML += `
+            <div class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs self-start shadow-sm">
+                ⚠️ Failed to connect to AI assistant. Please try again later.
+            </div>`;
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+
+    // Helper to convert basic markdown (bold/italics/newlines) to clean HTML
+    function formatMarkdown(text) {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n/g, '<br>');
+    }
+
+    // Basic HTML sanitizer for safe rendering of user inputs
+    function escapeHtml(string) {
+        return String(string)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // Allow sending messages via pressing Enter key
+    document.getElementById('chat-input').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendChatMessage();
+        }
+    });
+</script>

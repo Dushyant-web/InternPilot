@@ -1,0 +1,225 @@
+<% layout('layouts/boilerplate') %>
+
+    <div class="space-y-16 py-6">
+
+        <!-- Hero Section -->
+        <section class="text-center space-y-6 max-w-4xl mx-auto pt-6">
+            <div
+                class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full text-xs font-semibold">
+                <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+                Prime Minister's Internship Scheme Portal
+            </div>
+
+            <h1 class="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                Bridging India's Youth with National <span class="text-indigo-600">Internship Opportunities</span>
+            </h1>
+
+            <p class="text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
+                InternPilot uses AI skill-matching algorithms to connect eligible youth aged 18–24 with top private &
+                public sector organizations across India.
+            </p>
+
+            <!-- CTA Action Buttons -->
+            <div class="flex items-center justify-center pt-4">
+                <a href="/internships"
+                    class="px-8 py-3.5 bg-indigo-700 hover:bg-indigo-800 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                    <i class="ph-bold ph-magnifying-glass text-base"></i>
+                    Explore Opportunities
+                </a>
+            </div>
+        </section>
+
+        <% let computedCompanies=(typeof totalCompanies !=='undefined' && totalCompanies> 0) ? totalCompanies : 0;
+            if (computedCompanies === 0 && typeof internships !== 'undefined' && Array.isArray(internships)) {
+            const uniqueComps = new Set(internships.map(i => i.company || i.companyName ||
+            i.organization).filter(Boolean));
+            computedCompanies = uniqueComps.size > 0 ? uniqueComps.size : 0;
+            }
+            if (computedCompanies === 0) {
+            computedCompanies = 6; // Fallback to trusted partners count
+            }
+            %>
+
+            <!-- Platform Stats Banner (Candidates & Companies Only) -->
+            <section class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 text-center shadow-sm">
+                    <span class="block text-3xl font-extrabold text-indigo-600 mb-1">
+                        <%= typeof totalCandidates !=='undefined' ? totalCandidates : 0 %>+
+                    </span>
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Registered
+                        Candidates</span>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 text-center shadow-sm">
+                    <span class="block text-3xl font-extrabold text-emerald-600 mb-1">
+                        <%= computedCompanies %>+
+                    </span>
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Registered
+                        Companies</span>
+                </div>
+            </section>
+
+            <!-- Core Features Grid -->
+            <section class="space-y-8 max-w-5xl mx-auto">
+                <div class="text-center space-y-2">
+                    <h2 class="text-2xl font-bold text-slate-900">Built for Youth & Employers</h2>
+                    <p class="text-xs text-slate-500">Key modules powering the PMIS digital ecosystem</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Feature 1: Candidate Eligibility -->
+                    <div
+                        class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3 hover:border-indigo-300 transition-colors">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 text-xl font-bold">
+                            <i class="ph-bold ph-user-check"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900">PMIS Scheme Verification</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed">
+                            Automated age (18–24) and income limit verification ensuring benefits reach eligible
+                            candidates
+                            seamlessly.
+                        </p>
+                    </div>
+
+                    <!-- Feature 2: AI Skill Matcher -->
+                    <div
+                        class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3 hover:border-indigo-300 transition-colors">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 text-xl font-bold">
+                            <i class="ph-bold ph-cpu"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900">AI Match Engine</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed">
+                            Real-time skill overlap calculation generating percentage fit scores between candidate
+                            profiles
+                            and job requirements.
+                        </p>
+                    </div>
+
+                    <!-- Feature 3: Employer Portal -->
+                    <div
+                        class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3 hover:border-indigo-300 transition-colors">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 text-xl font-bold">
+                            <i class="ph-bold ph-chart-line-up"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900">Smart Candidate Ranking</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed">
+                            Empowers companies to view applicants ranked by suitability and manage shortlist/rejection
+                            workflows in one click.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Trusted Partner Organizations Section -->
+            <section class="space-y-8 max-w-6xl mx-auto pt-4">
+                <div class="text-center space-y-1">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        Trusted Partner Organizations Under PMIS
+                    </h3>
+                    <p class="text-xs text-slate-500">
+                        Empowering youth through world-class training opportunities with India's leading enterprises.
+                    </p>
+                </div>
+
+                <!-- Partner Grid with Reliable Logo Service -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+
+                    <!-- Tata Motors -->
+                    <div
+                        class="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-sm hover:shadow-md transition-all flex items-center gap-2.5 justify-center h-20">
+                        <img src="https://www.google.com/s2/favicons?domain=tatamotors.com&sz=128" alt="Tata Motors"
+                            class="w-7 h-7 object-contain flex-shrink-0">
+                        <span class="text-xs font-bold text-slate-800 tracking-tight text-left leading-tight">Tata
+                            Motors</span>
+                    </div>
+
+                    <!-- Mahindra & Mahindra -->
+                    <div
+                        class="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-sm hover:shadow-md transition-all flex items-center gap-2.5 justify-center h-20">
+                        <img src="https://www.google.com/s2/favicons?domain=mahindra.com&sz=128" alt="Mahindra"
+                            class="w-7 h-7 object-contain flex-shrink-0">
+                        <span class="text-xs font-bold text-slate-800 tracking-tight text-left leading-tight">Mahindra &
+                            Mahindra</span>
+                    </div>
+
+                    <!-- Maruti Suzuki -->
+                    <div
+                        class="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-sm hover:shadow-md transition-all flex items-center gap-2.5 justify-center h-20">
+                        <img src="https://www.google.com/s2/favicons?domain=marutisuzuki.com&sz=128" alt="Maruti Suzuki"
+                            class="w-7 h-7 object-contain flex-shrink-0">
+                        <span class="text-xs font-bold text-slate-800 tracking-tight text-left leading-tight">Maruti
+                            Suzuki</span>
+                    </div>
+
+                    <!-- Tech Mahindra -->
+                    <div
+                        class="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-sm hover:shadow-md transition-all flex items-center gap-2.5 justify-center h-20">
+                        <img src="https://www.google.com/s2/favicons?domain=techmahindra.com&sz=128" alt="Tech Mahindra"
+                            class="w-7 h-7 object-contain flex-shrink-0">
+                        <span class="text-xs font-bold text-slate-800 tracking-tight text-left leading-tight">Tech
+                            Mahindra</span>
+                    </div>
+
+                    <!-- HDFC Bank -->
+                    <div
+                        class="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-sm hover:shadow-md transition-all flex items-center gap-2.5 justify-center h-20">
+                        <img src="https://www.google.com/s2/favicons?domain=hdfcbank.com&sz=128" alt="HDFC Bank"
+                            class="w-7 h-7 object-contain flex-shrink-0">
+                        <span class="text-xs font-bold text-slate-800 tracking-tight text-left leading-tight">HDFC
+                            Bank</span>
+                    </div>
+
+                    <!-- Reliance Retail -->
+                    <div
+                        class="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-sm hover:shadow-md transition-all flex items-center gap-2.5 justify-center h-20">
+                        <img src="https://www.google.com/s2/favicons?domain=ril.com&sz=128" alt="Reliance Retail"
+                            class="w-7 h-7 object-contain flex-shrink-0">
+                        <span class="text-xs font-bold text-slate-800 tracking-tight text-left leading-tight">Reliance
+                            Retail</span>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- How It Works Section -->
+            <section class="bg-slate-50 border-y border-slate-200 py-12 px-4 sm:px-6">
+                <div class="max-w-4xl mx-auto space-y-10">
+                    <div class="text-center space-y-2">
+                        <h2 class="text-2xl font-bold text-slate-900">How InternPilot Works</h2>
+                        <p class="text-xs text-slate-500">Your journey toward professional skill building in 3 simple
+                            steps
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div class="text-center space-y-3">
+                            <div
+                                class="w-10 h-10 mx-auto rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
+                                1</div>
+                            <h4 class="text-sm font-bold text-slate-900">Create Your Profile</h4>
+                            <p class="text-xs text-slate-500 leading-relaxed">Register with your educational background,
+                                location, and core technical skills.</p>
+                        </div>
+                        <div class="text-center space-y-3">
+                            <div
+                                class="w-10 h-10 mx-auto rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
+                                2</div>
+                            <h4 class="text-sm font-bold text-slate-900">AI Skill Match</h4>
+                            <p class="text-xs text-slate-500 leading-relaxed">Our intelligent matching engine instantly
+                                calculates your suitability score for open listings.</p>
+                        </div>
+                        <div class="text-center space-y-3">
+                            <div
+                                class="w-10 h-10 mx-auto rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
+                                3</div>
+                            <h4 class="text-sm font-bold text-slate-900">Apply & Get Trained</h4>
+                            <p class="text-xs text-slate-500 leading-relaxed">Submit your application with one click and
+                                track status updates directly from your dashboard.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+    </div>

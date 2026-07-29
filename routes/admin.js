@@ -1,0 +1,64 @@
+const express = require('express');
+const router = express.Router();
+const User = require('../models/User');
+const { isAuthenticated, authorize } = require('../middleware/auth');
+
+router.get('/dashboard', isAuthenticated, authorize('admin'), async (req, res) => {
+    try {
+        const totalCandidates = await User.countDocuments({ role: 'candidate' });
+        const totalCompanies = await User.countDocuments({ role: 'company' });
+
+        const pendingCompanies = await User.find({
+            role: 'company',
+            $or: [
+                { 'companyDetails.isVerified': false },
+                { 'companyDetails.isVerified': { $exists: false } }
+            ]
+        });
+
+        const allUsers = await User.find().sort({ createdAt: -1 }).limit(10);
+
+        res.render('admin/dashboard', {
+            user: req.user,
+            stats: {
+                candidates: totalCandidates,
+                companies: totalCompanies,
+                pendingVerifications: pendingCompanies.length
+            },
+            pendingCompanies,
+            recentUsers: allUsers
+        });
+    } catch (err) {
+        console.error('Error loading admin dashboard:', err);
+        res.status(500).send('Server Error');
+    }
+});
+
+router.post('/approve-company/:id', isAuthenticated, authorize('admin'), async (req, res) => {
+    try {
+        await User.findByIdAndUpdate(req.params.id, {
+            'companyDetails.isVerified': true
+        });
+        req.flash('success_msg', 'Company verified successfully.');
+        res.redirect('/admin/dashboard');
+    } catch (err) {
+        console.error('Approve error:', err);
+        req.flash('error_msg', 'Failed to approve company.');
+        res.redirect('/admin/dashboard');
+    }
+});
+
+router.post('/reject-company/:id', isAuthenticated, authorize('admin'), async (req, res) => {
+    try {
+        await User.findByIdAndDelete(req.params.id);
+
+        req.flash('success_msg', 'Company registration rejected.');
+        res.redirect('/admin/dashboard');
+    } catch (err) {
+        console.error('Reject error:', err);
+        req.flash('error_msg', 'Failed to reject company.');
+        res.redirect('/admin/dashboard');
+    }
+});
+
+module.exports = router;
