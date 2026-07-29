@@ -1,7 +1,7 @@
 # 🚀 InternPilot
 
 <p align="center">
-  <b>A Full-Stack Internship Management & Recruitment Portal</b>
+  <b>A AI - Powered Full-Stack Internship Management & Recruitment Portal</b>
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 # 📌 About The Project
 
-**InternPilot** is a full-stack internship management web portal designed to connect **students/candidates** with **companies offering internship opportunities** while providing administrators with complete system control.
+**InternPilot** is an AI - powered full-stack internship management web portal designed to connect **students/candidates** with **companies offering internship opportunities** while providing administrators with complete system control.
 
 The platform provides a structured environment where:
 
