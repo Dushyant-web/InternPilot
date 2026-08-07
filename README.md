@@ -438,9 +438,8 @@ Planned improvements:
 
 **Team Members**
 
-* 👩‍💻 Avani Shrivastava
 * 👨‍💻 Somsubhra Chatterjee
-* 👨‍💻 Tanmoy Saha
+
 
 ---
 
