@@ -1,59 +1,141 @@
 <% layout('layouts/boilerplate') %>
 
-    <div class="max-w-md mx-auto my-10 bg-white p-8 rounded-xl shadow-md border border-gray-100">
-        <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Log In to InternPilot</h2>
+    <div class="max-w-md mx-auto my-8 sm:my-14 px-4">
+        <!-- Main Card Container -->
+        <div
+            class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-200/80 overflow-hidden transition-all">
 
-        <form action="/auth/login" method="POST" class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Email address</label>
-                <input type="email" name="email" required
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
-                    placeholder="user@example.com">
+            <!-- Top Accent Bar -->
+            <div class="h-1.5 bg-gradient-to-r from-indigo-500 via-indigo-600 to-indigo-800"></div>
+
+            <div class="p-8 sm:p-10">
+                <!-- Header Section -->
+                <div class="text-center mb-8">
+                    <div
+                        class="w-12 h-12 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-3.5 shadow-sm">
+                        <i class="ph-bold ph-lock-key text-2xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-black text-slate-900 tracking-tight">Welcome Back</h2>
+                    <p class="text-xs text-slate-500 font-medium mt-1">Sign in to access your InternPilot account</p>
+                </div>
+
+                <!-- Login Form -->
+                <form action="/auth/login" method="POST" class="space-y-5">
+
+                    <!-- Email Input Field -->
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Email
+                            Address</label>
+                        <div class="relative flex items-center">
+                            <i
+                                class="ph-bold ph-envelope-simple absolute left-3.5 text-slate-400 text-lg pointer-events-none"></i>
+                            <input type="email" name="email" required placeholder="user@example.com"
+                                class="w-full pl-10 pr-4 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none transition-all duration-200">
+                        </div>
+                    </div>
+
+                    <!-- Password Input Field -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label
+                                class="block text-xs font-semibold uppercase tracking-wider text-slate-600">Password</label>
+                            <a href="/auth/forgot-password"
+                                class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors">Forgot
+                                password?</a>
+                        </div>
+                        <div class="relative flex items-center">
+                            <i
+                                class="ph-bold ph-lock-simple absolute left-3.5 text-slate-400 text-lg pointer-events-none"></i>
+                            <input type="password" id="login-password" name="password" required placeholder="••••••••"
+                                class="w-full pl-10 pr-11 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none transition-all duration-200">
+
+                            <!-- Toggle Password Visibility Button -->
+                            <button type="button" id="toggle-password-btn"
+                                class="absolute right-3.5 text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-md"
+                                title="Toggle Password Visibility">
+                                <i id="password-toggle-icon" class="ph-bold ph-eye text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Remember Me Checkbox -->
+                    <div class="flex items-center justify-between pt-1">
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" name="remember"
+                                class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/30 accent-indigo-600">
+                            <span class="text-xs font-medium text-slate-600">Remember me for 30 days</span>
+                        </label>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit"
+                        class="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/30 active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer">
+                        <span>Log In</span>
+                        <i class="ph-bold ph-arrow-right text-base"></i>
+                    </button>
+                </form>
+
+                <!-- Divider -->
+                <div class="relative flex py-6 items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink mx-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Or
+                        continue with</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <!-- Google OAuth Button -->
+                <a href="/auth/google"
+                    class="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 hover:border-slate-400 hover:bg-slate-50/80 text-slate-700 font-semibold text-sm py-2.5 px-4 rounded-xl transition-all duration-200 shadow-sm active:scale-[0.99]">
+                    <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48">
+                        <g>
+                            <path fill="#EA4335"
+                                d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z">
+                            </path>
+                            <path fill="#4285F4"
+                                d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z">
+                            </path>
+                            <path fill="#FBBC05"
+                                d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z">
+                            </path>
+                            <path fill="#34A853"
+                                d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z">
+                            </path>
+                            <path fill="none" d="M0 0h48v48H0z"></path>
+                        </g>
+                    </svg>
+                    <span>Sign in with Google</span>
+                </a>
+
+                <!-- Footer Sign Up Link -->
+                <p class="text-center text-xs text-slate-500 font-medium mt-8">
+                    Don't have an account?
+                    <a href="/auth/register"
+                        class="text-indigo-600 hover:text-indigo-700 hover:underline font-bold transition-colors">Create
+                        an account</a>
+                </p>
             </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input type="password" name="password" required
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
-                    placeholder="••••••••">
-            </div>
-
-            <button type="submit"
-                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg shadow transition duration-200">
-                Log In
-            </button>
-        </form>
-
-        <div class="relative flex py-5 items-center">
-            <div class="flex-grow border-t border-gray-200"></div>
-            <span class="flex-shrink mx-4 text-xs text-gray-400 uppercase tracking-wider">Or</span>
-            <div class="flex-grow border-t border-gray-200"></div>
         </div>
-
-        <a href="/auth/google"
-            class="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2.5 rounded-lg transition duration-200 shadow-sm">
-            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48">
-                <g>
-                    <path fill="#EA4335"
-                        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z">
-                    </path>
-                    <path fill="#4285F4"
-                        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z">
-                    </path>
-                    <path fill="#FBBC05"
-                        d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z">
-                    </path>
-                    <path fill="#34A853"
-                        d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z">
-                    </path>
-                    <path fill="none" d="M0 0h48v48H0z"></path>
-                </g>
-            </svg>
-            <span>Sign in with Google</span>
-        </a>
-
-        <p class="text-center text-sm text-gray-600 mt-6">
-            Don't have an account?
-            <a href="/auth/register" class="text-indigo-600 hover:underline font-semibold">Sign up here</a>
-        </p>
     </div>
+
+    <!-- Inline JavaScript for Password Visibility Toggle -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const passwordInput = document.getElementById('login-password');
+            const toggleBtn = document.getElementById('toggle-password-btn');
+            const toggleIcon = document.getElementById('password-toggle-icon');
+
+            if (toggleBtn && passwordInput && toggleIcon) {
+                toggleBtn.addEventListener('click', () => {
+                    const isPassword = passwordInput.getAttribute('type') === 'password';
+                    passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+
+                    // Toggle Icon Class
+                    if (isPassword) {
+                        toggleIcon.className = 'ph-bold ph-eye-slash text-indigo-600';
+                    } else {
+                        toggleIcon.className = 'ph-bold ph-eye text-lg';
+                    }
+                });
+            }
+        });
+    </script>

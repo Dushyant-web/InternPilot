@@ -9,10 +9,11 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
 
-<body class="h-full flex flex-col bg-slate-50 font-sans text-slate-800 m-0">
+<body class="h-full flex flex-col bg-slate-50 font-sans text-slate-800 m-0 overflow-x-hidden">
 
     <%- include('../partials/header') %>
 
+        <!-- Standard layout container bounds all normal views (Listings, Dashboard, Profiles, etc.) -->
         <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
             <%- body %>
         </main>

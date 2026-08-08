@@ -1,6 +1,6 @@
 # MIT License
 
-Copyright (c) 2026  Somsubhra Chatterjee
+Copyright (c) 2026  Somsubhra Chatterjee, Avani Shrivastava, Tanmoy Saha
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,37 +20,3 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----
-
-## Project Information
-
-**Project Name:** InternPilot
-**Project Type:** Project Based Learning - 1
-**Year:** 2026
-
-**Developed By:**
-
-* Avani Shrivastava
-* Somsubhra Chatterjee
-* Tanmoy Saha
-
----
-
-## Usage Guidelines
-
-You are free to:
-
-✅ Use this project for learning purposes.
-✅ Modify and improve the source code.
-✅ Create derivative projects with proper attribution.
-✅ Share the project under the terms of the MIT License.
-
-Please provide appropriate credit to the original developers when using significant portions of this project.
-
----
-
-## Disclaimer
-
-InternPilot is developed as an educational project for demonstrating full-stack web development concepts including authentication, database management, email services, and role-based application workflows.
-
-The project is not responsible for any misuse, security vulnerabilities introduced through modifications, or deployment-related issues.
