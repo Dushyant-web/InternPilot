@@ -617,7 +617,7 @@ Participants will get hands-on experience with:
   <b>SSCSE, Sharda University</b>
 </p>
 
-START2CODE is an initiative of the GitHub Club under Technova Society, SSCSE, Sharda University, encouraging students to learn, build, collaborate, and contribute to real-world and open-source projects.
+START2CODE is an initiative Project of the GitHub Club under Technova Society, SSCSE, Sharda University, encouraging students to learn, build, collaborate, and contribute to real-world and open-source projects.
 
 <p align="center">
   <b>🚀 LEARN • BUILD • CONTRIBUTE 🚀</b>
