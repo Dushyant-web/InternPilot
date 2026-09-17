@@ -416,19 +416,6 @@ Planned improvements:
 * 🤖 AI-based internship recommendation engine.
 * 🔔 Push notifications.
 
----
-
-## 👨‍💻 Developed By
-
-### Project Based Learning - 1
-
-**Team Members:**
-
-* 👨‍💻 Somsubhra Chatterjee
-* 👨‍💻 Avani Shrivastava
-* 👨‍💻 Tanmoy Saha
-
----
 
 ## 🚀 START2CODE — Git, GitHub & Open Source Bootcamp
 
@@ -464,13 +451,6 @@ Participants get hands-on experience with:
 * 🔀 Understanding branches, commits, merges, and pull requests.
 * 🌐 Learning how to collaborate effectively on GitHub.
 
-### 🏛️ Organized & Owned By
-
-<p align="center">
-  <b>GitHub Club</b><br>
-  <b>under Technova Society</b><br>
-  <b>SSCSE, Sharda University</b>
-</p>
 
 START2CODE is an initiative project owned and organized by the **GitHub Club under Technova Society, SSCSE, Sharda University**, encouraging students to learn, build, collaborate, and contribute to real-world open-source projects.
 
