@@ -625,6 +625,3 @@ START2CODE is an initiative Project of the GitHub Club under Technova Society, S
 
 ⭐ If you find InternPilot useful, consider giving the repository a star!
 
-<p align="center">
-  Made with ❤️ by the InternPilot Team
-</p>
