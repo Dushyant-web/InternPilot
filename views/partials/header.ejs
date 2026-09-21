@@ -46,10 +46,13 @@
                                 Profile</a>
                             <a href="/candidate/applications" class="hover:text-indigo-700 transition-colors">My
                                 Applications</a>
-                            <% } else if (currentUser.role==='company' ) { %>
+                            <% } else if (currentUser.role === 'company' || currentUser.role === 'recruiter') { %>
                                 <a href="/company/dashboard" class="hover:text-indigo-700 transition-colors">Company
                                     Dashboard</a>
+                                <% if (currentUser.role === 'company') { %>
+                                <a href="/company/team" class="hover:text-indigo-700 transition-colors">Manage Team</a>
                                 <% } %>
+                            <% } %>
                                     <% } %>
                 </nav>
 
