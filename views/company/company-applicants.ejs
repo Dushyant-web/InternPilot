@@ -39,6 +39,15 @@
             </div>
             <% } else { %>
                 <div class="space-y-4">
+                    <!-- Search Input -->
+                    <div class="mb-4">
+                        <div class="relative max-w-md">
+                            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                            <input type="text" id="candidateSearch" placeholder="Search by name, skill, qualification, or location..." 
+                                class="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                        </div>
+                    </div>
+
                     <div class="flex items-center justify-between">
                         <h3 class="text-sm font-bold text-slate-900">Ranked Applicants (AI Skill Fit)</h3>
                         <span class="text-xs text-slate-400">Sorted by highest match %</span>
@@ -47,7 +56,8 @@
                     <div class="grid grid-cols-1 gap-4">
                         <% applications.forEach((app, index)=> { %>
                             <div
-                                class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                class="applicant-card bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4"
+                                data-search-text="<%= ((app.candidate && app.candidate.name) ? app.candidate.name : '') + ' ' + ((app.candidate && app.candidate.education) ? (app.candidate.education.qualification || '') : '') + ' ' + ((app.candidate && app.candidate.location) ? ((app.candidate.location.district ? app.candidate.location.district + ' ' : '') + (app.candidate.location.state || '')) : '') + ' ' + ((app.candidate && Array.isArray(app.candidate.skills)) ? app.candidate.skills.join(' ') : '') %>">
 
                                 <div class="flex items-start gap-4">
                                     <!-- Rank Badge -->
@@ -162,4 +172,43 @@
                     </div>
                 </div>
                 <% } %>
+
+        <!-- Search Empty State -->
+        <div id="searchEmptyState" class="hidden bg-white border border-slate-200 rounded-xl p-12 text-center shadow-sm mt-4">
+            <i class="ph-bold ph-magnifying-glass text-4xl text-slate-300 mb-2"></i>
+            <h3 class="text-base font-bold text-slate-800">No matches found</h3>
+            <p class="text-xs text-slate-500 mt-1">Try adjusting your search keywords.</p>
+        </div>
     </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const searchInput = document.getElementById('candidateSearch');
+        const candidateCards = document.querySelectorAll('.applicant-card');
+        const emptyState = document.getElementById('searchEmptyState');
+
+        if (!searchInput) return;
+
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            candidateCards.forEach(card => {
+                const cardData = (card.getAttribute('data-search-text') || '').toLowerCase();
+                
+                if (cardData.includes(searchTerm)) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            if (visibleCount === 0 && candidateCards.length > 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+        });
+    });
+</script>
