@@ -20,7 +20,7 @@ const activityLogSchema = new mongoose.Schema({
         required: true,
         index: true
     },
-    targetType: { type: String, enum: ['Candidate', 'Listing', 'Recruiter'], required: true },
+    targetType: { type: String, enum: ['Candidate', 'Listing', 'Recruiter', 'Hiring Manager'], required: true },
     targetId: { type: mongoose.Schema.Types.ObjectId, required: true },
     targetName: { type: String, required: true, trim: true },
     createdAt: { type: Date, default: Date.now, index: true }
