@@ -1,7 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
-
 const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
@@ -195,7 +193,11 @@ router.post('/company/internships/delete/:id', isAuthenticated, requireCompanyRo
 
 router.get('/company/team', isAuthenticated, requireCompanyRole(['company']), async (req, res) => {
     try {
-        const teamMembers = await User.find({            companyId: req.user.companyId,            role: 'recruiter',            isActive: true        }).sort({ createdAt: -1 });
+        const teamMembers = await User.find({
+            companyId: req.user.companyId,
+            role: 'recruiter',
+            isActive: true
+        }).sort({ createdAt: -1 });
 
         res.render('company/company-team', {
             user: req.user,
@@ -220,7 +222,8 @@ router.post('/company/team/add', isAuthenticated, requireCompanyRole(['company']
         await User.create({
             name,
             email: email.toLowerCase(),
-            password,            role: 'recruiter',
+            password,
+            role: 'recruiter',
             companyId: req.user.companyId,
             isEmailVerified: true,
             isActive: true

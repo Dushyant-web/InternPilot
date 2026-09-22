@@ -80,7 +80,15 @@ router.post('/register', async (req, res) => {
             userData.companyDetails = { companyName, cin, industry };
         }
 
-        await User.create(userData);
+        const newUser = await User.create(userData);
+
+        // Company owners need companyId set to their own _id
+        // so requireCompanyRole middleware allows access
+        if (newUser.role === 'company') {
+            newUser.companyId = newUser._id;
+            await newUser.save();
+        }
+
         console.log('--> User account created in MongoDB.');
 
         req.flash('success_msg', 'Verification code sent to your email!');

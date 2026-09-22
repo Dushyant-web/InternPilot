@@ -18,7 +18,7 @@ function calculateSkillScore(userSkills = [], requiredSkills = []) {
 router.get('/', async (req, res) => {
     try {
         const internships = await Internship.find({}).sort({ _id: -1 });
-        const candidate = req.user || await User.findOne();
+        const candidate = req.user;
 
         let appliedIds = [];
         if (candidate) {
@@ -114,7 +114,7 @@ router.post('/:id/delete', isAuthenticated, requireCompanyRole(['company', 'recr
 
 router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
-        const candidate = req.user || await User.findOne();
+        const candidate = req.user;
         const internship = await Internship.findById(req.params.id);
 
         if (!candidate || !internship) {
