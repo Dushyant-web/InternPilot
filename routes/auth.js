@@ -1,8 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const passport = require('passport');
+const crypto = require('crypto');
 const User = require('../models/User');
 const { sendOTPEmail } = require('../utils/sendEmail');
+
+const generateSecureOTP = () => {
+    return crypto.randomInt(100000, 1000000).toString();
+};
 
 router.get('/login', (req, res) => res.render('auth/login'));
 router.get('/register', (req, res) => res.render('auth/register'));
@@ -30,18 +35,30 @@ router.post('/register', async (req, res) => {
                 req.flash('error_msg', 'Email already registered. Please log in.');
                 return res.redirect('/auth/register');
             } else {
-                console.log('Status: User exists but is unverified. Resending fresh OTP...');
-                const otp = Math.floor(100000 + Math.random() * 900000).toString();
+                console.log('Status: User exists but is unverified. Checking cooldown...');
+                const COOLDOWN_SECONDS = 60;
+                const now = Date.now();
+
+                if (existing.lastOtpSentAt) {
+                    const elapsedSeconds = Math.floor((now - new Date(existing.lastOtpSentAt).getTime()) / 1000);
+                    if (elapsedSeconds < COOLDOWN_SECONDS) {
+                        const remainingSeconds = COOLDOWN_SECONDS - elapsedSeconds;
+                        req.flash('error_msg', `Please wait ${remainingSeconds}s before requesting a new code.`);
+                        return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(normalizedEmail)}`);
+                    }
+                }
+
+                const otp = generateSecureOTP();
                 existing.otp = otp;
-                existing.otpExpires = Date.now() + 10 * 60 * 1000;
-                existing.lastOtpSentAt = Date.now();
+                existing.otpExpires = now + 10 * 60 * 1000;
+                existing.lastOtpSentAt = now;
 
                 if (password) existing.password = password; // Update password if provided
 
-                await sendOTPEmail(normalizedEmail, otp);
                 await existing.save();
+                await sendOTPEmail(normalizedEmail, otp);
 
-                console.log(`--> Fresh OTP (${otp}) successfully sent to: ${normalizedEmail}`);
+                console.log(`--> Fresh verification code successfully sent to: ${normalizedEmail}`);
                 req.flash('success_msg', 'A new verification code has been sent to your email.');
                 return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(normalizedEmail)}`);
             }
@@ -61,13 +78,9 @@ router.post('/register', async (req, res) => {
             selectedRole = 'company';
         }
 
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp = generateSecureOTP();
         const otpExpires = Date.now() + 10 * 60 * 1000;
         const lastOtpSentAt = Date.now();
-
-        console.log(`--> Dispatching OTP (${otp}) via Nodemailer to ${normalizedEmail}...`);
-        await sendOTPEmail(normalizedEmail, otp);
-        console.log('--> Email sent successfully!');
 
         const userData = {
             name: (name || '').trim(),
@@ -84,6 +97,7 @@ router.post('/register', async (req, res) => {
             userData.companyDetails = { companyName, cin, industry };
         }
 
+        // Create pending user record before dispatching email to guarantee persistence
         const newUser = await User.create(userData);
 
         // Company owners need companyId set to their own _id
@@ -94,12 +108,21 @@ router.post('/register', async (req, res) => {
         }
 
         console.log('--> User account created in MongoDB.');
+        console.log(`--> Dispatching verification code via Nodemailer to ${normalizedEmail}...`);
 
-        req.flash('success_msg', 'Verification code sent to your email!');
+        try {
+            await sendOTPEmail(normalizedEmail, otp);
+            console.log('--> Email sent successfully!');
+            req.flash('success_msg', 'Verification code sent to your email!');
+        } catch (emailErr) {
+            console.error('--> Failed to send initial OTP email:', emailErr.message);
+            req.flash('error_msg', "Account created, but we couldn't send the code. Please click Resend OTP.");
+        }
+
         res.redirect(`/auth/verify-otp?email=${encodeURIComponent(normalizedEmail)}`);
     } catch (err) {
         console.error('--> REGISTRATION / EMAIL ERROR:', err);
-        req.flash('error_msg', "We couldn't send your verification code. Please try again in a moment.");
+        req.flash('error_msg', "We couldn't complete registration. Please try again in a moment.");
         res.redirect('/auth/register');
     }
 });
@@ -147,37 +170,53 @@ router.post('/resend-otp', async (req, res) => {
             return res.redirect('/auth/register');
         }
 
-        const user = await User.findOne({ email });
-
-        if (!user) {
-            req.flash('error_msg', 'User not found. Please register first.');
-            return res.redirect('/auth/register');
-        }
-
-        if (user.isEmailVerified) {
-            req.flash('error_msg', 'Account is already verified. Please log in.');
-            return res.redirect('/auth/login');
-        }
-
-        // Enforce 60-second cooldown server-side to prevent spam/abuse
         const COOLDOWN_SECONDS = 60;
         const now = Date.now();
-        if (user.lastOtpSentAt) {
-            const elapsedSeconds = Math.floor((now - new Date(user.lastOtpSentAt).getTime()) / 1000);
-            if (elapsedSeconds < COOLDOWN_SECONDS) {
-                const remainingSeconds = COOLDOWN_SECONDS - elapsedSeconds;
-                req.flash('error_msg', `Please wait ${remainingSeconds}s before requesting a new code.`);
-                return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
+        const otp = generateSecureOTP();
+        const otpExpires = now + 10 * 60 * 1000;
+        const cooldownThreshold = new Date(now - COOLDOWN_SECONDS * 1000);
+
+        // Atomically reserve the resend cooldown to prevent concurrent request race conditions
+        const updatedUser = await User.findOneAndUpdate(
+            {
+                email,
+                isEmailVerified: false,
+                $or: [
+                    { lastOtpSentAt: { $exists: false } },
+                    { lastOtpSentAt: null },
+                    { lastOtpSentAt: { $lte: cooldownThreshold } }
+                ]
+            },
+            {
+                $set: {
+                    otp,
+                    otpExpires,
+                    lastOtpSentAt: now
+                }
+            },
+            { new: true }
+        );
+
+        if (!updatedUser) {
+            const user = await User.findOne({ email });
+
+            if (!user) {
+                req.flash('error_msg', 'User not found. Please register first.');
+                return res.redirect('/auth/register');
             }
+
+            if (user.isEmailVerified) {
+                req.flash('error_msg', 'Account is already verified. Please log in.');
+                return res.redirect('/auth/login');
+            }
+
+            const elapsedSeconds = Math.floor((now - new Date(user.lastOtpSentAt).getTime()) / 1000);
+            const remainingSeconds = Math.max(1, COOLDOWN_SECONDS - elapsedSeconds);
+            req.flash('error_msg', `Please wait ${remainingSeconds}s before requesting a new code.`);
+            return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
         }
 
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        user.otp = otp;
-        user.otpExpires = now + 10 * 60 * 1000;
-        user.lastOtpSentAt = now;
-
         await sendOTPEmail(email, otp);
-        await user.save();
 
         req.flash('success_msg', 'A new verification code has been sent to your email.');
         res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);

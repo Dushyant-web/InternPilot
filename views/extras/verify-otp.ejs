@@ -83,13 +83,23 @@
                 });
             }
 
-            let cooldownEnd = parseInt(sessionStorage.getItem(storageKey), 10);
+            let cooldownEnd;
+            try {
+                cooldownEnd = parseInt(sessionStorage.getItem(storageKey), 10);
+            } catch (_) {
+                cooldownEnd = NaN;
+            }
+
             const now = Date.now();
 
             // Initialize cooldown if not set or invalid
             if (!cooldownEnd || isNaN(cooldownEnd)) {
                 cooldownEnd = now + COOLDOWN_DURATION;
-                sessionStorage.setItem(storageKey, cooldownEnd);
+                try {
+                    sessionStorage.setItem(storageKey, cooldownEnd);
+                } catch (_) {
+                    // Fallback to in-memory cooldown
+                }
             }
 
             function updateCooldown() {
@@ -117,7 +127,12 @@
             if (resendForm) {
                 resendForm.addEventListener('submit', function () {
                     // Set new cooldown for next request
-                    sessionStorage.setItem(storageKey, Date.now() + COOLDOWN_DURATION);
+                    cooldownEnd = Date.now() + COOLDOWN_DURATION;
+                    try {
+                        sessionStorage.setItem(storageKey, cooldownEnd);
+                    } catch (_) {
+                        // Fallback to in-memory cooldown
+                    }
                     resendBtn.disabled = true;
                     cooldownSpan.textContent = '(60s)';
                 });

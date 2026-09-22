@@ -70,6 +70,12 @@ const sendWithRetry = async (mailOptions, maxRetries = 3) => {
     throw lastError;
 };
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const isValidEmail = (email) => {
+    return typeof email === 'string' && EMAIL_REGEX.test(email);
+};
+
 /**
  * Sends an OTP verification email to the user.
  * 
@@ -84,12 +90,17 @@ const sendOTPEmail = async (email, otp) => {
         throw new Error('Recipient email address is required.');
     }
 
+    if (!isValidEmail(cleanEmail)) {
+        throw new Error('Invalid email address format.');
+    }
+
     const senderEmail = process.env.EMAIL_USER || process.env.SMTP_USER || 'no-reply@internpilot.com';
 
     const mailOptions = {
         from: `"InternPilot Support" <${senderEmail}>`,
         to: cleanEmail,
         subject: 'Verify Your InternPilot Account - OTP Code',
+        text: `Welcome to InternPilot!\n\nYour verification code is: ${otp}\n\nThis code will expire in 10 minutes.\nIf you didn't request this, please ignore this email.`,
         html: `
             <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
                 <h2 style="color: #4f46e5; text-align: center;">Welcome to InternPilot!</h2>
@@ -120,6 +131,10 @@ const sendStatusUpdateEmail = async (email, candidateName, internshipTitle, stat
 
     if (!cleanEmail) {
         throw new Error('Recipient email address is required.');
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+        throw new Error('Invalid email address format.');
     }
 
     const senderEmail = process.env.EMAIL_USER || process.env.SMTP_USER || 'no-reply@internpilot.com';
