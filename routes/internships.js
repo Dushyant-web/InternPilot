@@ -3,7 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
-const { isAuthenticated, authorize } = require('../middleware/auth');
+const { isAuthenticated, authorize, requireCompanyRole } = require('../middleware/auth');
 
 function calculateSkillScore(userSkills = [], requiredSkills = []) {
     if (!requiredSkills.length) return 100;
@@ -33,7 +33,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-router.post('/new', isAuthenticated, authorize('company'), async (req, res) => {
+router.post('/new', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
         const { title, company: companyName, location, sector, stipend, vacancies, requiredSkills } = req.body;
 
@@ -44,7 +44,8 @@ router.post('/new', isAuthenticated, authorize('company'), async (req, res) => {
 
         const newInternship = new Internship({
             title,
-            companyName,
+            companyName: companyName || req.user.companyDetails?.companyName || req.user.name,
+            companyId: req.user.companyId,
             sector,
             location: { district, state },
             monthlyStipend: stipendNumber,
@@ -54,7 +55,7 @@ router.post('/new', isAuthenticated, authorize('company'), async (req, res) => {
         });
 
         await newInternship.save();
-        req.flash('success_msg', 'Internship opportunity posted!');
+        if (req.flash) req.flash('success_msg', 'Internship opportunity posted!');
         res.redirect('/internships');
     } catch (error) {
         console.error('Error saving internship:', error);
@@ -62,13 +63,11 @@ router.post('/new', isAuthenticated, authorize('company'), async (req, res) => {
     }
 });
 
-router.post('/:id/edit', isAuthenticated, authorize('company'), async (req, res) => {
+router.post('/:id/edit', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
-        const internship = await Internship.findById(req.params.id);
-        if (!internship) return res.status(404).send('Internship not found');
-
-        if (req.user.role === 'company' && internship.postedBy && internship.postedBy.toString() !== req.user._id.toString()) {
-            req.flash('error_msg', 'Unauthorized action.');
+        const internship = await Internship.findOne({ _id: req.params.id, companyId: req.user.companyId });
+        if (!internship) {
+            if (req.flash) req.flash('error_msg', 'Unauthorized action or internship not found.');
             return res.redirect('/internships');
         }
 
@@ -79,18 +78,17 @@ router.post('/:id/edit', isAuthenticated, authorize('company'), async (req, res)
         const state = locationParts[1] ? locationParts[1].trim() : '';
         const stipendNumber = stipend ? parseInt(stipend.toString().replace(/[^0-9]/g, '')) : 5000;
 
-        await Internship.findByIdAndUpdate(req.params.id, {
-            title,
-            companyName,
-            sector,
-            location: { district, state },
-            monthlyStipend: stipendNumber,
-            duration: duration || '12 Months',
-            vacancies: parseInt(vacancies) || 1,
-            requiredSkills: requiredSkills ? requiredSkills.split(',').map(s => s.trim()) : []
-        });
+        internship.title = title || internship.title;
+        if (companyName) internship.companyName = companyName;
+        internship.sector = sector || internship.sector;
+        internship.location = { district, state };
+        internship.monthlyStipend = stipendNumber;
+        internship.duration = duration || '12 Months';
+        internship.vacancies = parseInt(vacancies) || 1;
+        internship.requiredSkills = requiredSkills ? requiredSkills.split(',').map(s => s.trim()) : [];
+        await internship.save();
 
-        req.flash('success_msg', 'Internship updated successfully.');
+        if (req.flash) req.flash('success_msg', 'Internship updated successfully.');
         res.redirect('/internships');
     } catch (error) {
         console.error('Error updating internship:', error);
@@ -98,18 +96,15 @@ router.post('/:id/edit', isAuthenticated, authorize('company'), async (req, res)
     }
 });
 
-router.post('/:id/delete', isAuthenticated, authorize('company'), async (req, res) => {
+router.post('/:id/delete', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
-        const internship = await Internship.findById(req.params.id);
-        if (!internship) return res.status(404).send('Internship not found');
-
-        if (req.user.role === 'company' && internship.postedBy && internship.postedBy.toString() !== req.user._id.toString()) {
-            req.flash('error_msg', 'Unauthorized action.');
+        const internship = await Internship.findOneAndDelete({ _id: req.params.id, companyId: req.user.companyId });
+        if (!internship) {
+            if (req.flash) req.flash('error_msg', 'Unauthorized action or internship not found.');
             return res.redirect('/internships');
         }
 
-        await Internship.findByIdAndDelete(req.params.id);
-        req.flash('success_msg', 'Internship removed.');
+        if (req.flash) req.flash('success_msg', 'Internship removed.');
         res.redirect('/internships');
     } catch (error) {
         console.error('Error deleting internship:', error);
@@ -132,7 +127,7 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
         });
 
         if (existingApp) {
-            req.flash('error_msg', 'You have already applied for this opportunity.');
+            if (req.flash) req.flash('error_msg', 'You have already applied for this opportunity.');
             return res.redirect('/candidate/applications');
         }
 
@@ -144,7 +139,7 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
             matchScore: score
         });
 
-        req.flash('success_msg', 'Application submitted successfully!');
+        if (req.flash) req.flash('success_msg', 'Application submitted successfully!');
         res.redirect('/candidate/applications');
     } catch (error) {
         console.error('Error applying for internship:', error);
@@ -152,15 +147,19 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
     }
 });
 
-router.get('/:id/applicants', isAuthenticated, authorize('company'), async (req, res) => {
+router.get('/:id/applicants', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
-        const internship = await Internship.findById(req.params.id);
+        const internship = await Internship.findOne({ _id: req.params.id, companyId: req.user.companyId });
+        if (!internship) {
+            if (req.flash) req.flash('error_msg', 'Unauthorized action or internship not found.');
+            return res.redirect('/internships');
+        }
 
         const applications = await Application.find({ internship: req.params.id })
             .populate('candidate')
             .sort({ matchScore: -1 });
 
-        res.render('company/company-applicants', { internship, applications });
+        res.render('company/company-applicants', { internship, applications, user: req.user });
     } catch (error) {
         console.error('Error fetching applicants:', error);
         res.status(500).send('Database Error');
