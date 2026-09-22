@@ -131,6 +131,11 @@
                                         </span>
                                     </div>
 
+                                    <!-- View Profile Button -->
+                                    <a href="/company/applications/<%= app._id %>/candidate"
+                                        class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                                        <i class="ph-bold ph-user text-sm"></i> View Profile
+                                    </a>
                                     <!-- Candidate Resume Button -->
                                     <% const resumePath=app.candidate ? (app.candidate.resume ||
                                         app.candidate.resumeUrl) : null; %>
