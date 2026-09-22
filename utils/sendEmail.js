@@ -14,11 +14,14 @@ const createTransporter = () => {
     };
 
     if (process.env.SMTP_HOST) {
+        const secure = process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465';
+
         return nodemailer.createTransport({
             ...timeoutConfig,
             host: process.env.SMTP_HOST,
             port: parseInt(process.env.SMTP_PORT, 10) || 587,
-            secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465',
+            secure,
+            requireTLS: !secure,
             auth: {
                 user: process.env.SMTP_USER || process.env.EMAIL_USER,
                 pass: process.env.SMTP_PASS || process.env.EMAIL_PASS
