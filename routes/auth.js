@@ -9,18 +9,19 @@ router.get('/register', (req, res) => res.render('auth/register'));
 
 router.post('/register', async (req, res) => {
     const { name, email, password, role, adminSecretKey, companyName, cin, industry } = req.body;
+    const normalizedEmail = (email || '').trim().toLowerCase();
 
     console.log('\n--- New Registration Request ---');
-    console.log('Received Payload Email:', email);
+    console.log('Received Payload Email:', normalizedEmail);
 
     try {
-        if (!email) {
+        if (!normalizedEmail) {
             console.error('ERROR: Email field is empty or missing in req.body!');
             req.flash('error_msg', 'Email address is required.');
             return res.redirect('/auth/register');
         }
 
-        const existing = await User.findOne({ email });
+        const existing = await User.findOne({ email: normalizedEmail });
 
         // If user already exists in DB
         if (existing) {
@@ -33,15 +34,16 @@ router.post('/register', async (req, res) => {
                 const otp = Math.floor(100000 + Math.random() * 900000).toString();
                 existing.otp = otp;
                 existing.otpExpires = Date.now() + 10 * 60 * 1000;
+                existing.lastOtpSentAt = Date.now();
 
                 if (password) existing.password = password; // Update password if provided
 
-                await sendOTPEmail(email, otp);
+                await sendOTPEmail(normalizedEmail, otp);
                 await existing.save();
 
-                console.log(`--> Fresh OTP (${otp}) successfully sent to: ${email}`);
+                console.log(`--> Fresh OTP (${otp}) successfully sent to: ${normalizedEmail}`);
                 req.flash('success_msg', 'A new verification code has been sent to your email.');
-                return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
+                return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(normalizedEmail)}`);
             }
         }
 
@@ -61,19 +63,21 @@ router.post('/register', async (req, res) => {
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const otpExpires = Date.now() + 10 * 60 * 1000;
+        const lastOtpSentAt = Date.now();
 
-        console.log(`--> Dispatching OTP (${otp}) via Nodemailer to ${email}...`);
-        await sendOTPEmail(email, otp);
+        console.log(`--> Dispatching OTP (${otp}) via Nodemailer to ${normalizedEmail}...`);
+        await sendOTPEmail(normalizedEmail, otp);
         console.log('--> Email sent successfully!');
 
         const userData = {
-            name,
-            email,
+            name: (name || '').trim(),
+            email: normalizedEmail,
             password,
             role: selectedRole,
             isEmailVerified: false,
             otp,
-            otpExpires
+            otpExpires,
+            lastOtpSentAt
         };
 
         if (userData.role === 'company') {
@@ -92,26 +96,28 @@ router.post('/register', async (req, res) => {
         console.log('--> User account created in MongoDB.');
 
         req.flash('success_msg', 'Verification code sent to your email!');
-        res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
+        res.redirect(`/auth/verify-otp?email=${encodeURIComponent(normalizedEmail)}`);
     } catch (err) {
         console.error('--> REGISTRATION / EMAIL ERROR:', err);
-        req.flash('error_msg', 'Failed to complete registration or send email. Please try again.');
+        req.flash('error_msg', "We couldn't send your verification code. Please try again in a moment.");
         res.redirect('/auth/register');
     }
 });
 
 router.get('/verify-otp', (req, res) => {
-    const { email } = req.query;
+    const email = (req.query.email || '').trim().toLowerCase();
     res.render('extras/verify-otp', { email });
 });
 
 router.post('/verify-otp', async (req, res) => {
+    const email = (req.body.email || '').trim().toLowerCase();
+    const otp = (req.body.otp || '').trim();
+
     try {
-        const { email, otp } = req.body;
         console.log(`Verifying OTP for ${email}...`);
         const user = await User.findOne({ email });
 
-        if (!user || user.otp !== otp || user.otpExpires < Date.now()) {
+        if (!user || user.otp !== otp || !user.otpExpires || user.otpExpires < Date.now()) {
             req.flash('error_msg', 'Invalid or expired OTP code.');
             return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
         }
@@ -119,6 +125,7 @@ router.post('/verify-otp', async (req, res) => {
         user.isEmailVerified = true;
         user.otp = undefined;
         user.otpExpires = undefined;
+        user.lastOtpSentAt = undefined;
         await user.save();
 
         console.log(`User ${email} verified successfully.`);
@@ -132,12 +139,18 @@ router.post('/verify-otp', async (req, res) => {
 });
 
 router.post('/resend-otp', async (req, res) => {
+    const email = (req.body.email || '').trim().toLowerCase();
+
     try {
-        const { email } = req.body;
+        if (!email) {
+            req.flash('error_msg', 'Email address is required to resend OTP.');
+            return res.redirect('/auth/register');
+        }
+
         const user = await User.findOne({ email });
 
         if (!user) {
-            req.flash('error_msg', 'User not found.');
+            req.flash('error_msg', 'User not found. Please register first.');
             return res.redirect('/auth/register');
         }
 
@@ -146,9 +159,22 @@ router.post('/resend-otp', async (req, res) => {
             return res.redirect('/auth/login');
         }
 
+        // Enforce 60-second cooldown server-side to prevent spam/abuse
+        const COOLDOWN_SECONDS = 60;
+        const now = Date.now();
+        if (user.lastOtpSentAt) {
+            const elapsedSeconds = Math.floor((now - new Date(user.lastOtpSentAt).getTime()) / 1000);
+            if (elapsedSeconds < COOLDOWN_SECONDS) {
+                const remainingSeconds = COOLDOWN_SECONDS - elapsedSeconds;
+                req.flash('error_msg', `Please wait ${remainingSeconds}s before requesting a new code.`);
+                return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
+            }
+        }
+
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         user.otp = otp;
-        user.otpExpires = Date.now() + 10 * 60 * 1000;
+        user.otpExpires = now + 10 * 60 * 1000;
+        user.lastOtpSentAt = now;
 
         await sendOTPEmail(email, otp);
         await user.save();
@@ -157,8 +183,8 @@ router.post('/resend-otp', async (req, res) => {
         res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
     } catch (err) {
         console.error('Resend OTP error:', err);
-        req.flash('error_msg', 'Could not send a new verification code. Please try again.');
-        res.redirect('/auth/login');
+        req.flash('error_msg', "We couldn't send your code. Please try again in a moment.");
+        res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
     }
 });
 
