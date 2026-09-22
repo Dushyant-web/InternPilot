@@ -10,10 +10,16 @@ const userSchema = new mongoose.Schema({
 
     role: {
         type: String,
-        enum: ['candidate', 'company', 'admin'],
+        enum: ['candidate', 'company', 'recruiter', 'admin'],
         default: 'candidate',
         required: true
     },
+
+    companyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    isActive: { type: Boolean, default: true },
 
     age: { type: Number },
     familyIncome: { type: Number },

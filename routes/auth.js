@@ -80,7 +80,15 @@ router.post('/register', async (req, res) => {
             userData.companyDetails = { companyName, cin, industry };
         }
 
-        await User.create(userData);
+        const newUser = await User.create(userData);
+
+        // Company owners need companyId set to their own _id
+        // so requireCompanyRole middleware allows access
+        if (newUser.role === 'company') {
+            newUser.companyId = newUser._id;
+            await newUser.save();
+        }
+
         console.log('--> User account created in MongoDB.');
 
         req.flash('success_msg', 'Verification code sent to your email!');
@@ -174,7 +182,7 @@ router.post('/login', (req, res, next) => {
 
             if (user.role === 'admin') {
                 return res.redirect('/admin/dashboard');
-            } else if (user.role === 'company') {
+            } else if (user.role === 'company' || user.role === 'recruiter') {
                 return res.redirect('/company/dashboard');
             } else {
                 return res.redirect('/');
@@ -200,7 +208,7 @@ router.get('/google/callback', (req, res, next) => {
 
             if (user.role === 'admin') {
                 return res.redirect('/admin/dashboard');
-            } else if (user.role === 'company') {
+            } else if (user.role === 'company' || user.role === 'recruiter') {
                 return res.redirect('/company/dashboard');
             } else {
                 return res.redirect('/');
