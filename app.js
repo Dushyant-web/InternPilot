@@ -21,6 +21,7 @@ require("./config/passport");
 
 const User = require("./models/User");
 const Internship = require("./models/Internship");
+const Notification = require('./models/Notification');
 
 const authRoutes = require("./routes/auth");
 const internshipRoutes = require("./routes/internships");
@@ -28,6 +29,7 @@ const userRoutes = require("./routes/user");
 const companyRoutes = require('./routes/company');
 const adminRoutes = require('./routes/admin');
 const chatRoutes = require('./routes/chat');
+const notificationRoutes = require('./routes/notifications');
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -60,12 +62,27 @@ app.use(passport.session());
 app.use(flash());
 
 // Local variables middleware
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
     res.locals.currentUser = req.user;
     res.locals.success_msg = req.flash("success_msg");
     res.locals.error_msg = req.flash("error_msg");
     res.locals.error = req.flash("error");
-    next();
+    res.locals.notificationUnreadCount = 0;
+
+    if (req.user?.role === 'candidate') {
+        try {
+            res.locals.notificationUnreadCount = await Notification.countDocuments({
+                recipient: req.user._id,
+                isRead: false
+            });
+        } catch (error) {
+            // A notification lookup must never prevent the rest of the page
+            // from loading while the feature is unavailable.
+            console.error('Error loading notification count:', error);
+        }
+    }
+
+    return next();
 });
 
 // Database connection
@@ -98,6 +115,7 @@ app.use('/', userRoutes);
 app.use('/', companyRoutes);
 app.use('/admin', adminRoutes);
 app.use('/', chatRoutes);
+app.use('/', notificationRoutes);
 
 // 404 Catch-All Handler (Forward to error handler)
 app.use((req, res, next) => {

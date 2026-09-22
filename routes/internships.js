@@ -5,6 +5,7 @@ const Internship = require('../models/Internship');
 const Application = require('../models/Application');
 const { isAuthenticated, authorize, requireCompanyRole } = require('../middleware/auth');
 const { parseISTEndOfDay } = require('../utils/dateUtils');
+const { notifyRelevantCandidates } = require('../utils/notifications');
 
 function calculateSkillScore(userSkills = [], requiredSkills = []) {
     if (!requiredSkills || !requiredSkills.length) return 100;
@@ -88,6 +89,12 @@ router.post('/new', isAuthenticated, requireCompanyRole(['company', 'recruiter']
         });
 
         await newInternship.save();
+        if (status === 'published') {
+            notifyRelevantCandidates(newInternship).catch(notificationError => {
+                console.error('Failed to create internship match notifications:', notificationError);
+            });
+        }
+
         if (req.flash) {
             if (isDraft) {
                 req.flash('success_msg', 'Draft saved successfully!');
