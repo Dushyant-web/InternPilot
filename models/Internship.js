@@ -21,6 +21,9 @@ const internshipSchema = new mongoose.Schema({
     companyId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
+    },
+    applicationDeadline: {
+        type: Date
     }
 }, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
