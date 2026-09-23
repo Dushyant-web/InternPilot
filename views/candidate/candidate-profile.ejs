@@ -5,6 +5,24 @@
 
         <div class="max-w-7xl mx-auto space-y-6">
 
+            <% if (typeof success_msg !== 'undefined' && success_msg && success_msg.length > 0) { %>
+                <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl text-xs font-semibold flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-2">
+                        <i class="ph-bold ph-check-circle text-emerald-600 text-base"></i>
+                        <span><%= success_msg %></span>
+                    </div>
+                </div>
+            <% } %>
+
+            <% if (typeof error_msg !== 'undefined' && error_msg && error_msg.length > 0) { %>
+                <div class="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-xs font-semibold flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-2">
+                        <i class="ph-bold ph-warning-circle text-rose-600 text-base"></i>
+                        <span><%= error_msg %></span>
+                    </div>
+                </div>
+            <% } %>
+
             <div
                 class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div class="flex items-center gap-5">
@@ -200,7 +218,7 @@
                     </button>
                 </div>
 
-                <form action="/candidate/profile/edit" method="POST" class="mt-4 space-y-3 text-xs">
+                <form id="editProfileForm" action="/candidate/profile/edit" method="POST" class="mt-4 space-y-3 text-xs">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Location (District, State)</label>
                         <input type="text" name="location"
@@ -248,9 +266,9 @@
 
                     <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                         <button type="button" id="cancelModalBtn"
-                            class="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200 cursor-pointer">Cancel</button>
-                        <button type="submit"
-                            class="px-4 py-2 font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm cursor-pointer">Save
+                            class="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">Cancel</button>
+                        <button type="submit" id="saveProfileBtn"
+                            class="px-4 py-2 font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">Save
                             Profile</button>
                     </div>
                 </form>
@@ -264,6 +282,8 @@
                 const openBtn = document.getElementById('openModalBtn');
                 const closeBtn = document.getElementById('closeModalBtn');
                 const cancelBtn = document.getElementById('cancelModalBtn');
+                const profileForm = document.getElementById('editProfileForm');
+                const saveBtn = document.getElementById('saveProfileBtn');
 
                 if (openBtn && modal) {
                     openBtn.addEventListener('click', () => {
@@ -277,5 +297,20 @@
 
                 if (closeBtn) closeBtn.addEventListener('click', closeModal);
                 if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+                if (profileForm && saveBtn) {
+                    profileForm.addEventListener('submit', () => {
+                        saveBtn.disabled = true;
+                        if (cancelBtn) cancelBtn.disabled = true;
+                        if (closeBtn) closeBtn.disabled = true;
+                        saveBtn.innerHTML = `
+                            <svg class="animate-spin h-4 w-4 text-white shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Saving...
+                        `;
+                    });
+                }
             });
         </script>

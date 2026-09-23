@@ -109,9 +109,11 @@ router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), 
             { new: true, runValidators: false }
         );
 
+        if (req.flash) req.flash('success_msg', 'Profile updated successfully!');
         res.redirect('/candidate/profile');
     } catch (error) {
         console.error('Error updating candidate profile:', error);
+        if (req.flash) req.flash('error_msg', 'Failed to update profile. Please try again.');
         res.redirect('/candidate/profile');
     }
 });
