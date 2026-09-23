@@ -61,10 +61,11 @@ function escapeRegExp(str) {
 
 function calculateSkillScore(userSkills = [], requiredSkills = []) {
     if (!requiredSkills || !requiredSkills.length) return 100;
-    const userSkillsLower = userSkills.map(s => s.toLowerCase());
+    if (!userSkills || !userSkills.length) return 0;
+    const userSkillsLower = userSkills.filter(Boolean).map(s => String(s).trim().toLowerCase());
     let matchCount = 0;
-    requiredSkills.forEach(skill => {
-        if (userSkillsLower.includes(skill.toLowerCase())) matchCount++;
+    requiredSkills.filter(Boolean).forEach(skill => {
+        if (userSkillsLower.includes(String(skill).trim().toLowerCase())) matchCount++;
     });
     return Math.round((matchCount / requiredSkills.length) * 100);
 }
@@ -94,6 +95,14 @@ router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), 
 
         const userId = req.user._id || req.user.id;
 
+        let district = '';
+        let state = '';
+        if (location) {
+            const parts = location.split(',').map(s => s.trim());
+            district = parts[0] || '';
+            state = parts[1] || '';
+        }
+
         await User.findByIdAndUpdate(
             userId,
             {
@@ -101,8 +110,10 @@ router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), 
                     age: age ? Number(age) : null,
                     familyIncome: familyIncome ? Number(familyIncome) : null,
                     institution: institution || '',
+                    'education.institutionName': institution || '',
                     skills: skillsArray,
-                    'location.district': location || '',
+                    'location.district': district,
+                    'location.state': state,
                     'education.qualification': qualification || ''
                 }
             },
@@ -113,12 +124,20 @@ router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), 
         res.redirect('/candidate/profile');
     } catch (error) {
         console.error('Error updating candidate profile:', error);
-        if (req.flash) req.flash('error_msg', 'Failed to update profile. Please try again.');
+        if (req.flash) req.flash('error_msg', 'Failed to update profile.');
         res.redirect('/candidate/profile');
     }
 });
 
-router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), upload.single('resume'), async (req, res) => {
+router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), (req, res, next) => {
+    upload.single('resume')(req, res, (err) => {
+        if (err) {
+            if (req.flash) req.flash('error_msg', err.message || 'File upload failed. Only PDF and Word files under 5MB are accepted.');
+            return res.redirect('/candidate/profile');
+        }
+        next();
+    });
+}, async (req, res) => {
     try {
         if (!req.file) {
             if (req.flash) req.flash('error_msg', 'Please upload a valid PDF or Word resume.');
@@ -213,31 +232,53 @@ router.get('/candidate/applications', isAuthenticated, authorize('candidate'), a
 router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
         const { userId } = req.params;
-        const user = await User.findById(userId);
 
+        // IDOR Protection: Candidates can only access their own recommendations (Admins can view any)
+        if (req.user._id.toString() !== userId && req.user.role !== 'admin') {
+            if (req.flash) req.flash('error_msg', 'You are not authorized to view recommendations for other candidates.');
+            return res.redirect(`/recommendations/${req.user._id}`);
+        }
+
+        const user = await User.findById(userId);
         if (!user) {
             return res.status(404).send('Candidate profile not found.');
         }
 
         const isAgeValid = user.age >= 21 && user.age <= 24;
-        const isIncomeValid = user.familyIncome <= 800000;
+        const isIncomeValid = user.familyIncome !== undefined && user.familyIncome !== null && user.familyIncome <= 800000;
         const isEligible = isAgeValid && isIncomeValid;
 
         const reasons = [];
         if (!isAgeValid) reasons.push(`Age (${user.age || 'N/A'}) falls outside the 21–24 permitted range.`);
-        if (!isIncomeValid) reasons.push(`Family income (₹${user.familyIncome ? user.familyIncome.toLocaleString('en-IN') : 'N/A'}) exceeds the ₹8,00,000 ceiling.`);
+        if (!isIncomeValid) reasons.push(`Family income (${user.familyIncome ? '₹' + user.familyIncome.toLocaleString('en-IN') : 'N/A'}) exceeds the ₹8,00,000 ceiling.`);
 
         const eligibility = { isEligible, reasons };
 
-        const userDistrict = user.location ? user.location.district : '';
-        const userQualification = user.education ? user.education.qualification : '';
+        const userDistrict = user.location?.district ? user.location.district.trim() : '';
+        const userQualification = user.education?.qualification ? user.education.qualification.trim() : '';
 
-        const internships = await Internship.find({
-            $or: [
-                { 'location.district': new RegExp(`^${userDistrict}$`, 'i') },
-                { minQualification: new RegExp(`^${userQualification}$`, 'i') }
-            ]
-        });
+        let internships = [];
+        const queryConditions = [];
+        if (userDistrict) {
+            queryConditions.push({ 'location.district': new RegExp(`^${escapeRegExp(userDistrict)}$`, 'i') });
+        }
+        if (userQualification) {
+            queryConditions.push({
+                $or: [
+                    { minQualifications: new RegExp(`^${escapeRegExp(userQualification)}$`, 'i') },
+                    { minQualification: new RegExp(`^${escapeRegExp(userQualification)}$`, 'i') }
+                ]
+            });
+        }
+
+        if (queryConditions.length > 0) {
+            internships = await Internship.find({ $or: queryConditions });
+        }
+
+        // If no match by district/qualification or not set, fall back to open internships
+        if (!internships || internships.length === 0) {
+            internships = await Internship.find({}).limit(20);
+        }
 
         const recommendations = internships
             .map((role) => ({
@@ -247,7 +288,11 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
             .sort((a, b) => b.matchScore - a.matchScore)
             .slice(0, 6);
 
-        res.render('extras/index', { user, eligibility, recommendations });
+        // Fetch already applied IDs
+        const apps = await Application.find({ candidate: user._id }).select('internship');
+        const appliedIds = apps.map(a => a.internship ? a.internship.toString() : null).filter(Boolean);
+
+        res.render('candidate/candidate-recommendations', { user, eligibility, recommendations, appliedIds });
     } catch (error) {
         console.error('Error fetching recommendation dashboard:', error);
         res.status(500).send('Internal Server Error');

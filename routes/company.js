@@ -65,13 +65,24 @@ router.get('/company/internships/:id/applicants', isAuthenticated, requireCompan
     try {
         const internshipId = req.params.id;
 
-        const internship = await Internship.findOne({ _id: internshipId, companyId: req.user.companyId });
+        const internship = await Internship.findById(internshipId);
         if (!internship) {
-            return res.status(404).send('Internship posting not found or unauthorized.');
+            return res.status(404).send('Internship posting not found.');
+        }
+
+        const companyName = req.user.companyDetails?.companyName || req.user.name;
+        const isAuthorizedCompany = (internship.companyId && req.user.companyId && internship.companyId.toString() === req.user.companyId.toString()) ||
+            (internship.postedBy && internship.postedBy.toString() === req.user._id.toString()) ||
+            (internship.companyName === companyName);
+
+        if (!isAuthorizedCompany) {
+            if (req.flash) req.flash('error_msg', 'You are not authorized to view applicants for this internship.');
+            return res.redirect('/company/dashboard');
         }
 
         const applications = await Application.find({ internship: internshipId })
             .populate('candidate')
+            .populate('notes.createdBy')
             .sort({ _id: -1 });
 
         res.render('company/company-applicants', {
@@ -85,17 +96,177 @@ router.get('/company/internships/:id/applicants', isAuthenticated, requireCompan
     }
 });
 
+router.post('/company/applications/:id/notes', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
+    try {
+        const { text } = req.body;
+        const applicationId = req.params.id;
+
+        const application = await Application.findById(applicationId).populate('internship');
+        if (!application) {
+            return res.status(404).send('Application not found.');
+        }
+
+        const companyName = req.user.companyDetails?.companyName || req.user.name;
+        const internship = application.internship;
+        const isAuthorizedCompany = internship && (
+            (internship.companyId && req.user.companyId && internship.companyId.toString() === req.user.companyId.toString()) ||
+            (internship.postedBy && internship.postedBy.toString() === req.user._id.toString()) ||
+            (internship.companyName === companyName)
+        );
+
+        if (!isAuthorizedCompany) {
+            if (req.flash) req.flash('error_msg', 'You are not authorized to manage notes for this application.');
+            return res.redirect('/company/dashboard');
+        }
+
+        const internshipId = internship._id || internship;
+
+        if (!text || !text.trim()) {
+            if (req.flash) req.flash('error_msg', 'Note text cannot be empty.');
+            return res.redirect(`/company/internships/${internshipId}/applicants`);
+        }
+
+        application.notes.push({
+            text: text.trim(),
+            createdBy: req.user._id
+        });
+        await application.save();
+
+        if (req.flash) req.flash('success_msg', 'Note added successfully!');
+        res.redirect(`/company/internships/${internshipId}/applicants`);
+    } catch (error) {
+        console.error('Error adding note:', error);
+        res.status(500).send('Database Error');
+    }
+});
+
+router.post('/company/applications/:id/notes/:noteId/edit', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
+    try {
+        const { text } = req.body;
+        const { id: applicationId, noteId } = req.params;
+
+        const application = await Application.findById(applicationId).populate('internship');
+        if (!application) {
+            return res.status(404).send('Application not found.');
+        }
+
+        const companyName = req.user.companyDetails?.companyName || req.user.name;
+        const internship = application.internship;
+        const isAuthorizedCompany = internship && (
+            (internship.companyId && req.user.companyId && internship.companyId.toString() === req.user.companyId.toString()) ||
+            (internship.postedBy && internship.postedBy.toString() === req.user._id.toString()) ||
+            (internship.companyName === companyName)
+        );
+
+        if (!isAuthorizedCompany) {
+            if (req.flash) req.flash('error_msg', 'You are not authorized to edit notes for this application.');
+            return res.redirect('/company/dashboard');
+        }
+
+        const internshipId = internship._id || internship;
+        const note = application.notes.id(noteId);
+
+        if (!note) {
+            if (req.flash) req.flash('error_msg', 'Note not found.');
+            return res.redirect(`/company/internships/${internshipId}/applicants`);
+        }
+
+        if (!note.createdBy || note.createdBy.toString() !== req.user._id.toString()) {
+            if (req.flash) req.flash('error_msg', 'You are not authorized to edit this note.');
+            return res.redirect(`/company/internships/${internshipId}/applicants`);
+        }
+
+        if (!text || !text.trim()) {
+            if (req.flash) req.flash('error_msg', 'Note text cannot be empty.');
+            return res.redirect(`/company/internships/${internshipId}/applicants`);
+        }
+
+        note.text = text.trim();
+        note.updatedAt = new Date();
+        await application.save();
+
+        if (req.flash) req.flash('success_msg', 'Note updated successfully!');
+        res.redirect(`/company/internships/${internshipId}/applicants`);
+    } catch (error) {
+        console.error('Error updating note:', error);
+        res.status(500).send('Database Error');
+    }
+});
+
+router.post('/company/applications/:id/notes/:noteId/delete', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
+    try {
+        const { id: applicationId, noteId } = req.params;
+
+        const application = await Application.findById(applicationId).populate('internship');
+        if (!application) {
+            return res.status(404).send('Application not found.');
+        }
+
+        const companyName = req.user.companyDetails?.companyName || req.user.name;
+        const internship = application.internship;
+        const isAuthorizedCompany = internship && (
+            (internship.companyId && req.user.companyId && internship.companyId.toString() === req.user.companyId.toString()) ||
+            (internship.postedBy && internship.postedBy.toString() === req.user._id.toString()) ||
+            (internship.companyName === companyName)
+        );
+
+        if (!isAuthorizedCompany) {
+            if (req.flash) req.flash('error_msg', 'You are not authorized to delete notes for this application.');
+            return res.redirect('/company/dashboard');
+        }
+
+        const internshipId = internship._id || internship;
+        const note = application.notes.id(noteId);
+
+        if (!note) {
+            if (req.flash) req.flash('error_msg', 'Note not found.');
+            return res.redirect(`/company/internships/${internshipId}/applicants`);
+        }
+
+        if (!note.createdBy || note.createdBy.toString() !== req.user._id.toString()) {
+            if (req.flash) req.flash('error_msg', 'You are not authorized to delete this note.');
+            return res.redirect(`/company/internships/${internshipId}/applicants`);
+        }
+
+        application.notes.pull(noteId);
+        await application.save();
+
+        if (req.flash) req.flash('success_msg', 'Note deleted successfully!');
+        res.redirect(`/company/internships/${internshipId}/applicants`);
+    } catch (error) {
+        console.error('Error deleting note:', error);
+        res.status(500).send('Database Error');
+    }
+});
+
 router.post('/company/applications/:id/status', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
         const { status } = req.body;
         const applicationId = req.params.id;
 
+        const allowedStatuses = ['Submitted', 'Under Review', 'Shortlisted', 'Rejected'];
+        if (!status || !allowedStatuses.includes(status)) {
+            if (req.flash) req.flash('error_msg', 'Invalid application status provided.');
+            return res.redirect('/company/dashboard');
+        }
+
         const application = await Application.findById(applicationId)
             .populate('candidate')
             .populate('internship');
 
-        if (!application || !application.internship || application.internship.companyId.toString() !== req.user.companyId.toString()) {
-            return res.status(404).send('Application not found or unauthorized.');
+        if (!application || !application.internship) {
+            return res.status(404).send('Application not found.');
+        }
+
+        const internship = application.internship;
+        const companyName = req.user.companyDetails?.companyName || req.user.name;
+        const isAuthorizedCompany = (internship.companyId && req.user.companyId && internship.companyId.toString() === req.user.companyId.toString()) ||
+            (internship.postedBy && internship.postedBy.toString() === req.user._id.toString()) ||
+            (internship.companyName === companyName);
+
+        if (!isAuthorizedCompany) {
+            if (req.flash) req.flash('error_msg', 'Unauthorized to modify status for this application.');
+            return res.redirect('/company/dashboard');
         }
 
         const previousStatus = application.status;
@@ -180,6 +351,9 @@ router.post('/company/internships/delete/:id', isAuthenticated, requireCompanyRo
     try {
         const internship = await Internship.findOneAndDelete({ _id: req.params.id, companyId: req.user.companyId });
         if (!internship) return res.status(404).send('Internship not found or unauthorized.');
+
+        // Clean up orphaned applications for this deleted internship
+        await Application.deleteMany({ internship: req.params.id });
 
         if (req.flash) req.flash('success_msg', 'Internship deleted successfully!');
         res.redirect('/company/dashboard');
