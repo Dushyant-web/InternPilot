@@ -17,7 +17,13 @@ const applicationSchema = new mongoose.Schema({
         default: 'Submitted'
     },
     matchScore: { type: Number, default: 0 },
-    appliedAt: { type: Date, default: Date.now }
+    appliedAt: { type: Date, default: Date.now },
+    notes: [{
+        text: { type: String, required: true },
+        createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        createdAt: { type: Date, default: Date.now },
+        updatedAt: { type: Date }
+    }]
 });
 
 module.exports = mongoose.model("Application", applicationSchema);

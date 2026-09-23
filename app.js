@@ -99,6 +99,13 @@ app.use('/', companyRoutes);
 app.use('/admin', adminRoutes);
 app.use('/', chatRoutes);
 
+// 404 Catch-All Handler (Forward to error handler)
+app.use((req, res, next) => {
+    const err = new Error(`Page Not Found: ${req.originalUrl}`);
+    err.status = 404;
+    next(err);
+});
+
 // Global Error Handler (Renders views/extras/error.ejs with safety fallback)
 app.use((err, req, res, next) => {
     console.error('Express Error:', err.stack || err);

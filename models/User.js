@@ -32,7 +32,8 @@ const userSchema = new mongoose.Schema({
         state: { type: String, default: '' }
     },
     education: {
-        qualification: { type: String, default: '' }
+        qualification: { type: String, default: '' },
+        institutionName: { type: String, default: '' }
     },
 
     companyDetails: {
@@ -46,8 +47,14 @@ const userSchema = new mongoose.Schema({
 
     otp: { type: String },
     otpExpires: { type: Date },
+    lastOtpSentAt: { type: Date },
 
     createdAt: { type: Date, default: Date.now }
+}, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
+
+// Virtual to synchronize institution with education.institutionName
+userSchema.virtual('institutionName').get(function () {
+    return this.education?.institutionName || this.institution || '';
 });
 
 // Hash password before saving

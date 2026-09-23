@@ -8,7 +8,7 @@ const internshipSchema = new mongoose.Schema({
         district: String,
         state: String
     },
-    minQualifications: String,
+    minQualifications: { type: String, alias: 'minQualification' },
     requiredSkills: [String],
     monthlyStipend: { type: Number, default: 5000 },
     duration: { type: String, default: "12 Months" },
@@ -22,6 +22,14 @@ const internshipSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
     }
+}, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
+
+internshipSchema.virtual('company').get(function () {
+    return this.companyName;
+});
+
+internshipSchema.virtual('stipend').get(function () {
+    return this.monthlyStipend;
 });
 
 module.exports = mongoose.model("Internship", internshipSchema);

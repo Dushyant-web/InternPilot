@@ -41,19 +41,19 @@
                     <a href="/internships" class="hover:text-indigo-700 transition-colors">Opportunities</a>
 
                     <% if (currentUser) { %>
-                        <% if (currentUser.role==='candidate' ) { %>
-                            <a href="/candidate/profile" class="hover:text-indigo-700 transition-colors">Candidate
-                                Profile</a>
-                            <a href="/candidate/applications" class="hover:text-indigo-700 transition-colors">My
-                                Applications</a>
-                            <% } else if (currentUser.role === 'company' || currentUser.role === 'recruiter') { %>
-                                <a href="/company/dashboard" class="hover:text-indigo-700 transition-colors">Company
-                                    Dashboard</a>
-                                <% if (currentUser.role === 'company') { %>
+                        <% if (currentUser.role === 'candidate') { %>
+                            <a href="/candidate/profile" class="hover:text-indigo-700 transition-colors">Candidate Profile</a>
+                            <a href="/candidate/applications" class="hover:text-indigo-700 transition-colors">My Applications</a>
+                            <a href="/recommendations/<%= currentUser._id %>" class="hover:text-indigo-700 transition-colors">Recommendations</a>
+                        <% } else if (currentUser.role === 'company' || currentUser.role === 'recruiter') { %>
+                            <a href="/company/dashboard" class="hover:text-indigo-700 transition-colors">Company Dashboard</a>
+                            <% if (currentUser.role === 'company') { %>
                                 <a href="/company/team" class="hover:text-indigo-700 transition-colors">Manage Team</a>
-                                <% } %>
                             <% } %>
-                                    <% } %>
+                        <% } else if (currentUser.role === 'admin') { %>
+                            <a href="/admin/dashboard" class="hover:text-indigo-700 transition-colors">Admin Dashboard</a>
+                        <% } %>
+                    <% } %>
                 </nav>
 
                 <div class="h-10 w-[1px] bg-slate-200 hidden md:block"></div>
