@@ -244,12 +244,29 @@ router.post('/company/applications/:id/status', isAuthenticated, requireCompanyR
         const { status } = req.body;
         const applicationId = req.params.id;
 
+        const allowedStatuses = ['Submitted', 'Under Review', 'Shortlisted', 'Rejected'];
+        if (!status || !allowedStatuses.includes(status)) {
+            if (req.flash) req.flash('error_msg', 'Invalid application status provided.');
+            return res.redirect('/company/dashboard');
+        }
+
         const application = await Application.findById(applicationId)
             .populate('candidate')
             .populate('internship');
 
-        if (!application || !application.internship || application.internship.companyId.toString() !== req.user.companyId.toString()) {
-            return res.status(404).send('Application not found or unauthorized.');
+        if (!application || !application.internship) {
+            return res.status(404).send('Application not found.');
+        }
+
+        const internship = application.internship;
+        const companyName = req.user.companyDetails?.companyName || req.user.name;
+        const isAuthorizedCompany = (internship.companyId && req.user.companyId && internship.companyId.toString() === req.user.companyId.toString()) ||
+            (internship.postedBy && internship.postedBy.toString() === req.user._id.toString()) ||
+            (internship.companyName === companyName);
+
+        if (!isAuthorizedCompany) {
+            if (req.flash) req.flash('error_msg', 'Unauthorized to modify status for this application.');
+            return res.redirect('/company/dashboard');
         }
 
         const previousStatus = application.status;
@@ -334,6 +351,9 @@ router.post('/company/internships/delete/:id', isAuthenticated, requireCompanyRo
     try {
         const internship = await Internship.findOneAndDelete({ _id: req.params.id, companyId: req.user.companyId });
         if (!internship) return res.status(404).send('Internship not found or unauthorized.');
+
+        // Clean up orphaned applications for this deleted internship
+        await Application.deleteMany({ internship: req.params.id });
 
         if (req.flash) req.flash('success_msg', 'Internship deleted successfully!');
         res.redirect('/company/dashboard');

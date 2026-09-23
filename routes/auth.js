@@ -9,8 +9,17 @@ const generateSecureOTP = () => {
     return crypto.randomInt(100000, 1000000).toString();
 };
 
-router.get('/login', (req, res) => res.render('auth/login'));
-router.get('/register', (req, res) => res.render('auth/register'));
+const redirectIfAuthenticated = (req, res, next) => {
+    if (req.isAuthenticated && req.isAuthenticated()) {
+        if (req.user.role === 'admin') return res.redirect('/admin/dashboard');
+        if (req.user.role === 'company' || req.user.role === 'recruiter') return res.redirect('/company/dashboard');
+        return res.redirect('/');
+    }
+    next();
+};
+
+router.get('/login', redirectIfAuthenticated, (req, res) => res.render('auth/login'));
+router.get('/register', redirectIfAuthenticated, (req, res) => res.render('auth/register'));
 
 router.post('/register', async (req, res) => {
     const { name, email, password, role, adminSecretKey, companyName, cin, industry } = req.body;
@@ -243,6 +252,11 @@ router.post('/login', (req, res, next) => {
         req.logIn(user, (err) => {
             if (err) return next(err);
 
+            // Handle "Remember Me"
+            if (req.body.remember) {
+                req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+            }
+
             req.flash('success_msg', `Welcome back, ${user.name}!`);
 
             if (user.role === 'admin') {
@@ -260,7 +274,10 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 
 router.get('/google/callback', (req, res, next) => {
     passport.authenticate('google', (err, user) => {
-        if (err || !user) return res.redirect('/auth/login');
+        if (err || !user) {
+            req.flash('error_msg', 'Google authentication failed or account deactivated.');
+            return res.redirect('/auth/login');
+        }
 
         if (!user.isEmailVerified) {
             user.isEmailVerified = true;
@@ -280,6 +297,108 @@ router.get('/google/callback', (req, res, next) => {
             }
         });
     })(req, res, next);
+});
+
+// Forgot & Reset Password Flow
+router.get('/forgot-password', redirectIfAuthenticated, (req, res) => {
+    res.render('auth/forgot-password');
+});
+
+router.post('/forgot-password', async (req, res) => {
+    const email = (req.body.email || '').trim().toLowerCase();
+
+    try {
+        if (!email) {
+            req.flash('error_msg', 'Email address is required.');
+            return res.redirect('/auth/forgot-password');
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            req.flash('error_msg', 'No account found with that email address.');
+            return res.redirect('/auth/forgot-password');
+        }
+
+        const now = Date.now();
+        const COOLDOWN_SECONDS = 60;
+        if (user.lastOtpSentAt) {
+            const elapsedSeconds = Math.floor((now - new Date(user.lastOtpSentAt).getTime()) / 1000);
+            if (elapsedSeconds < COOLDOWN_SECONDS) {
+                const remainingSeconds = COOLDOWN_SECONDS - elapsedSeconds;
+                req.flash('error_msg', `Please wait ${remainingSeconds}s before requesting a new code.`);
+                return res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
+            }
+        }
+
+        const otp = generateSecureOTP();
+        user.otp = otp;
+        user.otpExpires = new Date(now + 10 * 60 * 1000);
+        user.lastOtpSentAt = new Date(now);
+        await user.save();
+
+        try {
+            await sendOTPEmail(email, otp);
+            req.flash('success_msg', 'Password reset code sent to your email.');
+        } catch (emailErr) {
+            console.error('Failed to send reset OTP email:', emailErr);
+            req.flash('error_msg', 'Could not send verification code. Please check your email configuration.');
+        }
+
+        res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
+    } catch (err) {
+        console.error('Forgot password error:', err);
+        req.flash('error_msg', 'Something went wrong. Please try again.');
+        res.redirect('/auth/forgot-password');
+    }
+});
+
+router.get('/reset-password', redirectIfAuthenticated, (req, res) => {
+    const email = (req.query.email || '').trim().toLowerCase();
+    res.render('auth/reset-password', { email });
+});
+
+router.post('/reset-password', async (req, res) => {
+    const email = (req.body.email || '').trim().toLowerCase();
+    const otp = (req.body.otp || '').trim();
+    const newPassword = req.body.password;
+    const confirmPassword = req.body.confirmPassword;
+
+    try {
+        if (!email || !otp || !newPassword) {
+            req.flash('error_msg', 'All fields are required.');
+            return res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
+        }
+
+        if (newPassword !== confirmPassword) {
+            req.flash('error_msg', 'Passwords do not match.');
+            return res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
+        }
+
+        if (newPassword.length < 6) {
+            req.flash('error_msg', 'Password must be at least 6 characters long.');
+            return res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
+        }
+
+        const user = await User.findOne({ email });
+        if (!user || user.otp !== otp || !user.otpExpires || new Date(user.otpExpires).getTime() < Date.now()) {
+            req.flash('error_msg', 'Invalid or expired OTP code.');
+            return res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
+        }
+
+        user.password = newPassword;
+        user.isEmailVerified = true;
+        user.otp = undefined;
+        user.otpExpires = undefined;
+        user.lastOtpSentAt = undefined;
+        await user.save();
+
+        req.flash('success_msg', 'Password reset successfully! You can now log in.');
+        res.redirect('/auth/login');
+    } catch (err) {
+        console.error('Reset password error:', err);
+        req.flash('error_msg', 'An error occurred while resetting your password.');
+        res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
+    }
 });
 
 router.get('/logout', (req, res, next) => {
