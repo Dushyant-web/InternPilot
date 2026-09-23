@@ -14,11 +14,12 @@ router.post('/candidate/chat-query', isAuthenticated, authorize('candidate'), as
         if (!message) return res.status(400).json({ reply: "Please provide a message." });
 
         const userId = req.user._id || req.user.id;
-
         const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ reply: "User profile not found. Please refresh and log in again." });
+        }
 
         const internships = await Internship.find({});
-
 
         const systemPrompt = `
 You are InternPilot AI, a friendly and professional career assistant built into an internship platform.
@@ -26,7 +27,7 @@ Your job is to help candidates find and recommend internships based strictly on 
 
 CANDIDATE PROFILE:
 - Skills: ${user.skills && user.skills.length > 0 ? user.skills.join(', ') : 'None listed yet'}
-- Location/District: ${user.location?.district || 'Not specified'}
+- Location/District: ${user.location?.district ? (user.location.district + (user.location.state ? ', ' + user.location.state : '')) : 'Not specified'}
 - Qualification: ${user.education?.qualification || 'Not specified'}
 - Age: ${user.age || 'Not specified'}
 - Family Income: ₹${user.familyIncome ? user.familyIncome.toLocaleString('en-IN') : 'Not specified'}
@@ -35,10 +36,12 @@ ACTIVE INTERNSHIPS IN DATABASE:
 ${JSON.stringify(internships.map(i => ({
             id: i._id,
             title: i.title,
-            company: i.company,
+            company: i.companyName || i.company || 'Organization',
             location: i.location,
             requiredSkills: i.requiredSkills,
-            stipend: i.stipend
+            minQualifications: i.minQualifications || i.minQualification || 'Any',
+            stipend: i.monthlyStipend || i.stipend || 5000,
+            vacancies: i.vacancies || 1
         })))}
 
 INSTRUCTIONS:
@@ -48,9 +51,8 @@ INSTRUCTIONS:
 - Keep responses clean, encouraging, and formatted using Markdown bullet points if listing jobs.
 `;
 
-
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
             contents: [
                 { role: 'user', parts: [{ text: systemPrompt }, { text: `Candidate Message: ${message}` }] }
             ]
@@ -61,7 +63,7 @@ INSTRUCTIONS:
 
     } catch (error) {
         console.error('Gemini Chat Error:', error);
-        res.status(500).json({ reply: 'Sorry, I encountered an error communicating with the AI assistant.' });
+        res.status(500).json({ reply: 'Sorry, I encountered an error communicating with the AI assistant. Please try again later.' });
     }
 });
 
