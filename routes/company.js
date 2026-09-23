@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
@@ -290,6 +291,10 @@ router.post('/company/applications/:id/status', isAuthenticated, requireCompanyR
         }
 
         if (req.flash) req.flash('success_msg', `Application marked as ${status}`);
+        const referrer = req.get('Referrer');
+        if (referrer && referrer.includes('/company/')) {
+            return res.redirect(referrer);
+        }
         res.redirect(`/company/internships/${application.internship._id}/applicants`);
     } catch (error) {
         console.error('Error updating status:', error);
@@ -436,9 +441,9 @@ router.post('/company/team/remove/:id', isAuthenticated, requireCompanyRole(['co
 
 router.get('/company/applications/:id/candidate', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
-        const mongoose = require('mongoose');
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-            return res.status(404).send('Application not found.');
+            if (req.flash) req.flash('error_msg', 'Application not found.');
+            return res.redirect('/company/dashboard');
         }
 
         const application = await Application.findById(req.params.id)
@@ -446,22 +451,31 @@ router.get('/company/applications/:id/candidate', isAuthenticated, requireCompan
             .populate('internship');
 
         if (!application || !application.internship || !application.candidate) {
-            return res.status(404).send('Application not found.');
+            if (req.flash) req.flash('error_msg', 'Application or candidate not found.');
+            return res.redirect('/company/dashboard');
         }
 
-        if (application.internship.companyId.toString() !== req.user.companyId.toString()) {
-            return res.status(404).send('Application not found.');
+        const internship = application.internship;
+        const companyName = req.user.companyDetails?.companyName || req.user.name;
+        const isAuthorizedCompany = (internship.companyId && req.user.companyId && internship.companyId.toString() === req.user.companyId.toString()) ||
+            (internship.postedBy && internship.postedBy.toString() === req.user._id.toString()) ||
+            (internship.companyName === companyName);
+
+        if (!isAuthorizedCompany) {
+            if (req.flash) req.flash('error_msg', 'You are not authorized to view this candidate profile.');
+            return res.redirect('/company/dashboard');
         }
 
         res.render('company/candidate-profile-view', {
             user: req.user,
             application,
             candidate: application.candidate,
-            internship: application.internship
+            internship
         });
     } catch (error) {
         console.error('Error loading candidate profile:', error);
-        res.status(500).send('Database Error');
+        if (req.flash) req.flash('error_msg', 'Failed to load candidate profile.');
+        res.redirect('/company/dashboard');
     }
 });
 

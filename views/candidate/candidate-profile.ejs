@@ -5,24 +5,6 @@
 
         <div class="max-w-7xl mx-auto space-y-6">
 
-            <% if (typeof success_msg !== 'undefined' && success_msg && success_msg.length > 0) { %>
-                <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl text-xs font-semibold flex items-center justify-between shadow-sm">
-                    <div class="flex items-center gap-2">
-                        <i class="ph-bold ph-check-circle text-emerald-600 text-base"></i>
-                        <span><%= success_msg %></span>
-                    </div>
-                </div>
-            <% } %>
-
-            <% if (typeof error_msg !== 'undefined' && error_msg && error_msg.length > 0) { %>
-                <div class="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-xs font-semibold flex items-center justify-between shadow-sm">
-                    <div class="flex items-center gap-2">
-                        <i class="ph-bold ph-warning-circle text-rose-600 text-base"></i>
-                        <span><%= error_msg %></span>
-                    </div>
-                </div>
-            <% } %>
-
             <div
                 class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div class="flex items-center gap-5">

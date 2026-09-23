@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { GoogleGenAI } = require('@google/genai');
 
 const User = require('../models/User');
 const Internship = require('../models/Internship');
@@ -15,13 +16,18 @@ const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 const getCachedInternships = async () => {
     const now = Date.now();
     if (!cachedInternships || now - lastInternshipsFetchTime > CACHE_TTL_MS) {
-        cachedInternships = await Internship.find({})
-            .select('title companyName location requiredSkills monthlyStipend')
-            .limit(15)
-            .lean();
-        lastInternshipsFetchTime = now;
+        try {
+            cachedInternships = await Internship.find({})
+                .select('title companyName location requiredSkills monthlyStipend minQualifications sector')
+                .limit(15)
+                .lean();
+            lastInternshipsFetchTime = now;
+        } catch (err) {
+            console.error('Failed to fetch internships for chat cache:', err);
+            return cachedInternships || [];
+        }
     }
-    return cachedInternships;
+    return cachedInternships || [];
 };
 
 /**
@@ -77,6 +83,54 @@ const generateNvidiaReply = async (systemPrompt, userMessage) => {
     }
 };
 
+/**
+ * Generates an AI response using the Google Gemini API (fallback).
+ * 
+ * @param {string} systemPrompt 
+ * @param {string} userMessage 
+ * @returns {Promise<string>}
+ */
+const generateGeminiReply = async (systemPrompt, userMessage) => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        throw new Error('GEMINI_API_KEY is not configured in environment variables.');
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+        model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+        contents: [
+            { role: 'user', parts: [{ text: systemPrompt }, { text: `Candidate Message: ${userMessage}` }] }
+        ]
+    });
+
+    return response.text || "I couldn't generate a response right now. Please try again!";
+};
+
+/**
+ * Unified AI reply generator with provider fallback support.
+ * Prioritizes NVIDIA NIM API if configured, with automatic fallback to Gemini.
+ */
+const generateAIReply = async (systemPrompt, userMessage) => {
+    if (process.env.NVIDIA_API_KEY) {
+        try {
+            return await generateNvidiaReply(systemPrompt, userMessage);
+        } catch (nvidiaErr) {
+            console.warn('NVIDIA NIM API failed, attempting Gemini fallback:', nvidiaErr.message || nvidiaErr);
+            if (process.env.GEMINI_API_KEY) {
+                return await generateGeminiReply(systemPrompt, userMessage);
+            }
+            throw nvidiaErr;
+        }
+    }
+
+    if (process.env.GEMINI_API_KEY) {
+        return await generateGeminiReply(systemPrompt, userMessage);
+    }
+
+    throw new Error('No AI provider API key configured (neither NVIDIA_API_KEY nor GEMINI_API_KEY is available).');
+};
+
 router.post('/candidate/chat-query', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
         const { message } = req.body;
@@ -122,11 +176,11 @@ INSTRUCTIONS:
 - For greetings (e.g. "hi", "hello"), respond warmly as InternPilot AI and offer help with finding internships.
 - For recommendations, evaluate candidate skills against active opportunities and suggest the best fits.`;
 
-        const reply = await generateNvidiaReply(systemPrompt, message.trim());
+        const reply = await generateAIReply(systemPrompt, message.trim());
         res.json({ reply });
 
     } catch (error) {
-        console.error('NVIDIA Chat Assistant Error:', error.message || error);
+        console.error('AI Chat Assistant Error:', error.message || error);
         res.status(500).json({ reply: 'Sorry, I encountered an error communicating with the AI assistant. Please try again in a moment.' });
     }
 });

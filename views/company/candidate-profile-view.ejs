@@ -31,11 +31,13 @@
                 </h1>
                 <p class="text-xs text-slate-500 font-medium flex items-center gap-1 mt-1">
                     <i class="ph-bold ph-map-pin text-rose-500 text-sm"></i>
-                    <%= (candidate.location && (candidate.location.district || candidate.location.state))
-                        ? ((candidate.location.district ? candidate.location.district + ', ' : '') + (candidate.location.state || ''))
-                        : 'Location Not Provided' %>
+                    <%= (candidate.location && typeof candidate.location === 'object')
+                        ? ([candidate.location.district, candidate.location.state].filter(Boolean).join(', ') || 'Location Not Provided')
+                        : (candidate.location || 'Location Not Provided') %>
                 </p>
-                <% if (candidate.age >= 18 && candidate.age <= 24) { %>
+                <% const isAgeEligible = candidate.age && candidate.age >= 21 && candidate.age <= 24; %>
+                <% const isIncomeEligible = candidate.familyIncome && candidate.familyIncome <= 800000; %>
+                <% if (isAgeEligible && isIncomeEligible) { %>
                     <span
                         class="inline-block mt-1.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
                         PMIS Eligible
@@ -147,7 +149,7 @@
                     <div>
                         <span class="text-slate-400 font-medium block">Institution</span>
                         <span class="font-bold text-slate-700 text-sm">
-                            <%= candidate.institution ? candidate.institution : 'N/A' %>
+                            <%= candidate.institution || candidate.education?.institutionName || candidate.institutionName || 'N/A' %>
                         </span>
                     </div>
                     <div>
