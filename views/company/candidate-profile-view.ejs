@@ -205,9 +205,23 @@
                                 <% if (project.description) { %>
                                     <p class="text-xs text-slate-500 mt-1"><%= project.description %></p>
                                 <% } %>
-                                <% if (project.link) { %>
-                                    <a href="<%= project.link %>" target="_blank" class="text-xs text-indigo-600 hover:underline mt-1 inline-block">View Project</a>
+                                <% if (project.techStack && project.techStack.length > 0) { %>
+                                    <div class="flex flex-wrap gap-1.5 mt-2">
+                                        <% project.techStack.forEach(tech => { %>
+                                            <span class="bg-slate-100 border border-slate-200 text-slate-600 text-[11px] font-semibold px-2 py-0.5 rounded"><%= tech %></span>
+                                        <% }) %>
+                                    </div>
                                 <% } %>
+                                <div class="flex flex-wrap items-center gap-3 mt-1.5">
+                                    <% if (project.link) { %>
+                                        <a href="<%= project.link %>" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 hover:underline inline-block">View Project</a>
+                                    <% } %>
+                                    <% if (project.fileUrl) { %>
+                                        <a href="<%= project.fileUrl %>" target="_blank" rel="noopener noreferrer" class="text-xs text-emerald-700 hover:underline font-semibold inline-block">
+                                            <i class="ph-bold ph-paperclip"></i> <%= project.fileName || 'View Attachment' %>
+                                        </a>
+                                    <% } %>
+                                </div>
                             </div>
                         <% }) %>
                     </div>
@@ -232,9 +246,19 @@
                                 <% if (cert.issuer) { %>
                                     <p class="text-xs text-slate-500 mt-0.5">Issued by: <%= cert.issuer %></p>
                                 <% } %>
-                                <% if (cert.link) { %>
-                                    <a href="<%= cert.link %>" target="_blank" class="text-xs text-indigo-600 hover:underline mt-1 inline-block">View Certificate</a>
+                                <% if (cert.issueDate) { %>
+                                    <p class="text-xs text-slate-400 mt-0.5"><%= new Date(cert.issueDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) %></p>
                                 <% } %>
+                                <div class="flex flex-wrap items-center gap-3 mt-1.5">
+                                    <% if (cert.link) { %>
+                                        <a href="<%= cert.link %>" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 hover:underline inline-block">Credential Link</a>
+                                    <% } %>
+                                    <% if (cert.fileUrl) { %>
+                                        <a href="<%= cert.fileUrl %>" target="_blank" rel="noopener noreferrer" class="text-xs text-emerald-700 hover:underline font-semibold inline-block">
+                                            <i class="ph-bold ph-paperclip"></i> <%= cert.fileName || 'View Certificate' %>
+                                        </a>
+                                    <% } %>
+                                </div>
                             </div>
                         <% }) %>
                     </div>
