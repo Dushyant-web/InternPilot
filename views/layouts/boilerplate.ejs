@@ -7,13 +7,40 @@
     <title>InternPilot | Prime Minister's Internship Scheme</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        #back-to-top-btn {
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            visibility: hidden;
+            transition: opacity 0.3s ease,
+                        transform 0.3s ease,
+                        visibility 0.3s ease;
+        }
+
+        #back-to-top-btn.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+            visibility: visible;
+        }
+
+        #back-to-top-btn:hover {
+            box-shadow: 0 0 16px rgba(99, 102, 241, 0.45);
+        }
+
+        #back-to-top-btn:focus-visible {
+            outline: 3px solid #818cf8;
+            outline-offset: 3px;
+        }
+    </style>
 </head>
 
 <body class="h-full flex flex-col bg-slate-50 font-sans text-slate-800 m-0 overflow-x-hidden">
 
     <%- include('../partials/header') %>
 
-        <!-- Standard layout container bounds all normal views (Listings, Dashboard, Profiles, etc.) -->
         <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
             <%- body %>
         </main>
@@ -23,6 +50,72 @@
             <% if (typeof currentUser !=='undefined' && currentUser && currentUser.role==='candidate' ) { %>
                 <%- include('../partials/chat-widget') %>
                     <% } %>
+
+    <button
+        id="back-to-top-btn"
+        type="button"
+        aria-label="Scroll back to top of page"
+        class="fixed bottom-6 left-6 z-50
+               w-12 h-12 rounded-full
+               bg-indigo-600 text-white
+               shadow-lg shadow-indigo-600/25
+               flex items-center justify-center
+               hover:bg-indigo-700
+               active:scale-90
+               transition-colors duration-200
+               cursor-pointer"
+    >
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2.5"
+            aria-hidden="true"
+        >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+        </svg>
+    </button>
+
+    <script>
+        (function () {
+            var btn = document.getElementById('back-to-top-btn');
+            if (!btn) return;
+
+            function getThreshold() {
+                return window.innerHeight;
+            }
+
+            var ticking = false;
+
+            function onScroll() {
+                if (!ticking) {
+                    window.requestAnimationFrame(function () {
+                        if (window.scrollY > getThreshold()) {
+                            btn.classList.add('visible');
+                        } else {
+                            btn.classList.remove('visible');
+                        }
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            }
+
+            window.addEventListener('scroll', onScroll, { passive: true });
+
+            btn.addEventListener('click', function () {
+                window.scrollTo({
+                    top: 0,
+                    left: 0,
+                    behavior: 'smooth'
+                });
+            });
+
+            onScroll();
+        })();
+    </script>
 
 </body>
 
