@@ -63,7 +63,8 @@ function escapeRegExp(str) {
 }
 
 async function analyzeResumeQuality(text) {
-    const prompt = `
+    try {
+        const prompt = `
 Analyze this resume for quality improvement.
 
 Check specifically:
@@ -94,15 +95,34 @@ Resume text:
 ${text}
 `;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }]
-    });
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{ role: 'user', parts: [{ text: prompt }] }]
+        });
 
-    const rawText = response.text || '{}';
-    const cleanedText = rawText.replace(/```json|```/g, '').trim();
+        const rawText = response.text || '{}';
+        const cleanedText = rawText.replace(/```json|```/g, '').trim();
 
-    return JSON.parse(cleanedText);
+        return JSON.parse(cleanedText);
+    } catch (error) {
+        console.error('Error analyzing resume quality:', error);
+
+        return {
+            quantifiableAchievements: {
+                status: 'needs_improvement',
+                feedback: 'Resume quality analysis was unavailable.'
+            },
+            technicalSkills: {
+                status: 'needs_improvement',
+                feedback: 'Resume quality analysis was unavailable.'
+            },
+            projects: {
+                status: 'needs_improvement',
+                feedback: 'Resume quality analysis was unavailable.'
+            },
+            overallFeedback: 'Resume uploaded successfully, but AI quality feedback could not be generated.'
+        };
+    }
 }
 
 function calculateSkillScore(userSkills = [], requiredSkills = []) {
