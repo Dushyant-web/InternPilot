@@ -13,6 +13,11 @@ let cachedInternships = null;
 let lastInternshipsFetchTime = 0;
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 
+const invalidateChatCache = () => {
+    cachedInternships = null;
+    lastInternshipsFetchTime = 0;
+};
+
 const getCachedInternships = async () => {
     const now = Date.now();
     if (!cachedInternships || now - lastInternshipsFetchTime > CACHE_TTL_MS) {
@@ -185,4 +190,5 @@ INSTRUCTIONS:
     }
 });
 
+router.invalidateChatCache = invalidateChatCache;
 module.exports = router;

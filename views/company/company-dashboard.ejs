@@ -61,6 +61,8 @@
                         <input type="text" name="state" placeholder="e.g. Uttar Pradesh"
                             class="w-full px-3 py-2 border rounded-lg border-slate-300">
                     </div>
+                </div>
+
                 <div class="space-y-2 pt-2">
                     <div class="grid grid-cols-2 gap-2">
                         <button type="button" onclick="handleFormReset()"
@@ -148,8 +150,7 @@
                                 </div>
                                 <span
                                     class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 whitespace-nowrap">
-                                    ₹<%= internship.monthlyStipend ? internship.monthlyStipend.toLocaleString('en-IN') :
-                                        5000 %>/mo
+                                    ₹<%= (internship.monthlyStipend ?? 5000).toLocaleString('en-IN') %>/mo
                                 </span>
                             </div>
 
@@ -204,7 +205,8 @@
                                 </form>
 
                                 <!-- View Applicants Button -->
-                                <% if (internship.status === 'draft') { %>
+                                <% const hasExistingApps = typeof appCountMap !== 'undefined' && (appCountMap[internship._id.toString()] || 0) > 0; %>
+                                <% if (internship.status === 'draft' && !hasExistingApps) { %>
                                     <span class="bg-slate-100 text-slate-400 font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 cursor-not-allowed"
                                         title="Drafts cannot receive applicants until published.">
                                         <i class="ph-bold ph-lock-key text-sm"></i>
@@ -213,7 +215,7 @@
                                 <% } else { %>
                                     <a href="/company/internships/<%= internship._id %>/applicants"
                                         class="bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5">
-                                        View Applicants &rarr;
+                                        View Applicants (<%= typeof appCountMap !== 'undefined' ? (appCountMap[internship._id.toString()] || 0) : 0 %>) &rarr;
                                     </a>
                                 <% } %>
                             </div>

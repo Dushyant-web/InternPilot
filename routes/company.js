@@ -6,6 +6,7 @@ const Internship = require('../models/Internship');
 const Application = require('../models/Application');
 const { isAuthenticated, requireCompanyRole } = require('../middleware/auth');
 const { sendStatusUpdateEmail } = require('../utils/sendEmail');
+const chatRouter = require('./chat');
 
 router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
@@ -23,8 +24,19 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
             filteredInternships = allInternships.filter(i => i.status === 'draft');
         }
 
-        const publishedIds = allInternships.filter(i => i.status !== 'draft').map(i => i._id);
-        const totalApplicationsCount = await Application.countDocuments({ internship: { $in: publishedIds } });
+        const allInternshipIds = allInternships.map(i => i._id);
+        const [totalApplicationsCount, applicationCounts] = await Promise.all([
+            Application.countDocuments({ internship: { $in: allInternshipIds } }),
+            Application.aggregate([
+                { $match: { internship: { $in: allInternshipIds } } },
+                { $group: { _id: '$internship', count: { $sum: 1 } } }
+            ])
+        ]);
+
+        const appCountMap = {};
+        applicationCounts.forEach(item => {
+            appCountMap[item._id.toString()] = item.count;
+        });
 
         res.render('company/company-dashboard', {
             user: req.user,
@@ -33,7 +45,8 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
             publishedCount,
             draftCount,
             totalCount,
-            currentFilter
+            currentFilter,
+            appCountMap
         });
     } catch (error) {
         console.error('Error loading company dashboard:', error);
@@ -365,8 +378,14 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
         const isDraft = action === 'draft';
 
         const trimmedTitle = title && typeof title === 'string' ? title.trim() : '';
-        if (isPublish && !trimmedTitle) {
-            if (req.flash) req.flash('error_msg', 'Internship title is required to publish.');
+        if (isPublish && (!trimmedTitle || trimmedTitle === 'Untitled Draft')) {
+            if (req.flash) req.flash('error_msg', 'A valid internship title is required to publish.');
+            return res.redirect(`/company/internships/edit/${internship._id}`);
+        }
+
+        const parsedVacancies = vacancies ? Number(vacancies) : 1;
+        if (isPublish && (isNaN(parsedVacancies) || parsedVacancies < 1)) {
+            if (req.flash) req.flash('error_msg', 'Vacancies must be at least 1 to publish.');
             return res.redirect(`/company/internships/edit/${internship._id}`);
         }
 
@@ -378,14 +397,15 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
         internship.sector = sector || (isDraft ? (internship.sector || 'Uncategorized') : 'General');
         internship.minQualifications = minQualifications || (isDraft ? '' : 'Any');
         internship.requiredSkills = skillsArray;
-        internship.monthlyStipend = monthlyStipend ? Number(monthlyStipend) : 0;
-        internship.vacancies = vacancies ? Number(vacancies) : 1;
+        internship.monthlyStipend = monthlyStipend !== undefined && monthlyStipend !== '' ? Number(monthlyStipend) : 0;
+        internship.vacancies = isNaN(parsedVacancies) ? 1 : parsedVacancies;
         internship.duration = duration || '12 Months';
         internship.location = {
             district: district || '',
             state: state || ''
         };
 
+        const prevStatus = internship.status;
         if (isPublish) {
             internship.status = 'published';
         } else if (isDraft) {
@@ -393,6 +413,10 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
         }
 
         await internship.save();
+
+        if (prevStatus !== internship.status && typeof chatRouter.invalidateChatCache === 'function') {
+            chatRouter.invalidateChatCache();
+        }
 
         if (req.flash) {
             if (isPublish) {
@@ -420,8 +444,18 @@ router.post('/company/internships/publish/:id', isAuthenticated, requireCompanyR
             return res.redirect(`/company/internships/edit/${internship._id}`);
         }
 
+        const vacancies = Number(internship.vacancies);
+        if (isNaN(vacancies) || vacancies < 1) {
+            if (req.flash) req.flash('error_msg', 'Vacancies must be at least 1 to publish.');
+            return res.redirect(`/company/internships/edit/${internship._id}`);
+        }
+
         internship.status = 'published';
         await internship.save();
+
+        if (typeof chatRouter.invalidateChatCache === 'function') {
+            chatRouter.invalidateChatCache();
+        }
 
         if (req.flash) req.flash('success_msg', 'Internship published successfully! It is now live for candidates.');
         res.redirect('/company/dashboard');

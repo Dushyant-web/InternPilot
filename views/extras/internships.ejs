@@ -70,8 +70,7 @@
                             <span class="flex items-center gap-1.5">
                                 <i class="ph-bold ph-currency-inr text-emerald-600"></i>
                                 <strong class="text-slate-800">
-                                    ₹<%= item.monthlyStipend ? Number(item.monthlyStipend).toLocaleString('en-IN')
-                                        : '5,000' %> / month
+                                    ₹<%= Number(item.monthlyStipend ?? 5000).toLocaleString('en-IN') %> / month
                                 </strong>
                             </span>
                             <span class="text-slate-400">&bull;</span>
