@@ -21,6 +21,22 @@ const userSchema = new mongoose.Schema({
     skills: [{ type: String }],
     resume: { type: String, default: '' },
 
+    resumeQuality: {
+    quantifiableAchievements: {
+        status: { type: String, default: '' },
+        feedback: { type: String, default: '' }
+    },
+    technicalSkills: {
+        status: { type: String, default: '' },
+        feedback: { type: String, default: '' }
+    },
+    projects: {
+        status: { type: String, default: '' },
+        feedback: { type: String, default: '' }
+    },
+    overallFeedback: { type: String, default: '' }
+},
+
     location: {
         district: { type: String, default: '' },
         state: { type: String, default: '' }
