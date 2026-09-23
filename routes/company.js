@@ -432,4 +432,37 @@ router.post('/company/team/remove/:id', isAuthenticated, requireCompanyRole(['co
     }
 });
 
+// --- Candidate Profile View (Read-Only for Recruiters) ---
+
+router.get('/company/applications/:id/candidate', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
+    try {
+        const mongoose = require('mongoose');
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(404).send('Application not found.');
+        }
+
+        const application = await Application.findById(req.params.id)
+            .populate('candidate')
+            .populate('internship');
+
+        if (!application || !application.internship || !application.candidate) {
+            return res.status(404).send('Application not found.');
+        }
+
+        if (application.internship.companyId.toString() !== req.user.companyId.toString()) {
+            return res.status(404).send('Application not found.');
+        }
+
+        res.render('company/candidate-profile-view', {
+            user: req.user,
+            application,
+            candidate: application.candidate,
+            internship: application.internship
+        });
+    } catch (error) {
+        console.error('Error loading candidate profile:', error);
+        res.status(500).send('Database Error');
+    }
+});
+
 module.exports = router;

@@ -178,58 +178,45 @@
                                         Candidate Notes (<%= Array.isArray(app.notes) ? app.notes.length : 0 %>)
                                     </h5>
 
-                                    <% if (Array.isArray(app.notes) && app.notes.length > 0) { %>
-                                        <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
-                                            <% app.notes.forEach(note => { %>
-                                                <% const noteAuthorId = note.createdBy?._id ? note.createdBy._id.toString() : (note.createdBy ? note.createdBy.toString() : ''); %>
-                                                <% const isNoteCreator = user && user._id && noteAuthorId === user._id.toString(); %>
-                                                <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs space-y-1">
-                                                    <div class="flex items-center justify-between text-slate-500">
-                                                        <span class="font-semibold text-slate-700">
-                                                            <%= note.createdBy ? (note.createdBy.companyDetails?.companyName || note.createdBy.name || 'Company') : 'Company' %>
-                                                        </span>
-                                                        <div class="flex items-center gap-2">
-                                                            <span class="text-[10px] text-slate-400">
-                                                                <%= new Date(note.createdAt).toLocaleString() %><%= note.updatedAt ? ' (edited)' : '' %>
-                                                            </span>
-                                                            <% if (isNoteCreator) { %>
-                                                                <div class="flex items-center gap-1.5 ml-1">
-                                                                    <button type="button" onclick="document.getElementById('edit-note-<%= note._id %>').classList.toggle('hidden')" class="text-slate-400 hover:text-indigo-600 transition-colors" title="Edit Note">
-                                                                        <i class="ph-bold ph-pencil-simple text-xs"></i>
-                                                                    </button>
-                                                                    <form action="/company/applications/<%= app._id %>/notes/<%= note._id %>/delete" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this note?')">
-                                                                        <button type="submit" class="text-slate-400 hover:text-rose-600 transition-colors" title="Delete Note">
-                                                                            <i class="ph-bold ph-trash text-xs"></i>
-                                                                        </button>
-                                                                    </form>
-                                                                </div>
-                                                            <% } %>
-                                                        </div>
-                                                    </div>
-                                                    <p class="text-slate-700 whitespace-pre-line"><%= note.text %></p>
+                                    <!-- View Profile Button -->
+                                    <a href="/company/applications/<%= app._id %>/candidate"
+                                        class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                                        <i class="ph-bold ph-user text-sm"></i> View Profile
+                                    </a>
+                                    <!-- Candidate Resume Button -->
+                                    <% const resumePath=app.candidate ? (app.candidate.resume ||
+                                        app.candidate.resumeUrl) : null; %>
+                                        <% if (resumePath) { %>
+                                            <a href="<%= resumePath %>" target="_blank"
+                                                class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                                                <i class="ph-bold ph-file-pdf text-sm"></i> Resume
+                                            </a>
+                                            <% } else { %>
+                                                <span
+                                                    class="px-3 py-1.5 bg-slate-100 text-slate-400 border border-slate-200 text-xs font-medium rounded-lg flex items-center gap-1">
+                                                    <i class="ph-bold ph-file-x text-sm"></i> No Resume
+                                                </span>
+                                                <% } %>
 
-                                                    <% if (isNoteCreator) { %>
-                                                        <div id="edit-note-<%= note._id %>" class="hidden pt-2 border-t border-slate-200 mt-2">
-                                                            <form action="/company/applications/<%= app._id %>/notes/<%= note._id %>/edit" method="POST" class="flex items-center gap-2">
-                                                                <input type="text" name="text" value="<%= note.text %>" required
-                                                                    class="flex-1 px-2.5 py-1 text-xs border border-slate-200 rounded-md focus:outline-none focus:border-indigo-500 bg-white" />
-                                                                <button type="submit"
-                                                                    class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-md transition-colors shrink-0">
-                                                                    Save
-                                                                </button>
-                                                                <button type="button" onclick="document.getElementById('edit-note-<%= note._id %>').classList.add('hidden')"
-                                                                    class="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-medium rounded-md transition-colors shrink-0">
-                                                                    Cancel
-                                                                </button>
-                                                            </form>
-                                                        </div>
-                                                    <% } %>
-                                                </div>
-                                            <% }) %>
-                                        </div>
-                                    <% } else { %>
-                                        <p class="text-xs text-slate-400 italic">No notes added yet.</p>
-                                    <% } %>
+                                                    <!-- Employer Actions Dropdown -->
+                                                    <form action="/company/applications/<%= app._id %>/status"
+                                                        method="POST" class="inline-block">
+                                                        <select name="status" onchange="this.form.submit()" class="px-3 py-1.5 text-xs font-semibold rounded-lg border shadow-sm cursor-pointer outline-none transition-colors <%= 
+                                                app.status === 'Shortlisted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                app.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                                app.status === 'Under Review' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                                'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                            %>">
+                                                            <option value="Submitted" <%=app.status==='Submitted'
+                                                                ? 'selected' : '' %>>Submitted</option>
+                                                            <option value="Under Review" <%=app.status==='Under Review'
+                                                                ? 'selected' : '' %>>Under Review</option>
+                                                            <option value="Shortlisted" <%=app.status==='Shortlisted'
+                                                                ? 'selected' : '' %>>Shortlisted</option>
+                                                            <option value="Rejected" <%=app.status==='Rejected'
+                                                                ? 'selected' : '' %>>Rejected</option>
+                                                        </select>
+                                                    </form>
 
                                     <form action="/company/applications/<%= app._id %>/notes" method="POST" class="flex items-center gap-2 pt-1">
                                         <input type="text" name="text" placeholder="Add a note about this candidate..." required
