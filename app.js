@@ -80,7 +80,7 @@ async function main() {
 // Homepage Route (Renders views/extras/index.ejs)
 app.get('/', async (req, res) => {
     try {
-        const totalInternships = await Internship.countDocuments({});
+        const totalInternships = await Internship.countDocuments({ status: { $ne: 'draft' } });
         const totalCandidates = await User.countDocuments({ role: 'candidate' });
         const totalCompanies = await User.countDocuments({ role: 'company' });
 

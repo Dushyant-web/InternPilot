@@ -17,7 +17,7 @@ const getCachedInternships = async () => {
     const now = Date.now();
     if (!cachedInternships || now - lastInternshipsFetchTime > CACHE_TTL_MS) {
         try {
-            cachedInternships = await Internship.find({})
+            cachedInternships = await Internship.find({ status: { $ne: 'draft' } })
                 .select('title companyName location requiredSkills monthlyStipend minQualifications sector')
                 .limit(15)
                 .lean();
