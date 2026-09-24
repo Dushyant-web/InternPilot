@@ -2,8 +2,23 @@
 
     <div class="max-w-3xl mx-auto px-4 py-8">
         <div class="bg-white p-8 rounded-xl border border-slate-200 shadow-sm space-y-6">
-            <div class="flex justify-between items-center border-b pb-4">
-                <h2 class="text-xl font-bold text-slate-900">Edit Internship Opportunity</h2>
+            <div class="flex justify-between items-center border-b pb-4 flex-wrap gap-2">
+                <div class="flex items-center gap-2.5">
+                    <h2 class="text-xl font-bold text-slate-900">Edit Internship Opportunity</h2>
+                    <% if (internship.status === 'draft') { %>
+                        <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 flex items-center gap-1">
+                            <i class="ph-bold ph-pencil-simple-line"></i> Draft
+                        </span>
+                    <% } else if (internship.status === 'paused' || internship.isPaused) { %>
+                        <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                            <i class="ph-bold ph-pause-circle"></i> Applications Paused
+                        </span>
+                    <% } else { %>
+                        <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                            <i class="ph-bold ph-check-circle"></i> Published
+                        </span>
+                    <% } %>
+                </div>
                 <a href="/company/dashboard" class="text-xs font-semibold text-indigo-600 hover:underline">&larr; Back
                     to Dashboard</a>
             </div>
@@ -11,8 +26,8 @@
             <form action="/company/internships/edit/<%= internship._id %>" method="POST" class="space-y-4 text-xs">
                 <div>
                     <label class="block font-semibold text-slate-700 mb-1">Internship Title</label>
-                    <input type="text" name="title" value="<%= internship.title %>" required
-                        class="w-full px-3 py-2 border rounded-lg border-slate-300">
+                    <input type="text" name="title" value="<%= internship.title %>"
+                        class="w-full px-3 py-2 border rounded-lg border-slate-300" placeholder="e.g. Software Development Intern">
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -54,6 +69,13 @@
                     </div>
                 </div>
 
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Application Deadline (Optional)</label>
+                    <input type="date" name="deadline"
+                        value="<%= internship.applicationDeadline ? internship.applicationDeadline.toISOString().split('T')[0] : '' %>"
+                        class="w-full px-3 py-2 border rounded-lg border-slate-300 text-slate-600">
+                </div>
+
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">District</label>
@@ -67,15 +89,39 @@
                     </div>
                 </div>
 
-                <div class="flex justify-end gap-3 pt-4 border-t">
+                <div class="flex justify-end items-center gap-3 pt-4 border-t flex-wrap">
                     <a href="/company/dashboard"
                         class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors">
                         Cancel
                     </a>
-                    <button type="submit"
-                        class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors shadow-sm">
-                        Update Opportunity
+                    <button type="submit" name="action" value="draft" formnovalidate
+                        class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                        <i class="ph-bold ph-floppy-disk text-sm"></i> Save as Draft
                     </button>
+                    <% if (internship.status === 'paused' || internship.isPaused) { %>
+                        <button type="submit" name="action" value="pause"
+                            class="px-5 py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                            <i class="ph-bold ph-pause text-sm"></i> Save & Keep Paused
+                        </button>
+                        <button type="submit" name="action" value="publish"
+                            class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors shadow-sm flex items-center gap-1.5">
+                            <i class="ph-bold ph-play text-sm"></i> Resume & Publish
+                        </button>
+                    <% } else if (internship.status !== 'draft') { %>
+                        <button type="submit" name="action" value="pause"
+                            class="px-5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                            <i class="ph-bold ph-pause text-sm"></i> Pause Applications
+                        </button>
+                        <button type="submit" name="action" value="publish"
+                            class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors shadow-sm flex items-center gap-1.5">
+                            <i class="ph-bold ph-paper-plane-tilt text-sm"></i> Update & Keep Published
+                        </button>
+                    <% } else { %>
+                        <button type="submit" name="action" value="publish"
+                            class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors shadow-sm flex items-center gap-1.5">
+                            <i class="ph-bold ph-paper-plane-tilt text-sm"></i> Publish Opportunity
+                        </button>
+                    <% } %>
                 </div>
             </form>
         </div>

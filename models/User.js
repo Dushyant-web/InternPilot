@@ -10,10 +10,16 @@ const userSchema = new mongoose.Schema({
 
     role: {
         type: String,
-        enum: ['candidate', 'company', 'admin'],
+        enum: ['candidate', 'company', 'recruiter', 'admin'],
         default: 'candidate',
         required: true
     },
+
+    companyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    isActive: { type: Boolean, default: true },
 
     age: { type: Number },
     familyIncome: { type: Number },
@@ -21,13 +27,50 @@ const userSchema = new mongoose.Schema({
     skills: [{ type: String }],
     resume: { type: String, default: '' },
 
+    resumeQuality: {
+    quantifiableAchievements: {
+        status: { type: String, default: '' },
+        feedback: { type: String, default: '' }
+    },
+    technicalSkills: {
+        status: { type: String, default: '' },
+        feedback: { type: String, default: '' }
+    },
+    projects: {
+        status: { type: String, default: '' },
+        feedback: { type: String, default: '' }
+    },
+    overallFeedback: { type: String, default: '' }
+},
+
     location: {
         district: { type: String, default: '' },
         state: { type: String, default: '' }
     },
     education: {
-        qualification: { type: String, default: '' }
+        qualification: { type: String, default: '' },
+        institutionName: { type: String, default: '' }
     },
+
+    certifications: [{
+        name: { type: String, required: true, trim: true, maxlength: 120 },
+        issuer: { type: String, default: '', trim: true, maxlength: 120 },
+        issueDate: { type: Date },
+        link: { type: String, default: '', trim: true },
+        fileUrl: { type: String, default: '' },
+        fileName: { type: String, default: '' },
+        createdAt: { type: Date, default: Date.now }
+    }],
+
+    projects: [{
+        title: { type: String, required: true, trim: true, maxlength: 120 },
+        description: { type: String, default: '', trim: true, maxlength: 1000 },
+        link: { type: String, default: '', trim: true },
+        techStack: [{ type: String, trim: true }],
+        fileUrl: { type: String, default: '' },
+        fileName: { type: String, default: '' },
+        createdAt: { type: Date, default: Date.now }
+    }],
 
     companyDetails: {
         companyName: { type: String },
@@ -40,8 +83,14 @@ const userSchema = new mongoose.Schema({
 
     otp: { type: String },
     otpExpires: { type: Date },
+    lastOtpSentAt: { type: Date },
 
     createdAt: { type: Date, default: Date.now }
+}, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
+
+// Virtual to synchronize institution with education.institutionName
+userSchema.virtual('institutionName').get(function () {
+    return this.education?.institutionName || this.institution || '';
 });
 
 // Hash password before saving
