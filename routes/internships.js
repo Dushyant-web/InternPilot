@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
+const Recommendation = require('../models/Recommendation');
 const { isAuthenticated, authorize } = require('../middleware/auth');
 
 function calculateSkillScore(userSkills = [], requiredSkills = []) {
@@ -153,6 +154,12 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
             internship: internship._id,
             candidate: candidate._id,
             matchScore: score
+        });
+
+        // Delete from recommendations cache if it exists
+        await Recommendation.findOneAndDelete({
+            internship: internship._id,
+            candidate: candidate._id
         });
 
         req.flash('success_msg', 'Application submitted successfully!');
