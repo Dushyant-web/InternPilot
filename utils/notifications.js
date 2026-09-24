@@ -47,7 +47,10 @@ function isRelevantInternship(candidate, internship) {
 }
 
 async function notifyRelevantCandidates(internship) {
-    if (!internship || internship.status === 'draft') return 0;
+    // A draft or closed listing must never appear as a new opportunity.
+    // Explicitly requiring "published" also keeps this safe if new listing
+    // states are introduced later.
+    if (!internship || internship.status !== 'published') return 0;
 
     const candidates = await User.find({
         role: 'candidate',
