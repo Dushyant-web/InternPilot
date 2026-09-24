@@ -15,9 +15,23 @@ function calculateSkillScore(userSkills = [], requiredSkills = []) {
     return Math.round((matchCount / requiredSkills.length) * 100);
 }
 
+const { parseInternshipQuery, buildPaginationData, buildQueryString } = require('../utils/queryHelper');
+
 router.get('/', async (req, res) => {
     try {
-        const internships = await Internship.find({}).sort({ _id: -1 });
+        const { filterObj, sortObj, state, page, limit } = parseInternshipQuery(req.query);
+
+        const totalItems = await Internship.countDocuments(filterObj);
+        const pagination = buildPaginationData(totalItems, page, limit);
+
+        const internships = await Internship.find(filterObj)
+            .sort(sortObj)
+            .skip(pagination.skip)
+            .limit(pagination.limit);
+
+        const availableSectors = await Internship.distinct('sector');
+        const sectors = availableSectors.filter(Boolean).sort();
+
         const candidate = req.user || await User.findOne();
 
         let appliedIds = [];
@@ -26,7 +40,15 @@ router.get('/', async (req, res) => {
             appliedIds = apps.map(appDoc => appDoc.internship.toString());
         }
 
-        res.render('extras/internships', { internships, candidate, appliedIds });
+        res.render('extras/internships', {
+            internships,
+            candidate,
+            appliedIds,
+            queryState: state,
+            pagination,
+            sectors,
+            buildQueryString
+        });
     } catch (error) {
         console.error('Error fetching internships:', error);
         res.status(500).send('Database Error');
