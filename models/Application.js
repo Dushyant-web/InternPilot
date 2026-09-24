@@ -14,10 +14,30 @@ const applicationSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: [
-            'Submitted', 'Under Review', 'Shortlisted', 'Rejected', 'Withdrawn',
+            'Submitted', 'Under Review', 'Shortlisted', 'Interview', 'Rejected', 'Withdrawn',
             'submitted', 'pending', 'under_review', 'shortlisted', 'hired', 'rejected', 'withdrawn'
         ],
         default: 'Submitted'
+    },
+    interview: {
+        status: {
+            type: String,
+            enum: ['Scheduled', 'Rescheduled', 'Cancelled']
+        },
+        scheduledAt: { type: Date },
+        duration: { type: Number, default: 30 }, // in minutes
+        mode: {
+            type: String,
+            enum: ['Online', 'Phone', 'In-Person']
+        },
+        meetingLink: { type: String },
+        location: { type: String },
+        instructions: { type: String },
+        scheduledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        createdAt: { type: Date },
+        updatedAt: { type: Date },
+        cancelledAt: { type: Date },
+        cancelReason: { type: String }
     },
     matchScore: { type: Number, default: 0 },
     appliedAt: { type: Date, default: Date.now },
@@ -32,7 +52,7 @@ const applicationSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Allowed statuses from which an application can be transitioned to 'Withdrawn'
-const WITHDRAWABLE_STATUSES = ['Submitted', 'Under Review', 'pending', 'under_review', 'Shortlisted', 'submitted'];
+const WITHDRAWABLE_STATUSES = ['Submitted', 'Under Review', 'pending', 'under_review', 'Shortlisted', 'submitted', 'Interview'];
 // Terminal statuses that forbid withdrawal
 const TERMINAL_STATUSES = ['Rejected', 'rejected', 'Hired', 'hired', 'Withdrawn', 'withdrawn'];
 

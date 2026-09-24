@@ -28,112 +28,152 @@
             <% } else { %>
                 <div class="grid grid-cols-1 gap-4">
                     <% applications.forEach(app=> { %>
-                        <div
-                            class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4">
-
-                            <div class="space-y-2 max-w-xl">
-                                <div class="flex items-center gap-2">
-                                    <span
-                                        class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
-                                        <%= (app.internship && app.internship.sector) ? app.internship.sector : "General" %>
-                                    </span>
-                                    <span class="text-xs text-slate-400">&bull;</span>
-                                    <span class="text-xs text-slate-500 font-medium">
-                                        Applied on <%= new Date(app.appliedAt).toLocaleDateString('en-IN', {
-                                            day: 'numeric' , month: 'short' , year: 'numeric' }) %>
-                                    </span>
-                                </div>
-
-                                <h3 class="text-base font-bold text-slate-900 leading-snug">
-                                    <%= (app.internship && app.internship.title) ? app.internship.title : "Internship Posting Closed" %>
-                                </h3>
-                                <p class="text-xs font-semibold text-slate-600 flex items-center gap-1">
-                                    <i class="ph-bold ph-buildings text-slate-400"></i>
-                                    <%= (app.internship && (app.internship.companyName || app.internship.company)) ? (app.internship.companyName || app.internship.company) : "Organization Unavailable" %>
-                                </p>
-
-                                <% if (app.internship) { %>
-                                <div class="flex items-center gap-4 text-xs text-slate-500 pt-1">
-                                    <span class="flex items-center gap-1">
-                                        <i class="ph-bold ph-map-pin text-rose-500"></i>
-                                        <%= typeof app.internship.location==='object' && app.internship.location !==null
-                                            ? ((app.internship.location.district ? app.internship.location.district
-                                            + ', ' : '' ) + (app.internship.location.state || '' )) :
-                                            (app.internship.location || 'N/A' ) %>
-                                    </span>
-                                    <span>&bull;</span>
-                                    <span class="flex items-center gap-1 text-emerald-600 font-semibold">
-                                        <i class="ph-bold ph-currency-inr"></i>
-                                        ₹<%= app.internship.monthlyStipend ?
-                                            Number(app.internship.monthlyStipend).toLocaleString('en-IN') : '5,000' %> /
-                                            mo
-                                    </span>
-                                </div>
-                                <% } %>
-                            </div>
-
+                        <div class="flex flex-col">
                             <div
-                                class="flex items-center justify-between md:justify-end gap-6 pt-3 md:pt-0 border-t md:border-0 border-slate-100">
-                                <div class="text-center">
-                                    <span
-                                        class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">AI
-                                        Skill Fit</span>
-                                    <div
-                                        class="px-3 py-1 rounded-lg border text-xs font-bold <%= app.matchScore >= 75 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : (app.matchScore >= 40 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-rose-50 border-rose-200 text-rose-700') %>">
-                                        <%= app.matchScore %>% Match
-                                    </div>
-                                </div>
+                                class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4">
 
-                                <div class="text-right">
-                                    <span
-                                        class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Status</span>
-                                    <% if (app.status==='Submitted' ) { %>
+                                <div class="space-y-2 max-w-xl">
+                                    <div class="flex items-center gap-2">
                                         <span
-                                            class="inline-flex items-center gap-1 text-xs font-medium text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Submitted
+                                            class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
+                                            <%= (app.internship && app.internship.sector) ? app.internship.sector : "General" %>
                                         </span>
-                                        <% } else if (app.status==='Under Review' ) { %>
-                                            <span
-                                                class="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
-                                                <span
-                                                    class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                                                Under Review
-                                            </span>
-                                            <% } else if (app.status==='Shortlisted' ) { %>
-                                                <span
-                                                    class="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
-                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                                    Shortlisted
-                                                </span>
-                                                <% } else if (app.status==='Rejected' || app.status==='rejected' ) { %>
-                                                    <span
-                                                        class="inline-flex items-center gap-1 text-xs font-medium text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-md">
-                                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                                                        Rejected
-                                                    </span>
-                                                <% } else if (app.status==='Withdrawn' || app.status==='withdrawn' ) { %>
-                                                    <span
-                                                        class="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-md">
-                                                        <i class="ph-bold ph-arrow-u-up-left"></i> Withdrawn
-                                                    </span>
-                                                <% } %>
+                                        <span class="text-xs text-slate-400">&bull;</span>
+                                        <span class="text-xs text-slate-500 font-medium">
+                                            Applied on <%= new Date(app.appliedAt).toLocaleDateString('en-IN', {
+                                                day: 'numeric' , month: 'short' , year: 'numeric' }) %>
+                                        </span>
+                                    </div>
+
+                                    <h3 class="text-base font-bold text-slate-900 leading-snug">
+                                        <%= (app.internship && app.internship.title) ? app.internship.title : "Internship Posting Closed" %>
+                                    </h3>
+                                    <p class="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                                        <i class="ph-bold ph-buildings text-slate-400"></i>
+                                        <%= (app.internship && (app.internship.companyName || app.internship.company)) ? (app.internship.companyName || app.internship.company) : "Organization Unavailable" %>
+                                    </p>
+
+                                    <% if (app.internship) { %>
+                                    <div class="flex items-center gap-4 text-xs text-slate-500 pt-1">
+                                        <span class="flex items-center gap-1">
+                                            <i class="ph-bold ph-map-pin text-rose-500"></i>
+                                            <%= typeof app.internship.location==='object' && app.internship.location !==null
+                                                ? ((app.internship.location.district ? app.internship.location.district
+                                                + ', ' : '' ) + (app.internship.location.state || '' )) :
+                                                (app.internship.location || 'N/A' ) %>
+                                        </span>
+                                        <span>&bull;</span>
+                                        <span class="flex items-center gap-1 text-emerald-600 font-semibold">
+                                            <i class="ph-bold ph-currency-inr"></i>
+                                            ₹<%= app.internship.monthlyStipend ?
+                                                Number(app.internship.monthlyStipend).toLocaleString('en-IN') : '5,000' %> /
+                                                mo
+                                        </span>
+                                    </div>
+                                    <% } %>
                                 </div>
 
-                                <!-- Withdraw Button if status permits -->
-                                <% const isWithdrawn = ['Withdrawn', 'withdrawn'].includes(app.status); %>
-                                <% const isTerminal = ['Rejected', 'rejected', 'Hired', 'hired', 'Accepted', 'accepted'].includes(app.status); %>
-                                <% if (!isWithdrawn && !isTerminal) { %>
-                                    <div class="text-right">
-                                        <button type="button"
-                                            onclick="openWithdrawModal('<%= app._id %>', '<%= ((app.internship && app.internship.title) ? app.internship.title : 'Internship').replace(/'/g, '\\\'') %>', '<%= ((app.internship && (app.internship.companyName || app.internship.company)) ? (app.internship.companyName || app.internship.company) : 'Company').replace(/'/g, '\\\'') %>')"
-                                            class="inline-flex items-center gap-1 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
-                                            title="Withdraw this application">
-                                            <i class="ph-bold ph-x-circle"></i> Withdraw
-                                        </button>
+                                <div
+                                    class="flex items-center justify-between md:justify-end gap-6 pt-3 md:pt-0 border-t md:border-0 border-slate-100">
+                                    <div class="text-center">
+                                        <span
+                                            class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">AI
+                                            Skill Fit</span>
+                                        <div
+                                            class="px-3 py-1 rounded-lg border text-xs font-bold <%= app.matchScore >= 75 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : (app.matchScore >= 40 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-rose-50 border-rose-200 text-rose-700') %>">
+                                            <%= app.matchScore %>% Match
+                                        </div>
                                     </div>
-                                <% } %>
+
+                                    <div class="text-right">
+                                        <span
+                                            class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Status</span>
+                                        <% if (app.status==='Submitted' ) { %>
+                                            <span
+                                                class="inline-flex items-center gap-1 text-xs font-medium text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Submitted
+                                            </span>
+                                            <% } else if (app.status==='Under Review' ) { %>
+                                                <span
+                                                    class="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
+                                                    <span
+                                                        class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                                    Under Review
+                                                </span>
+                                                <% } else if (app.status==='Shortlisted' ) { %>
+                                                    <span
+                                                        class="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                        Shortlisted
+                                                    </span>
+                                                    <% } else if (app.status==='Rejected' || app.status==='rejected' ) { %>
+                                                        <span
+                                                            class="inline-flex items-center gap-1 text-xs font-medium text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-md">
+                                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                                            Rejected
+                                                        </span>
+                                                    <% } else if (app.status==='Withdrawn' || app.status==='withdrawn' ) { %>
+                                                        <span
+                                                            class="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-md">
+                                                            <i class="ph-bold ph-arrow-u-up-left"></i> Withdrawn
+                                                        </span>
+                                                    <% } else if (app.status==='Interview') { %>
+                                                        <span
+                                                            class="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-md">
+                                                            <i class="ph-bold ph-calendar"></i> Interview
+                                                        </span>
+                                                    <% } %>
+                                    </div>
+
+                                    <!-- Withdraw Button if status permits -->
+                                    <% const isWithdrawn = ['Withdrawn', 'withdrawn'].includes(app.status); %>
+                                    <% const isTerminal = ['Rejected', 'rejected', 'Hired', 'hired', 'Accepted', 'accepted'].includes(app.status); %>
+                                    <% if (!isWithdrawn && !isTerminal) { %>
+                                        <div class="text-right">
+                                            <button type="button"
+                                                onclick="openWithdrawModal('<%= app._id %>', '<%= ((app.internship && app.internship.title) ? app.internship.title : 'Internship').replace(/'/g, '\\\'') %>', '<%= ((app.internship && (app.internship.companyName || app.internship.company)) ? (app.internship.companyName || app.internship.company) : 'Company').replace(/'/g, '\\\'') %>')"
+                                                class="inline-flex items-center gap-1 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                                                title="Withdraw this application">
+                                                <i class="ph-bold ph-x-circle"></i> Withdraw
+                                            </button>
+                                        </div>
+                                    <% } %>
+                                </div>
+
                             </div>
 
+                            <% if (app.interview && app.interview.status) { %>
+                                <div class="mt-2 mx-2 bg-indigo-50 border border-indigo-100 rounded-lg p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                    <div>
+                                        <h4 class="text-xs font-bold text-indigo-900 mb-1 flex items-center gap-1.5">
+                                            <i class="ph-bold ph-calendar-check text-indigo-600 text-sm"></i>
+                                            Interview <%= app.interview.status %>
+                                            <% if (app.interview.status === 'Cancelled') { %>
+                                                <span class="text-[10px] text-rose-600 font-semibold">(Cancelled)</span>
+                                            <% } %>
+                                        </h4>
+
+                                        <% if (app.interview.status !== 'Cancelled') { %>
+                                            <div class="text-xs text-indigo-800 space-y-1">
+                                                <p><strong>Date & Time:</strong> <%= app.interview.scheduledAt ? new Date(app.interview.scheduledAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) : 'N/A' %> (IST)</p>
+                                                <p><strong>Duration:</strong> <%= app.interview.duration %> mins &bull; <strong>Mode:</strong> <%= app.interview.mode %></p>
+
+                                                <% if (app.interview.mode === 'Online' && app.interview.meetingLink) { %>
+                                                    <p><strong>Meeting Link:</strong> <a href="<%= app.interview.meetingLink %>" target="_blank" class="text-indigo-600 underline font-semibold"><%= app.interview.meetingLink %></a></p>
+                                                <% } else if (app.interview.mode === 'In-Person' && app.interview.location) { %>
+                                                    <p><strong>Location:</strong> <%= app.interview.location %></p>
+                                                <% } %>
+
+                                                <% if (app.interview.instructions) { %>
+                                                    <p class="mt-2 text-indigo-700 bg-indigo-100/50 p-2 rounded"><strong>Instructions:</strong> <%= app.interview.instructions %></p>
+                                                <% } %>
+                                            </div>
+                                        <% } else if (app.interview.cancelReason) { %>
+                                            <p class="text-xs text-rose-700 mt-1"><strong>Reason:</strong> <%= app.interview.cancelReason %></p>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            <% } %>
                         </div>
                         <% }) %>
                 </div>
