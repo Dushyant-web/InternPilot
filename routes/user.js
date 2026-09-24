@@ -13,6 +13,7 @@ const Application = require('../models/Application');
 const { isAuthenticated, authorize } = require('../middleware/auth');
 const { documentUpload, uploadBufferToCloudinary } = require('../middleware/upload');
 const { calculateSkillScore } = require('../utils/skillMatch');
+const { detectProfileConflicts } = require('../utils/conflictDetector');
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -142,6 +143,20 @@ router.get('/candidate/profile', isAuthenticated, authorize('candidate'), async 
     }
 });
 
+router.get('/candidate/resume-builder', isAuthenticated, authorize('candidate'), async (req, res) => {
+    try {
+        const userId = req.user._id || req.user.id;
+        const candidate = await User.findById(userId);
+
+        res.render('candidate/resume-builder', {
+            candidate
+        });
+    } catch (error) {
+        console.error('Error loading resume builder:', error);
+        res.status(500).send('Database Error');
+    }
+});
+
 router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
         const { location, age, familyIncome, qualification, institution, skills } = req.body;
@@ -249,7 +264,38 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
         else if (/BCA|Bachelor of Computer Applications/i.test(text)) extractedQualification = 'BCA';
         else if (/MCA|Master of Computer Applications/i.test(text)) extractedQualification = 'MCA';
 
+        const resumeQuality = await analyzeResumeQuality(text);
+
+        // ── Build the parsed-data object for conflict detection ────
+        const parsedData = {};
+        if (extractedSkills.length > 0) parsedData.skills = extractedSkills;
+        if (extractedQualification) {
+            parsedData.education = { qualification: extractedQualification };
+        }
+
+        // ── Fetch existing profile and detect conflicts ────────────
         const userId = req.user._id || req.user.id;
+        const existingProfile = await User.findById(userId);
+
+        const { hasConflicts, conflicts, autoMerged } = detectProfileConflicts(
+            existingProfile,
+            parsedData
+        );
+
+        if (hasConflicts) {
+            // Render the profile page with the conflict-resolution modal
+            return res.render('candidate/candidate-profile', {
+                user: existingProfile,
+                candidate: existingProfile,
+                conflicts,
+                autoMerged,
+                resumeUrl,
+                resumeQuality,
+                showConflictModal: true
+            });
+        }
+
+        // ── No conflicts: apply auto-merged fields + resume data ──
         const updateDoc = {
             $set: {
                 resume: resumeUrl,
@@ -257,20 +303,123 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
             }
         };
 
-        if (extractedSkills.length > 0) {
-            updateDoc.$addToSet = { skills: { $each: extractedSkills } };
+        // Apply auto-merged fields
+        for (const [key, value] of Object.entries(autoMerged)) {
+            if (key === 'skills') {
+                updateDoc.$addToSet = { skills: { $each: Array.isArray(value) ? value : [value] } };
+            } else {
+                updateDoc.$set[key] = value;
+            }
         }
-        if (extractedQualification) {
-            updateDoc.$set['education.qualification'] = extractedQualification;
+
+        // Also merge extracted skills that were not conflicting
+        if (extractedSkills.length > 0 && !autoMerged.skills) {
+            updateDoc.$addToSet = updateDoc.$addToSet || {};
+            updateDoc.$addToSet.skills = { $each: extractedSkills };
         }
 
         await User.findByIdAndUpdate(userId, updateDoc);
-        if (req.flash) req.flash('success_msg', 'Resume uploaded and parsed successfully!');
+        if (req.flash) req.flash('success_msg', 'Resume uploaded and profile updated automatically!');
 
         res.redirect('/candidate/profile');
     } catch (error) {
         console.error('Error uploading/parsing resume:', error);
         if (req.flash) req.flash('error_msg', `Failed to process resume upload: ${error.message}`);
+        res.redirect('/candidate/profile');
+    }
+});
+
+// ── Confirm & save profile after conflict resolution ──────────────────
+router.post('/candidate/profile/confirm-update', isAuthenticated, authorize('candidate'), async (req, res) => {
+    try {
+        const userId = req.user._id || req.user.id;
+        const existingProfile = await User.findById(userId);
+        if (!existingProfile) {
+            if (req.flash) req.flash('error_msg', 'Profile not found.');
+            return res.redirect('/candidate/profile');
+        }
+
+        // Parse the auto-merged fields that were already resolved server-side
+        let autoMerged = {};
+        try {
+            autoMerged = JSON.parse(req.body.autoMerged || '{}');
+        } catch (_) { /* ignore malformed JSON */ }
+
+        // Parse resume quality if present
+        let resumeQuality = null;
+        try {
+            if (req.body.resumeQuality) {
+                resumeQuality = JSON.parse(req.body.resumeQuality);
+            }
+        } catch (_) { /* ignore */ }
+
+        const resumeUrl = req.body.resumeUrl || '';
+
+        // ── Build the final update document ───────────────────────
+        const updateDoc = { $set: {} };
+
+        // Always save the resume URL and quality analysis
+        if (resumeUrl) updateDoc.$set.resume = resumeUrl;
+        if (resumeQuality) updateDoc.$set.resumeQuality = resumeQuality;
+
+        // Apply auto-merged fields
+        for (const [key, value] of Object.entries(autoMerged)) {
+            if (key === 'skills') {
+                updateDoc.$addToSet = { skills: { $each: Array.isArray(value) ? value : [value] } };
+            } else {
+                updateDoc.$set[key] = value;
+            }
+        }
+
+        // ── Process each conflict resolution from the form ────────
+        // Form fields arrive as  field_<key> = "current" | "parsed"
+        // We also need the parsed values — they were embedded in the
+        // form via the conflict objects.  To avoid a second round-trip
+        // to the AI, we stashed them in hidden inputs.  However, for
+        // security we re-derive the "current" value from the DB and
+        // only accept "parsed" when the user explicitly chose it.
+        //
+        // The parsedValues are passed through the autoMerged/conflicts
+        // data; conflicts that the user chose "parsed" for need the
+        // parsed value.  We store those in a separate hidden field.
+
+        for (const bodyKey of Object.keys(req.body)) {
+            if (!bodyKey.startsWith('field_')) continue;
+            // Skip mobile duplicate radio names
+            if (bodyKey.endsWith('_mobile')) continue;
+
+            const fieldKey = bodyKey.replace('field_', '');
+            const choice = req.body[bodyKey]; // 'current' or 'parsed'
+
+            if (choice === 'parsed') {
+                // The parsed value was serialized in a companion hidden input
+                const parsedVal = req.body[`parsedValue_${fieldKey}`];
+                if (parsedVal !== undefined && parsedVal !== '') {
+                    if (fieldKey === 'skills') {
+                        const skillsArr = parsedVal.split(',').map(s => s.trim()).filter(Boolean);
+                        updateDoc.$set.skills = skillsArr;
+                    } else if (fieldKey === 'education.institutionName') {
+                        updateDoc.$set['education.institutionName'] = parsedVal;
+                        updateDoc.$set.institution = parsedVal;
+                    } else {
+                        updateDoc.$set[fieldKey] = parsedVal;
+                    }
+                }
+            }
+            // choice === 'current' → we keep the existing DB value (no-op)
+        }
+
+        // Ensure institution stays in sync with education.institutionName
+        if (updateDoc.$set['education.institutionName'] && !updateDoc.$set.institution) {
+            updateDoc.$set.institution = updateDoc.$set['education.institutionName'];
+        }
+
+        await User.findByIdAndUpdate(userId, updateDoc, { runValidators: false });
+        if (req.flash) req.flash('success_msg', 'Profile updated with your selected changes!');
+        res.redirect('/candidate/profile');
+    } catch (error) {
+        console.error('Error confirming profile update:', error);
+        if (req.flash) req.flash('error_msg', 'Failed to save profile changes. Please try again.');
         res.redirect('/candidate/profile');
     }
 });
@@ -570,13 +719,30 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
             });
         }
 
+        const activeDeadlineCondition = {
+            $or: [
+                { applicationDeadline: { $gte: new Date() } },
+                { applicationDeadline: null },
+                { applicationDeadline: { $exists: false } }
+            ]
+        };
+
         if (queryConditions.length > 0) {
-            internships = await Internship.find({ status: { $ne: 'draft' }, $or: queryConditions });
+            internships = await Internship.find({
+                status: { $nin: ['draft', 'paused'] },
+                isPaused: { $ne: true },
+                ...activeDeadlineCondition,
+                $or: queryConditions
+            });
         }
 
         // If no match by district/qualification or not set, fall back to open internships
         if (!internships || internships.length === 0) {
-            internships = await Internship.find({ status: { $ne: 'draft' } }).limit(20);
+            internships = await Internship.find({
+                status: { $nin: ['draft', 'paused'] },
+                isPaused: { $ne: true },
+                ...activeDeadlineCondition
+            }).limit(20);
         }
 
         const recommendations = internships

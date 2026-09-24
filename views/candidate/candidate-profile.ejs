@@ -43,7 +43,7 @@
                                     d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                             <%= (activeUser && activeUser.location) ? (typeof activeUser.location==='object' ?
-                                (activeUser.location.district || activeUser.location.state) : activeUser.location)
+                                ([activeUser.location.district, activeUser.location.state].filter(Boolean).join(', ') || 'Location Not Provided') : activeUser.location)
                                 : 'Location Not Provided' %>
                         </p>
                     </div>
@@ -59,6 +59,11 @@
                         </svg>
                         Edit Profile
                     </button>
+
+                    <a href="/candidate/resume-builder"
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg">
+                        Resume Builder
+                    </a>
                     <a href="/internships"
                         class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg transition-colors shadow-sm">
                         Browse Internships
@@ -355,25 +360,33 @@
                                     <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-4 space-y-3">
                                         <h3 class="text-sm font-bold text-slate-800">Resume Quality Feedback</h3>
 
+                                        <% if (activeUser.resumeQuality.quantifiableAchievements && activeUser.resumeQuality.quantifiableAchievements.feedback) { %>
                                         <div>
                                             <p class="text-xs font-semibold text-slate-700">Quantifiable Achievements</p>
                                             <p class="text-xs text-slate-600"><%= activeUser.resumeQuality.quantifiableAchievements.feedback %></p>
                                         </div>
+                                        <% } %>
 
+                                        <% if (activeUser.resumeQuality.technicalSkills && activeUser.resumeQuality.technicalSkills.feedback) { %>
                                         <div>
                                             <p class="text-xs font-semibold text-slate-700">Technical Skills</p>
                                             <p class="text-xs text-slate-600"><%= activeUser.resumeQuality.technicalSkills.feedback %></p>
                                         </div>
+                                        <% } %>
 
+                                        <% if (activeUser.resumeQuality.projects && activeUser.resumeQuality.projects.feedback) { %>
                                         <div>
                                             <p class="text-xs font-semibold text-slate-700">Projects</p>
                                             <p class="text-xs text-slate-600"><%= activeUser.resumeQuality.projects.feedback %></p>
                                         </div>
+                                        <% } %>
 
+                                        <% if (activeUser.resumeQuality.overallFeedback) { %>
                                         <div>
                                             <p class="text-xs font-semibold text-slate-700">Overall Feedback</p>
                                             <p class="text-xs text-slate-600"><%= activeUser.resumeQuality.overallFeedback %></p>
                                         </div>
+                                        <% } %>
                                     </div>
                                 <% } %>
 
@@ -389,6 +402,9 @@
 
         </div>
 
+        <% if (typeof showConflictModal !== 'undefined' && showConflictModal && typeof conflicts !== 'undefined' && conflicts.length > 0) { %>
+            <%- include('../partials/profileConflictModal') %>
+        <% } %>
 
         <div id="editProfileModal"
             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -405,7 +421,7 @@
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Location (District, State)</label>
                         <input type="text" name="location"
-                            value="<%= (activeUser && activeUser.location) ? (typeof activeUser.location === 'object' ? activeUser.location.district : activeUser.location) : '' %>"
+                            value="<%= (activeUser && activeUser.location) ? (typeof activeUser.location === 'object' ? [activeUser.location.district, activeUser.location.state].filter(Boolean).join(', ') : activeUser.location) : '' %>"
                             placeholder="e.g. Noida, Uttar Pradesh"
                             class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
                     </div>

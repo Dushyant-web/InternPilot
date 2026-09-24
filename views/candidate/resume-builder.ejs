@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Builder - InternPilot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-100 min-h-screen">
+
+    <div class="max-w-5xl mx-auto p-6">
+
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800">Resume Builder</h1>
+                <p class="text-slate-500">Build and customize your professional resume.</p>
+            </div>
+
+            <button onclick="window.print()"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-semibold">
+                Download PDF
+            </button>
+        </div>
+
+        <div class="bg-white shadow-lg rounded-xl p-8">
+
+            <!-- Contact -->
+            <section class="border-b pb-5 mb-5">
+                <input id="name"
+                    value="<%= candidate.name || '' %>"
+                    class="text-3xl font-bold w-full outline-none"
+                    placeholder="Your Name">
+
+                <input id="email"
+                    value="<%= candidate.email || '' %>"
+                    class="text-slate-600 w-full mt-2 outline-none"
+                    placeholder="Email">
+
+                <input id="location"
+                    value="<%= candidate.location?.district || '' %>"
+                    class="text-slate-600 w-full mt-1 outline-none"
+                    placeholder="Location">
+            </section>
+
+            <!-- Education -->
+            <section class="mb-6">
+                <h2 class="text-xl font-bold text-indigo-700 mb-2">Education</h2>
+
+                <input
+                    value="<%= candidate.education?.qualification || '' %>"
+                    class="w-full border rounded-lg p-2 mb-2"
+                    placeholder="Qualification">
+
+                <input
+                    value="<%= candidate.institution || '' %>"
+                    class="w-full border rounded-lg p-2"
+                    placeholder="Institution">
+            </section>
+
+            <!-- Skills -->
+            <section class="mb-6">
+                <h2 class="text-xl font-bold text-indigo-700 mb-2">Technical Skills</h2>
+
+                <textarea
+                    class="w-full border rounded-lg p-3"
+                    rows="3"
+                    placeholder="JavaScript, Node.js, MongoDB, HTML, CSS..."><%= (candidate.skills || []).join(', ') %></textarea>
+            </section>
+
+            <!-- Projects -->
+            <section class="mb-6">
+                <h2 class="text-xl font-bold text-indigo-700 mb-2">Projects</h2>
+
+                <textarea
+                    class="w-full border rounded-lg p-3"
+                    rows="4"
+                    placeholder="Add your projects, technologies used and achievements..."></textarea>
+            </section>
+
+            <!-- Certifications -->
+            <section class="mb-6">
+                <h2 class="text-xl font-bold text-indigo-700 mb-2">Certifications</h2>
+
+                <textarea
+                    class="w-full border rounded-lg p-3"
+                    rows="3"
+                    placeholder="Add your certifications..."></textarea>
+            </section>
+
+            <!-- Experience / Additional -->
+            <section>
+                <h2 class="text-xl font-bold text-indigo-700 mb-2">Additional Information</h2>
+
+                <textarea
+                    class="w-full border rounded-lg p-3"
+                    rows="4"
+                    placeholder="Achievements, experience, activities, etc."></textarea>
+            </section>
+
+        </div>
+    </div>
+
+    <style>
+        @media print {
+            body {
+                background: white;
+            }
+
+            button {
+                display: none;
+            }
+
+            input,
+            textarea {
+                border: none !important;
+                outline: none !important;
+                resize: none;
+            }
+
+            .shadow-lg {
+                box-shadow: none;
+            }
+        }
+    </style>
+
+</body>
+</html>

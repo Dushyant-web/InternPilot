@@ -7,19 +7,56 @@
                 Official opportunities posted by top partner organizations under the Prime Minister's Internship Scheme.
             </p>
         </div>
+
+        <!-- Filter Tabs: All, Active, Paused -->
+        <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold self-start md:self-auto border border-slate-200">
+            <a href="/internships?status=all"
+                class="px-3 py-1.5 rounded-lg transition-colors <%= (typeof currentFilter === 'undefined' || currentFilter === 'all') ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900' %>">
+                All Listings
+            </a>
+            <a href="/internships?status=active"
+                class="px-3 py-1.5 rounded-lg transition-colors <%= (typeof currentFilter !== 'undefined' && currentFilter === 'active') ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-600 hover:text-slate-900' %>">
+                Active Openings
+            </a>
+            <a href="/internships?status=paused"
+                class="px-3 py-1.5 rounded-lg transition-colors <%= (typeof currentFilter !== 'undefined' && currentFilter === 'paused') ? 'bg-white text-amber-700 shadow-xs' : 'text-slate-600 hover:text-slate-900' %>">
+                Applications Paused
+            </a>
+        </div>
     </div>
 
+    <% if (!internships || internships.length === 0) { %>
+        <div class="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500">
+            <i class="ph-bold ph-magnifying-glass text-3xl text-slate-400 mb-2"></i>
+            <h3 class="font-bold text-slate-700 text-base">No listings found</h3>
+            <p class="text-xs text-slate-400 mt-1">
+                <%= typeof currentFilter !== 'undefined' && currentFilter === 'paused' ? 'There are currently no paused internship listings.' : 'No internships match your current filter.' %>
+            </p>
+            <a href="/internships?status=all" class="mt-4 inline-block px-4 py-2 bg-indigo-50 text-indigo-700 font-semibold text-xs rounded-lg hover:bg-indigo-100 transition-colors">
+                View All Listings
+            </a>
+        </div>
+    <% } else { %>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <% internships.forEach(item=> { %>
+            <% const isItemPaused = item.status === 'paused' || item.isPaused; %>
             <div
-                class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between relative group">
+                class="bg-white border <%= isItemPaused ? 'border-amber-300' : 'border-slate-200' %> rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between relative group">
 
                 <div>
                     <div class="flex items-center justify-between mb-3">
-                        <span
-                            class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
-                            <%= item.sector || "General" %>
-                        </span>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span
+                                class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
+                                <%= item.sector || "General" %>
+                            </span>
+                            <% if (isItemPaused) { %>
+                                <span
+                                    class="text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <i class="ph-bold ph-pause-circle"></i> Paused
+                                </span>
+                            <% } %>
+                        </div>
 
                         <div class="flex items-center gap-2">
                             <span
@@ -27,9 +64,23 @@
                                 <%= item.vacancies || 1 %> Openings
                             </span>
 
-                            <!-- Show Edit/Delete ONLY if Admin OR if logged in as the owning Company -->
+                            <!-- Show Edit/Pause/Delete ONLY if Admin OR if logged in as the owning Company -->
                             <% if (currentUser && (currentUser.role==='admin' || ((currentUser.role==='company' || currentUser.role==='recruiter') &&
                                 item.companyId && currentUser.companyId && item.companyId.toString()===currentUser.companyId.toString()))) { %>
+                                <% if (isItemPaused) { %>
+                                    <form action="/internships/<%= item._id %>/resume" method="POST" class="inline" title="Resume Applications">
+                                        <button type="submit" class="text-amber-600 hover:text-emerald-600 transition-colors cursor-pointer p-0.5" title="Resume Applications">
+                                            <i class="ph-bold ph-play text-sm"></i>
+                                        </button>
+                                    </form>
+                                <% } else { %>
+                                    <form action="/internships/<%= item._id %>/pause" method="POST" class="inline" title="Pause Applications">
+                                        <button type="submit" class="text-slate-400 hover:text-amber-600 transition-colors cursor-pointer p-0.5" title="Pause Applications">
+                                            <i class="ph-bold ph-pause text-sm"></i>
+                                        </button>
+                                    </form>
+                                <% } %>
+
                                 <button onclick="openEditModal(this)" data-item='<%= JSON.stringify(item) %>'
                                     class="text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer p-0.5"
                                     title="Edit">
@@ -44,12 +95,14 @@
                                         <i class="ph-bold ph-trash text-sm"></i>
                                     </button>
                                 </form>
-                                <% } %>
+                            <% } %>
                         </div>
                     </div>
 
                     <h3 class="text-base font-bold text-slate-900 leading-snug">
-                        <%= item.title %>
+                        <a href="/internships/<%= item._id %>" class="hover:text-indigo-600 transition-colors">
+                            <%= item.title %>
+                        </a>
                     </h3>
                     <p class="text-xs font-semibold text-slate-600 mt-0.5 flex items-center gap-1">
                         <i class="ph-bold ph-buildings text-slate-400"></i>
@@ -87,6 +140,12 @@
                             </span>
                         </div>
                         <% } %>
+                        <% if (isItemPaused) { %>
+                        <div class="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-amber-200 text-amber-800 font-semibold text-xs bg-amber-50/80 px-2 py-1 rounded">
+                            <i class="ph-bold ph-pause-circle text-amber-600 text-sm"></i>
+                            <span>Applications are temporarily paused.</span>
+                        </div>
+                        <% } %>
                     </div>
 
                     <div class="mb-4">
@@ -109,47 +168,62 @@
                 <% if (!currentUser || (currentUser.role !=='company' && currentUser.role !=='admin' && currentUser.role !=='recruiter' )) { %>
                     <div class="pt-2">
                         <% if (!currentUser) { %>
-                            <!-- 1. NOT LOGGED IN -> Redirect to Login Page -->
-                            <a href="/auth/login"
-                                class="w-full text-center py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5">
-                                <i class="ph-bold ph-paper-plane-tilt"></i> Apply Now
-                            </a>
-                            <% } else if (typeof appliedIds !=='undefined' && appliedIds.includes(item._id.toString()))
-                                { %>
-                                <!-- 2. LOGGED IN CANDIDATE & ALREADY APPLIED -->
+                            <!-- 1. NOT LOGGED IN -> Redirect to Login Page or show Paused -->
+                            <% if (isItemPaused) { %>
                                 <button disabled
-                                    class="w-full text-center py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-not-allowed">
-                                    <i class="ph-bold ph-check-circle text-base"></i> Applied
+                                    class="w-full text-center py-2 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-not-allowed"
+                                    title="Applications for this position are temporarily paused.">
+                                    <i class="ph-bold ph-pause-circle text-base"></i> Applications Paused
                                 </button>
-                                <% } else if (item.applicationDeadline && new Date() > item.applicationDeadline) { %>
-                                    <!-- 3. DEADLINE PASSED -->
-                                    <button disabled
-                                        class="w-full text-center py-2 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-not-allowed">
-                                        <i class="ph-bold ph-x-circle text-base"></i> Applications Closed
-                                    </button>
-                                <% } else { %>
-                                    <!-- 4. LOGGED IN CANDIDATE & HAS NOT APPLIED & OPEN -->
-                                    <form action="/internships/<%= item._id %>/apply" method="POST" class="w-full">
-                                        <button type="submit"
-                                            class="w-full text-center py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5">
-                                            <i class="ph-bold ph-paper-plane-tilt"></i> Apply Now
-                                        </button>
-                                    </form>
-                                    <% } %>
+                            <% } else { %>
+                                <a href="/auth/login"
+                                    class="w-full text-center py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+                                    <i class="ph-bold ph-paper-plane-tilt"></i> Apply Now
+                                </a>
+                            <% } %>
+                        <% } else if (typeof appliedIds !=='undefined' && appliedIds.includes(item._id.toString())) { %>
+                            <!-- 2. LOGGED IN CANDIDATE & ALREADY APPLIED -->
+                            <button disabled
+                                class="w-full text-center py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-not-allowed">
+                                <i class="ph-bold ph-check-circle text-base"></i> Applied
+                            </button>
+                        <% } else if (isItemPaused) { %>
+                            <!-- 3. LOGGED IN CANDIDATE & APPLICATIONS PAUSED -->
+                            <button disabled
+                                class="w-full text-center py-2 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-not-allowed"
+                                title="The recruiter has temporarily paused new applications for this position.">
+                                <i class="ph-bold ph-pause-circle text-base"></i> Applications Paused
+                            </button>
+                        <% } else if (item.applicationDeadline && new Date() > item.applicationDeadline) { %>
+                            <!-- 4. DEADLINE PASSED -->
+                            <button disabled
+                                class="w-full text-center py-2 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-not-allowed">
+                                <i class="ph-bold ph-x-circle text-base"></i> Applications Closed
+                            </button>
+                        <% } else { %>
+                            <!-- 5. LOGGED IN CANDIDATE & HAS NOT APPLIED & OPEN -->
+                            <form action="/internships/<%= item._id %>/apply" method="POST" class="w-full">
+                                <button type="submit"
+                                    class="w-full text-center py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+                                    <i class="ph-bold ph-paper-plane-tilt"></i> Apply Now
+                                </button>
+                            </form>
+                        <% } %>
 
-                                        <% if (currentUser && currentUser.role==='candidate' ) { %>
-                                            <a href="/internships/<%= item._id %>/skill-gap"
-                                                class="mt-2 w-full text-center py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5">
-                                                <i class="ph-bold ph-chart-donut text-base text-indigo-600"></i>
-                                                Skill Gap Analysis
-                                            </a>
-                                            <% } %>
+                        <% if (currentUser && currentUser.role === 'candidate') { %>
+                            <a href="/internships/<%= item._id %>/skill-gap"
+                                class="mt-2 w-full text-center py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+                                <i class="ph-bold ph-chart-donut text-base text-indigo-600"></i>
+                                Skill Gap Analysis
+                            </a>
+                        <% } %>
                     </div>
-                    <% } %>
+                <% } %>
 
             </div>
             <% }) %>
     </div>
+    <% } %>
 
     <!-- POST NEW MODAL -->
     <div id="postingModal"
@@ -227,7 +301,9 @@
                 <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
                     <button type="button" onclick="closeModal()"
                         class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200">Cancel</button>
-                    <button type="submit"
+                    <button type="submit" name="action" value="draft" formnovalidate
+                        class="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-300">Save as Draft</button>
+                    <button type="submit" name="action" value="publish"
                         class="px-4 py-2 text-xs font-semibold text-white bg-indigo-700 hover:bg-indigo-800 rounded-lg shadow-sm">Publish
                         Listing</button>
                 </div>

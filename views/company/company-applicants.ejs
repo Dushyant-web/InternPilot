@@ -76,13 +76,13 @@
                                                         : 'Unknown Candidate' %>
                                                 </h4>
 
-                                                <% if (app.candidate && app.candidate.age>= 18 && app.candidate.age <= 24) {
-                                                        %>
-                                                        <span
-                                                            class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                                                            PMIS Eligible
-                                                        </span>
-                                                        <% } %>
+                                                <% const isPmisEligible = app.candidate && app.candidate.age >= 21 && app.candidate.age <= 24 && app.candidate.familyIncome !== undefined && app.candidate.familyIncome !== null && app.candidate.familyIncome <= 800000; %>
+                                                <% if (isPmisEligible) { %>
+                                                    <span
+                                                        class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                                                        PMIS Eligible
+                                                    </span>
+                                                <% } %>
                                             </div>
 
                                             <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
@@ -216,9 +216,9 @@
 
                                                     <% if (isNoteCreator) { %>
                                                         <div id="edit-note-<%= note._id %>" class="hidden pt-2 border-t border-slate-200 mt-2">
-                                                            <form action="/company/applications/<%= app._id %>/notes/<%= note._id %>/edit" method="POST" class="flex items-center gap-2" data-loading-text="Saving...">
-                                                                <input type="text" name="text" value="<%= note.text %>" required
-                                                                    class="flex-1 px-2.5 py-1 text-xs border border-slate-200 rounded-md focus:outline-none focus:border-indigo-500 bg-white" />
+                                                            <form action="/company/applications/<%= app._id %>/notes/<%= note._id %>/edit" method="POST" class="flex items-start gap-2" data-loading-text="Saving...">
+                                                                <textarea name="text" required rows="2"
+                                                                    class="flex-1 px-2.5 py-1 text-xs border border-slate-200 rounded-md focus:outline-none focus:border-indigo-500 bg-white resize-y"><%= note.text %></textarea>
                                                                 <button type="submit"
                                                                     class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-md transition-colors shrink-0">
                                                                     Save

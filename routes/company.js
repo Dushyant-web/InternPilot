@@ -7,18 +7,23 @@ const Application = require('../models/Application');
 const { isAuthenticated, requireCompanyRole } = require('../middleware/auth');
 const { sendStatusUpdateEmail } = require('../utils/sendEmail');
 const { parseISTEndOfDay } = require('../utils/dateUtils');
+const chatRouter = require('./chat');
+
 router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
-        const currentFilter = req.query.status || 'all'; // 'all', 'published', 'draft'
+        const currentFilter = req.query.status || 'all'; // 'all', 'published', 'paused', 'draft'
         const allInternships = await Internship.find({ companyId: req.user.companyId }).sort({ _id: -1 });
 
-        const publishedCount = allInternships.filter(i => i.status !== 'draft').length;
+        const publishedCount = allInternships.filter(i => (i.status === 'published' || (!i.status && !i.isPaused)) && !i.isPaused && i.status !== 'paused').length;
+        const pausedCount = allInternships.filter(i => i.status === 'paused' || i.isPaused).length;
         const draftCount = allInternships.filter(i => i.status === 'draft').length;
         const totalCount = allInternships.length;
 
         let filteredInternships = allInternships;
         if (currentFilter === 'published') {
-            filteredInternships = allInternships.filter(i => i.status !== 'draft');
+            filteredInternships = allInternships.filter(i => (i.status === 'published' || (!i.status && !i.isPaused)) && !i.isPaused && i.status !== 'paused');
+        } else if (currentFilter === 'paused') {
+            filteredInternships = allInternships.filter(i => i.status === 'paused' || i.isPaused);
         } else if (currentFilter === 'draft') {
             filteredInternships = allInternships.filter(i => i.status === 'draft');
         }
@@ -42,6 +47,7 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
             internships: filteredInternships,
             totalApplicationsCount,
             publishedCount,
+            pausedCount,
             draftCount,
             totalCount,
             currentFilter,
@@ -55,7 +61,10 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
 
 router.post('/company/internships/create', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
-        const { title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state, deadline } = req.body;
+        const { title, sector, requiredSkills, minQualifications, monthlyStipend, stipend, vacancies, duration, district, state, location, deadline, action } = req.body;
+
+        const isDraft = action === 'draft';
+        const status = isDraft ? 'draft' : 'published';
 
         let applicationDeadline;
         try {
@@ -83,7 +92,17 @@ router.post('/company/internships/create', isAuthenticated, requireCompanyRole([
             ? requiredSkills.split(',').map(s => s.trim()).filter(Boolean)
             : [];
 
-        await Internship.create({
+        let resolvedDistrict = district || '';
+        let resolvedState = state || '';
+        if ((!resolvedDistrict && !resolvedState) && location) {
+            const locParts = location.split(',');
+            resolvedDistrict = locParts[0] ? locParts[0].trim() : '';
+            resolvedState = locParts[1] ? locParts[1].trim() : '';
+        }
+        const rawStipend = monthlyStipend !== undefined ? monthlyStipend : stipend;
+        const stipendNumber = rawStipend ? parseInt(rawStipend.toString().replace(/[^0-9]/g, '')) : (isDraft ? 0 : 5000);
+
+        const internship = await Internship.create({
             companyId: req.user.companyId,
             postedBy: req.user._id,
             companyName,
@@ -92,15 +111,19 @@ router.post('/company/internships/create', isAuthenticated, requireCompanyRole([
             sector: sector || (isDraft ? 'Uncategorized' : 'General'),
             minQualifications: minQualifications || (isDraft ? '' : 'Any'),
             requiredSkills: skillsArray,
-            monthlyStipend: monthlyStipend ? Number(monthlyStipend) : (isDraft ? 0 : 5000),
+            monthlyStipend: stipendNumber,
             vacancies: vacancies ? Number(vacancies) : 1,
             duration: duration || (isDraft ? '' : '12 Months'),
             location: {
-                district: district || '',
-                state: state || ''
+                district: resolvedDistrict,
+                state: resolvedState
             },
             applicationDeadline
         });
+
+        if (status === 'published') {
+            notifyPublishedInternship(internship);
+        }
 
         if (req.flash) {
             if (isDraft) {
@@ -328,6 +351,14 @@ router.post('/company/applications/:id/status', isAuthenticated, requireCompanyR
         application.status = status;
         await application.save();
 
+        if (previousStatus !== status) {
+            try {
+                await notifyApplicationStatusChange(application, application.internship, status);
+            } catch (notificationError) {
+                console.error('Failed to create application status notification:', notificationError);
+            }
+        }
+
         if (previousStatus !== status && application.candidate?.email) {
             try {
                 const candidateName = application.candidate.name || 'Candidate';
@@ -346,8 +377,13 @@ router.post('/company/applications/:id/status', isAuthenticated, requireCompanyR
 
         if (req.flash) req.flash('success_msg', `Application marked as ${status}`);
         const referrer = req.get('Referrer');
-        if (referrer && referrer.includes('/company/')) {
-            return res.redirect(referrer);
+        if (referrer) {
+            try {
+                const refUrl = new URL(referrer, `${req.protocol}://${req.get('host')}`);
+                if (refUrl.host === req.get('host') && refUrl.pathname.startsWith('/company/')) {
+                    return res.redirect(refUrl.pathname + refUrl.search);
+                }
+            } catch (_) { /* malformed referrer — fall through */ }
         }
         res.redirect(`/company/internships/${application.internship._id}/applicants`);
     } catch (error) {
@@ -378,7 +414,13 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
         const internship = await Internship.findOne({ _id: req.params.id, companyId: req.user.companyId });
         if (!internship) return res.status(404).send('Internship not found or unauthorized.');
 
-        const { title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state, deadline } = req.body;
+        const { title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state, deadline, action } = req.body;
+
+        const isDraft = action === 'draft';
+        const isPublish = action === 'publish' || action === 'resume';
+        const isPause = action === 'pause';
+        const trimmedTitle = title && typeof title === 'string' ? title.trim() : '';
+        const parsedVacancies = parseInt(vacancies);
 
         if (deadline !== undefined) {
             try {
@@ -408,19 +450,30 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
         const prevStatus = internship.status;
         if (isPublish) {
             internship.status = 'published';
+            internship.isPaused = false;
+        } else if (isPause) {
+            internship.status = 'paused';
+            internship.isPaused = true;
         } else if (isDraft) {
             internship.status = 'draft';
+            internship.isPaused = false;
         }
 
         await internship.save();
 
-        if (prevStatus !== internship.status && typeof chatRouter.invalidateChatCache === 'function') {
+        if (prevStatus !== 'published' && internship.status === 'published') {
+            notifyPublishedInternship(internship);
+        }
+
+        if (prevStatus !== internship.status && typeof chatRouter !== 'undefined' && typeof chatRouter.invalidateChatCache === 'function') {
             chatRouter.invalidateChatCache();
         }
 
         if (req.flash) {
             if (isPublish) {
                 req.flash('success_msg', 'Opportunity published successfully! It is now live.');
+            } else if (isPause) {
+                req.flash('success_msg', 'Internship updated and applications are now paused.');
             } else if (isDraft) {
                 req.flash('success_msg', 'Draft updated successfully!');
             } else {
@@ -450,10 +503,16 @@ router.post('/company/internships/publish/:id', isAuthenticated, requireCompanyR
             return res.redirect(`/company/internships/edit/${internship._id}`);
         }
 
+        const previousStatus = internship.status;
         internship.status = 'published';
+        internship.isPaused = false;
         await internship.save();
 
-        if (typeof chatRouter.invalidateChatCache === 'function') {
+        if (previousStatus !== 'published') {
+            notifyPublishedInternship(internship);
+        }
+
+        if (typeof chatRouter !== 'undefined' && typeof chatRouter.invalidateChatCache === 'function') {
             chatRouter.invalidateChatCache();
         }
 
@@ -464,6 +523,113 @@ router.post('/company/internships/publish/:id', isAuthenticated, requireCompanyR
         res.redirect('/company/dashboard');
     }
 });
+
+// Pause applications for an internship
+const handlePause = async (req, res) => {
+    try {
+        const internship = await Internship.findOne({ _id: req.params.id, companyId: req.user.companyId });
+        if (!internship) return res.status(404).send('Internship not found or unauthorized.');
+
+        if (internship.status === 'draft') {
+            if (req.flash) req.flash('error_msg', 'Cannot pause a draft internship. Publish it first.');
+            return res.redirect('/company/dashboard');
+        }
+
+        internship.status = 'paused';
+        internship.isPaused = true;
+        await internship.save();
+
+        if (typeof chatRouter.invalidateChatCache === 'function') {
+            chatRouter.invalidateChatCache();
+        }
+
+        const msg = `Applications for "${internship.title}" are now temporarily paused.`;
+        if (req.xhr || req.headers.accept?.includes('application/json')) {
+            return res.json({ success: true, isPaused: true, status: 'paused', message: msg });
+        }
+        if (req.flash) req.flash('success_msg', msg);
+        const referrer = req.get('Referrer');
+        res.redirect(referrer || '/company/dashboard');
+    } catch (error) {
+        console.error('Error pausing internship:', error);
+        res.status(500).send('Database Error');
+    }
+};
+
+// Resume applications for an internship
+const handleResume = async (req, res) => {
+    try {
+        const internship = await Internship.findOne({ _id: req.params.id, companyId: req.user.companyId });
+        if (!internship) return res.status(404).send('Internship not found or unauthorized.');
+
+        internship.status = 'published';
+        internship.isPaused = false;
+        await internship.save();
+
+        if (typeof chatRouter.invalidateChatCache === 'function') {
+            chatRouter.invalidateChatCache();
+        }
+
+        const msg = `Applications for "${internship.title}" have been resumed! New candidates can apply now.`;
+        if (req.xhr || req.headers.accept?.includes('application/json')) {
+            return res.json({ success: true, isPaused: false, status: 'published', message: msg });
+        }
+        if (req.flash) req.flash('success_msg', msg);
+        const referrer = req.get('Referrer');
+        res.redirect(referrer || '/company/dashboard');
+    } catch (error) {
+        console.error('Error resuming internship:', error);
+        res.status(500).send('Database Error');
+    }
+};
+
+// Toggle pause status for an internship
+const handleTogglePause = async (req, res) => {
+    try {
+        const internship = await Internship.findOne({ _id: req.params.id, companyId: req.user.companyId });
+        if (!internship) return res.status(404).send('Internship not found or unauthorized.');
+
+        if (internship.status === 'draft') {
+            if (req.flash) req.flash('error_msg', 'Cannot pause a draft internship. Publish it first.');
+            return res.redirect('/company/dashboard');
+        }
+
+        const willPause = !(internship.status === 'paused' || internship.isPaused);
+        if (willPause) {
+            internship.status = 'paused';
+            internship.isPaused = true;
+        } else {
+            internship.status = 'published';
+            internship.isPaused = false;
+        }
+        await internship.save();
+
+        if (typeof chatRouter.invalidateChatCache === 'function') {
+            chatRouter.invalidateChatCache();
+        }
+
+        const msg = willPause
+            ? `Applications for "${internship.title}" are now temporarily paused.`
+            : `Applications for "${internship.title}" have been resumed!`;
+
+        if (req.xhr || req.headers.accept?.includes('application/json')) {
+            return res.json({ success: true, isPaused: willPause, status: internship.status, message: msg });
+        }
+        if (req.flash) req.flash('success_msg', msg);
+        const referrer = req.get('Referrer');
+        res.redirect(referrer || '/company/dashboard');
+    } catch (error) {
+        console.error('Error toggling pause on internship:', error);
+        res.status(500).send('Database Error');
+    }
+};
+
+router.post('/company/internships/:id/pause', isAuthenticated, requireCompanyRole(['company', 'recruiter']), handlePause);
+router.post('/company/internships/pause/:id', isAuthenticated, requireCompanyRole(['company', 'recruiter']), handlePause);
+router.post('/company/internships/:id/resume', isAuthenticated, requireCompanyRole(['company', 'recruiter']), handleResume);
+router.post('/company/internships/resume/:id', isAuthenticated, requireCompanyRole(['company', 'recruiter']), handleResume);
+router.post('/company/internships/:id/toggle-pause', isAuthenticated, requireCompanyRole(['company', 'recruiter']), handleTogglePause);
+router.post('/company/internships/toggle-pause/:id', isAuthenticated, requireCompanyRole(['company', 'recruiter']), handleTogglePause);
 
 router.post('/company/internships/delete/:id', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {

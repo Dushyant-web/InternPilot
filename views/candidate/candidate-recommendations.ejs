@@ -162,10 +162,16 @@
 
                         <div class="pt-5 mt-auto">
                             <% const isApplied = typeof appliedIds !== 'undefined' && appliedIds.includes(rec.role._id.toString()); %>
+                            <% const isExpired = rec.role.applicationDeadline && new Date() > new Date(rec.role.applicationDeadline); %>
                             <% if (isApplied) { %>
                                 <button disabled
                                     class="w-full py-2.5 px-4 bg-emerald-50 text-emerald-700 font-semibold text-sm rounded-xl border border-emerald-200 cursor-not-allowed flex items-center justify-center gap-1.5">
                                     <i class="ph-bold ph-check-circle text-base"></i> Applied
+                                </button>
+                            <% } else if (isExpired) { %>
+                                <button disabled
+                                    class="w-full py-2.5 px-4 bg-slate-100 text-slate-400 font-medium text-sm rounded-xl cursor-not-allowed border border-slate-200">
+                                    Applications Closed
                                 </button>
                             <% } else if (eligibility && eligibility.isEligible) { %>
                                 <form action="/internships/<%= rec.role._id %>/apply" method="POST" data-loading-text="Applying...">

@@ -70,13 +70,13 @@
                 </div>
 
                 <div class="flex gap-2">
-                    <button type="reset"
-                        class="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-lg transition-colors shadow-sm">
-                    Reset
+                    <button type="submit" name="action" value="draft" formnovalidate
+                        class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-lg transition-colors border border-slate-300 shadow-sm text-center cursor-pointer">
+                    Save as Draft
                     </button>
 
-                    <button type="submit"
-                        class="w-2/3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-colors shadow-sm">
+                    <button type="submit" name="action" value="publish"
+                        class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-colors shadow-sm text-center cursor-pointer">
                     Publish Opportunity
                     </button>
                 </div>
@@ -108,7 +108,7 @@
             </div>
 
             <!-- Status Filter Tabs -->
-            <div class="flex items-center gap-2 text-xs font-medium border-b border-slate-200 pb-2">
+            <div class="flex items-center gap-2 text-xs font-medium border-b border-slate-200 pb-2 flex-wrap">
                 <a href="/company/dashboard?status=all"
                     class="px-3 py-1.5 rounded-lg transition-colors <%= (typeof currentFilter === 'undefined' || currentFilter === 'all') ? 'bg-indigo-600 text-white font-semibold shadow-xs' : 'text-slate-600 hover:bg-slate-100' %>">
                     All (<%= typeof totalCount !== 'undefined' ? totalCount : (internships ? internships.length : 0) %>)
@@ -117,8 +117,12 @@
                     class="px-3 py-1.5 rounded-lg transition-colors <%= (typeof currentFilter !== 'undefined' && currentFilter === 'published') ? 'bg-emerald-600 text-white font-semibold shadow-xs' : 'text-slate-600 hover:bg-slate-100' %>">
                     Published (<%= typeof publishedCount !== 'undefined' ? publishedCount : 0 %>)
                 </a>
+                <a href="/company/dashboard?status=paused"
+                    class="px-3 py-1.5 rounded-lg transition-colors <%= (typeof currentFilter !== 'undefined' && currentFilter === 'paused') ? 'bg-amber-600 text-white font-semibold shadow-xs' : 'text-slate-600 hover:bg-slate-100' %>">
+                    Paused (<%= typeof pausedCount !== 'undefined' ? pausedCount : 0 %>)
+                </a>
                 <a href="/company/dashboard?status=draft"
-                    class="px-3 py-1.5 rounded-lg transition-colors <%= (typeof currentFilter !== 'undefined' && currentFilter === 'draft') ? 'bg-amber-600 text-white font-semibold shadow-xs' : 'text-slate-600 hover:bg-slate-100' %>">
+                    class="px-3 py-1.5 rounded-lg transition-colors <%= (typeof currentFilter !== 'undefined' && currentFilter === 'draft') ? 'bg-slate-700 text-white font-semibold shadow-xs' : 'text-slate-600 hover:bg-slate-100' %>">
                     Drafts (<%= typeof draftCount !== 'undefined' ? draftCount : 0 %>)
                 </a>
             </div>
@@ -126,7 +130,8 @@
             <% if (internships && internships.length > 0) { %>
                 <div class="space-y-4">
                     <% internships.forEach(internship => { %>
-                        <div class="bg-white border <%= internship.status === 'draft' ? 'border-amber-200 bg-amber-50/20' : 'border-slate-200' %> rounded-xl p-5 shadow-sm space-y-3">
+                        <% const isInternshipPaused = internship.status === 'paused' || internship.isPaused; %>
+                        <div class="bg-white border <%= internship.status === 'draft' ? 'border-amber-200 bg-amber-50/20' : (isInternshipPaused ? 'border-amber-300 bg-amber-50/15' : 'border-slate-200') %> rounded-xl p-5 shadow-sm space-y-3">
                             <div class="flex justify-between items-start gap-3">
                                 <div>
                                     <div class="flex items-center gap-2 flex-wrap">
@@ -134,8 +139,12 @@
                                             <%= internship.title %>
                                         </h3>
                                         <% if (internship.status === 'draft') { %>
-                                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 flex items-center gap-1">
                                                 <i class="ph-bold ph-pencil-simple-line"></i> Draft
+                                            </span>
+                                        <% } else if (isInternshipPaused) { %>
+                                            <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                                                <i class="ph-bold ph-pause-circle"></i> Applications Paused
                                             </span>
                                         <% } else { %>
                                             <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
@@ -197,11 +206,31 @@
                                             Publish Now
                                         </button>
                                     </form>
+                                <% } else if (isInternshipPaused) { %>
+                                    <!-- Resume Applications Action Form -->
+                                    <form action="/company/internships/<%= internship._id %>/resume" method="POST" class="inline">
+                                        <button type="submit"
+                                            class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3.5 py-2 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+                                            title="Resume accepting applications for this listing">
+                                            <i class="ph-bold ph-play text-sm"></i>
+                                            Resume Applications
+                                        </button>
+                                    </form>
+                                <% } else { %>
+                                    <!-- Pause Applications Action Form -->
+                                    <form action="/company/internships/<%= internship._id %>/pause" method="POST" class="inline">
+                                        <button type="submit"
+                                            class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 font-semibold text-xs px-3.5 py-2 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
+                                            title="Temporarily stop receiving new applications">
+                                            <i class="ph-bold ph-pause text-sm"></i>
+                                            Pause Applications
+                                        </button>
+                                    </form>
                                 <% } %>
 
                                 <!-- Edit Button -->
                                 <a href="/company/internships/edit/<%= internship._id %>"
-                                    class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold text-xs px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5">
+                                    class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5">
                                     <i class="ph-bold ph-pencil-simple text-sm"></i>
                                     Edit
                                 </a>
@@ -238,6 +267,8 @@
                 <div class="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 text-sm">
                     <% if (typeof currentFilter !== 'undefined' && currentFilter === 'draft') { %>
                         No saved drafts. Use the "Save as Draft" button on the left to save incomplete listings!
+                    <% } else if (typeof currentFilter !== 'undefined' && currentFilter === 'paused') { %>
+                        No paused listings. You can pause any published internship to temporarily stop receiving new applications while reviewing candidates.
                     <% } else if (typeof currentFilter !== 'undefined' && currentFilter === 'published') { %>
                         No published opportunities yet. Publish your first role using the form on the left!
                     <% } else { %>
