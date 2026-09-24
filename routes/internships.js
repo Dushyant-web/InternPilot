@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
 
 router.post('/new', isAuthenticated, authorize('company'), async (req, res) => {
     try {
-        const { title, company: companyName, location, sector, stipend, vacancies, requiredSkills } = req.body;
+        const { title, company: companyName, location, sector, stipend, duration, vacancies, requiredSkills } = req.body;
 
         const locationParts = location ? location.split(',') : [];
         const district = locationParts[0] ? locationParts[0].trim() : '';
@@ -48,6 +48,7 @@ router.post('/new', isAuthenticated, authorize('company'), async (req, res) => {
             sector,
             location: { district, state },
             monthlyStipend: stipendNumber,
+            duration: duration || '12 Months',
             vacancies: vacancies ? parseInt(vacancies) : 1,
             requiredSkills: requiredSkills ? requiredSkills.split(',').map(s => s.trim()) : [],
             postedBy: req.user._id
