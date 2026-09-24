@@ -739,7 +739,8 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
 
         if (queryConditions.length > 0) {
             internships = await Internship.find({
-                status: { $ne: 'draft' },
+                status: { $nin: ['draft', 'paused'] },
+                isPaused: { $ne: true },
                 ...activeDeadlineCondition,
                 $or: queryConditions
             });
@@ -748,7 +749,8 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
         // If no match by district/qualification or not set, fall back to open internships
         if (!internships || internships.length === 0) {
             internships = await Internship.find({
-                status: { $ne: 'draft' },
+                status: { $nin: ['draft', 'paused'] },
+                isPaused: { $ne: true },
                 ...activeDeadlineCondition
             }).limit(20);
         }
