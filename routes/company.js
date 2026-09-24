@@ -61,7 +61,7 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
 
 router.post('/company/internships/create', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
-        const { title, sector, requiredSkills, minQualifications, monthlyStipend, stipend, vacancies, duration, district, state, location, deadline, action } = req.body;
+        const { title, sector, requiredSkills, minQualifications, monthlyStipend, stipend, vacancies, duration, district, state, location, deadline, action, description } = req.body;
 
         const isDraft = action === 'draft';
         const status = isDraft ? 'draft' : 'published';
@@ -87,6 +87,7 @@ router.post('/company/internships/create', isAuthenticated, requireCompanyRole([
         }
 
         const resolvedTitle = trimmedTitle || (isDraft ? 'Untitled Draft' : 'Internship Opportunity');
+
 
         const skillsArray = requiredSkills
             ? requiredSkills.split(',').map(s => s.trim()).filter(Boolean)
@@ -114,6 +115,8 @@ router.post('/company/internships/create', isAuthenticated, requireCompanyRole([
             monthlyStipend: stipendNumber,
             vacancies: vacancies ? Number(vacancies) : 1,
             duration: duration || (isDraft ? '' : '12 Months'),
+            description: description || '',
+
             location: {
                 district: resolvedDistrict,
                 state: resolvedState
@@ -420,7 +423,7 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
         const internship = await Internship.findOne({ _id: req.params.id, companyId: req.user.companyId });
         if (!internship) return res.status(404).send('Internship not found or unauthorized.');
 
-        const { title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state, deadline, action } = req.body;
+        const { title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state, deadline, action, description } = req.body;
 
         const isDraft = action === 'draft';
         const isPublish = action === 'publish' || action === 'resume';
@@ -448,10 +451,12 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
         internship.monthlyStipend = monthlyStipend !== undefined && monthlyStipend !== '' ? Number(monthlyStipend) : 0;
         internship.vacancies = isNaN(parsedVacancies) ? 1 : parsedVacancies;
         internship.duration = duration || '12 Months';
+        internship.description = description || '';
         internship.location = {
             district: district || '',
             state: state || ''
         };
+
 
         const prevStatus = internship.status;
         if (isPublish) {
