@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
 const { isAuthenticated, authorize, requireCompanyRole } = require('../middleware/auth');
 const { parseISTEndOfDay } = require('../utils/dateUtils');
+const chatRouter = require('./chat');
 
 function calculateSkillScore(userSkills = [], requiredSkills = []) {
     if (!requiredSkills || !requiredSkills.length) return 100;
@@ -19,7 +21,16 @@ function calculateSkillScore(userSkills = [], requiredSkills = []) {
 
 router.get('/', async (req, res) => {
     try {
-        const internships = await Internship.find({ status: { $ne: 'draft' } }).sort({ _id: -1 });
+        const filter = req.query.status || req.query.filter || 'all'; // 'all', 'active', 'paused'
+        let query = { status: { $ne: 'draft' } };
+
+        if (filter === 'active') {
+            query = { status: { $nin: ['draft', 'paused'] }, isPaused: { $ne: true } };
+        } else if (filter === 'paused') {
+            query = { $or: [{ status: 'paused' }, { isPaused: true }] };
+        }
+
+        const internships = await Internship.find(query).sort({ _id: -1 });
         const candidate = req.user;
 
         let appliedIds = [];
@@ -28,9 +39,58 @@ router.get('/', async (req, res) => {
             appliedIds = apps.map(appDoc => appDoc.internship ? appDoc.internship.toString() : null).filter(Boolean);
         }
 
-        res.render('extras/internships', { internships, candidate, appliedIds });
+        res.render('extras/internships', { internships, candidate, appliedIds, currentFilter: filter });
     } catch (error) {
         console.error('Error fetching internships:', error);
+        res.status(500).send('Database Error');
+    }
+});
+
+router.get('/:id', async (req, res) => {
+    try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            if (req.flash) req.flash('error_msg', 'Internship listing not found.');
+            return res.redirect('/internships');
+        }
+
+        const internship = await Internship.findById(req.params.id);
+        if (!internship) {
+            if (req.flash) req.flash('error_msg', 'Internship listing not found.');
+            return res.redirect('/internships');
+        }
+
+        if (internship.status === 'draft') {
+            const isOwnerOrAdmin = req.user && (
+                req.user.role === 'admin' ||
+                (internship.companyId && req.user.companyId && internship.companyId.toString() === req.user.companyId.toString()) ||
+                (internship.postedBy && internship.postedBy.toString() === req.user._id.toString())
+            );
+            if (!isOwnerOrAdmin) {
+                if (req.flash) req.flash('error_msg', 'This internship listing is currently a private draft.');
+                return res.redirect('/internships');
+            }
+        }
+
+        const candidate = req.user;
+        let hasApplied = false;
+        if (candidate && candidate.role === 'candidate') {
+            const existingApp = await Application.findOne({
+                internship: internship._id,
+                candidate: candidate._id
+            });
+            hasApplied = !!existingApp;
+        }
+
+        const isPaused = internship.status === 'paused' || internship.isPaused === true;
+
+        res.render('extras/internship-detail', {
+            internship,
+            candidate,
+            hasApplied,
+            isPaused
+        });
+    } catch (error) {
+        console.error('Error loading internship details:', error);
         res.status(500).send('Database Error');
     }
 });
@@ -213,7 +273,19 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
             return res.redirect('/internships');
         }
 
+        if (internship.status === 'paused' || internship.isPaused) {
+            if (req.xhr || req.headers.accept?.includes('application/json')) {
+                return res.status(400).json({ error: 'Applications for this position are temporarily paused.' });
+            }
+            if (req.flash) req.flash('error_msg', 'Applications for this position are temporarily paused.');
+            const referrer = req.get('Referrer');
+            return res.redirect(referrer || `/internships/${internship._id}`);
+        }
+
         if (internship.applicationDeadline && new Date() > internship.applicationDeadline) {
+            if (req.xhr || req.headers.accept?.includes('application/json')) {
+                return res.status(400).json({ error: 'The application deadline for this internship has passed.' });
+            }
             if (req.flash) req.flash('error_msg', 'The application deadline for this internship has passed.');
             return res.redirect('/internships');
         }
@@ -240,6 +312,158 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
         res.redirect('/candidate/applications');
     } catch (error) {
         console.error('Error applying for internship:', error);
+        res.status(500).send('Database Error');
+    }
+});
+
+// Helper to verify recruiter/admin authorization for internship status modification
+async function verifyInternshipManager(req) {
+    const isAdmin = req.user && req.user.role === 'admin';
+    const isCompanyUser = req.user && ['company', 'recruiter'].includes(req.user.role);
+
+    if (!isAdmin && !isCompanyUser) {
+        return { authorized: false, error: 'Unauthorized. Only recruiters or administrators can modify listing status.', statusCode: 403 };
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return { authorized: false, error: 'Invalid internship ID.', statusCode: 400 };
+    }
+
+    const internship = await Internship.findById(req.params.id);
+    if (!internship) {
+        return { authorized: false, error: 'Internship not found.', statusCode: 404 };
+    }
+
+    if (!isAdmin) {
+        const isOwner = (internship.companyId && req.user.companyId && internship.companyId.toString() === req.user.companyId.toString()) ||
+                        (internship.postedBy && internship.postedBy.toString() === req.user._id.toString());
+        if (!isOwner) {
+            return { authorized: false, error: 'Unauthorized. You do not own this internship listing.', statusCode: 403 };
+        }
+    }
+
+    return { authorized: true, internship };
+}
+
+router.post('/:id/pause', isAuthenticated, async (req, res) => {
+    try {
+        const { authorized, error, statusCode, internship } = await verifyInternshipManager(req);
+        if (!authorized) {
+            if (req.xhr || req.headers.accept?.includes('application/json')) {
+                return res.status(statusCode).json({ error });
+            }
+            if (req.flash) req.flash('error_msg', error);
+            return res.redirect('/internships');
+        }
+
+        if (internship.status === 'draft') {
+            const msg = 'Draft listings cannot be paused. Publish the listing first.';
+            if (req.xhr || req.headers.accept?.includes('application/json')) {
+                return res.status(400).json({ error: msg });
+            }
+            if (req.flash) req.flash('error_msg', msg);
+            return res.redirect('/company/dashboard');
+        }
+
+        internship.status = 'paused';
+        internship.isPaused = true;
+        await internship.save();
+
+        if (typeof chatRouter.invalidateChatCache === 'function') {
+            chatRouter.invalidateChatCache();
+        }
+
+        const successMsg = `Applications for "${internship.title}" are now temporarily paused.`;
+        if (req.xhr || req.headers.accept?.includes('application/json')) {
+            return res.json({ success: true, isPaused: true, status: 'paused', message: successMsg });
+        }
+        if (req.flash) req.flash('success_msg', successMsg);
+        const referrer = req.get('Referrer');
+        res.redirect(referrer || '/company/dashboard');
+    } catch (err) {
+        console.error('Error pausing internship:', err);
+        res.status(500).send('Database Error');
+    }
+});
+
+router.post('/:id/resume', isAuthenticated, async (req, res) => {
+    try {
+        const { authorized, error, statusCode, internship } = await verifyInternshipManager(req);
+        if (!authorized) {
+            if (req.xhr || req.headers.accept?.includes('application/json')) {
+                return res.status(statusCode).json({ error });
+            }
+            if (req.flash) req.flash('error_msg', error);
+            return res.redirect('/internships');
+        }
+
+        internship.status = 'published';
+        internship.isPaused = false;
+        await internship.save();
+
+        if (typeof chatRouter.invalidateChatCache === 'function') {
+            chatRouter.invalidateChatCache();
+        }
+
+        const successMsg = `Applications for "${internship.title}" have been resumed! New candidates can now apply.`;
+        if (req.xhr || req.headers.accept?.includes('application/json')) {
+            return res.json({ success: true, isPaused: false, status: 'published', message: successMsg });
+        }
+        if (req.flash) req.flash('success_msg', successMsg);
+        const referrer = req.get('Referrer');
+        res.redirect(referrer || '/company/dashboard');
+    } catch (err) {
+        console.error('Error resuming internship:', err);
+        res.status(500).send('Database Error');
+    }
+});
+
+router.post('/:id/toggle-pause', isAuthenticated, async (req, res) => {
+    try {
+        const { authorized, error, statusCode, internship } = await verifyInternshipManager(req);
+        if (!authorized) {
+            if (req.xhr || req.headers.accept?.includes('application/json')) {
+                return res.status(statusCode).json({ error });
+            }
+            if (req.flash) req.flash('error_msg', error);
+            return res.redirect('/internships');
+        }
+
+        if (internship.status === 'draft') {
+            const msg = 'Draft listings cannot be paused. Publish the listing first.';
+            if (req.xhr || req.headers.accept?.includes('application/json')) {
+                return res.status(400).json({ error: msg });
+            }
+            if (req.flash) req.flash('error_msg', msg);
+            return res.redirect('/company/dashboard');
+        }
+
+        const willPause = !(internship.status === 'paused' || internship.isPaused);
+        if (willPause) {
+            internship.status = 'paused';
+            internship.isPaused = true;
+        } else {
+            internship.status = 'published';
+            internship.isPaused = false;
+        }
+        await internship.save();
+
+        if (typeof chatRouter.invalidateChatCache === 'function') {
+            chatRouter.invalidateChatCache();
+        }
+
+        const msg = willPause
+            ? `Applications for "${internship.title}" are now temporarily paused.`
+            : `Applications for "${internship.title}" have been resumed!`;
+
+        if (req.xhr || req.headers.accept?.includes('application/json')) {
+            return res.json({ success: true, isPaused: willPause, status: internship.status, message: msg });
+        }
+        if (req.flash) req.flash('success_msg', msg);
+        const referrer = req.get('Referrer');
+        res.redirect(referrer || '/company/dashboard');
+    } catch (err) {
+        console.error('Error toggling pause state:', err);
         res.status(500).send('Database Error');
     }
 });

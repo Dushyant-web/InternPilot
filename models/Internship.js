@@ -6,14 +6,35 @@ const internshipSchema = new mongoose.Schema({
     title: { 
         type: String, 
         required: function () {
-            return this.status === 'published';
+            return this.status === 'published' || this.status === 'paused';
         }
     },
     status: {
         type: String,
-        enum: ['published', 'draft', 'closed'],
+        enum: ['published', 'draft', 'closed', 'paused'],
         default: 'published',
-        index: true
+        index: true,
+        set: function (val) {
+            if (val === 'paused') {
+                this.isPaused = true;
+            } else if (val === 'published' || val === 'draft' || val === 'closed') {
+                this.isPaused = false;
+            }
+            return val;
+        }
+    },
+    isPaused: {
+        type: Boolean,
+        default: false,
+        index: true,
+        set: function (val) {
+            if (val === true && this.status !== 'draft') {
+                this.status = 'paused';
+            } else if (val === false && this.status === 'paused') {
+                this.status = 'published';
+            }
+            return val;
+        }
     },
     location: {
         district: String,
@@ -37,6 +58,32 @@ const internshipSchema = new mongoose.Schema({
         type: Date
     }
 }, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
+
+// Secondary safety check before saving
+internshipSchema.pre('save', function (next) {
+    if (this.status === 'paused') {
+        this.isPaused = true;
+    } else if (this.isPaused && this.status !== 'draft') {
+        this.status = 'paused';
+    } else if (this.status === 'published' && !this.isPaused) {
+        this.isPaused = false;
+    }
+    if (typeof next === 'function') {
+        next();
+    }
+});
+
+internshipSchema.methods.pause = function () {
+    this.status = 'paused';
+    this.isPaused = true;
+    return this.save();
+};
+
+internshipSchema.methods.resume = function () {
+    this.status = 'published';
+    this.isPaused = false;
+    return this.save();
+};
 
 internshipSchema.virtual('company').get(function () {
     return this.companyName;

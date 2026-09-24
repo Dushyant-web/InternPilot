@@ -6,8 +6,12 @@
                 <div class="flex items-center gap-2.5">
                     <h2 class="text-xl font-bold text-slate-900">Edit Internship Opportunity</h2>
                     <% if (internship.status === 'draft') { %>
-                        <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                        <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 flex items-center gap-1">
                             <i class="ph-bold ph-pencil-simple-line"></i> Draft
+                        </span>
+                    <% } else if (internship.status === 'paused' || internship.isPaused) { %>
+                        <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                            <i class="ph-bold ph-pause-circle"></i> Applications Paused
                         </span>
                     <% } else { %>
                         <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
@@ -94,10 +98,30 @@
                         class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
                         <i class="ph-bold ph-floppy-disk text-sm"></i> Save as Draft
                     </button>
-                    <button type="submit" name="action" value="publish"
-                        class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors shadow-sm flex items-center gap-1.5">
-                        <i class="ph-bold ph-paper-plane-tilt text-sm"></i> <%= internship.status === 'draft' ? 'Publish Opportunity' : 'Update & Keep Published' %>
-                    </button>
+                    <% if (internship.status === 'paused' || internship.isPaused) { %>
+                        <button type="submit" name="action" value="pause"
+                            class="px-5 py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                            <i class="ph-bold ph-pause text-sm"></i> Save & Keep Paused
+                        </button>
+                        <button type="submit" name="action" value="publish"
+                            class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors shadow-sm flex items-center gap-1.5">
+                            <i class="ph-bold ph-play text-sm"></i> Resume & Publish
+                        </button>
+                    <% } else if (internship.status !== 'draft') { %>
+                        <button type="submit" name="action" value="pause"
+                            class="px-5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                            <i class="ph-bold ph-pause text-sm"></i> Pause Applications
+                        </button>
+                        <button type="submit" name="action" value="publish"
+                            class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors shadow-sm flex items-center gap-1.5">
+                            <i class="ph-bold ph-paper-plane-tilt text-sm"></i> Update & Keep Published
+                        </button>
+                    <% } else { %>
+                        <button type="submit" name="action" value="publish"
+                            class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors shadow-sm flex items-center gap-1.5">
+                            <i class="ph-bold ph-paper-plane-tilt text-sm"></i> Publish Opportunity
+                        </button>
+                    <% } %>
                 </div>
             </form>
         </div>
