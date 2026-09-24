@@ -397,6 +397,9 @@
 
         </div>
 
+        <% if (typeof showConflictModal !== 'undefined' && showConflictModal && typeof conflicts !== 'undefined' && conflicts.length > 0) { %>
+            <%- include('../partials/profileConflictModal') %>
+        <% } %>
 
         <div id="editProfileModal"
             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
