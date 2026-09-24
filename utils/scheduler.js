@@ -1,0 +1,71 @@
+const cron = require('node-cron');
+const Internship = require('../models/Internship');
+const Notification = require('../models/Notification');
+const { parseISTEndOfDay } = require('./dateUtils');
+
+const APPROACHING_DEADLINE_DAYS = parseInt(process.env.APPROACHING_DEADLINE_DAYS, 10) || 3;
+
+/**
+ * Scheduled job to check for approaching internship deadlines.
+ * Runs at midnight every day.
+ */
+cron.schedule('0 0 * * *', async () => {
+    try {
+        console.log('[Scheduler] Running deadline checker...');
+        
+        // Use a timezone-safe boundary (e.g. 3 days from now)
+        const now = new Date();
+        
+        // Exact target day in the future
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + APPROACHING_DEADLINE_DAYS);
+        
+        // Boundary for start of target day and end of target day
+        const startOfTarget = new Date(targetDate.setHours(0, 0, 0, 0));
+        const endOfTarget = new Date(targetDate.setHours(23, 59, 59, 999));
+
+        const upcomingDeadlines = await Internship.find({
+            status: 'published',
+            isPaused: { $ne: true },
+            applicationDeadline: {
+                $gte: startOfTarget,
+                $lte: endOfTarget
+            }
+        });
+
+        if (upcomingDeadlines.length === 0) return;
+
+        const operations = upcomingDeadlines.map(internship => {
+            if (!internship.companyId) return null;
+            
+            return {
+                updateOne: {
+                    filter: {
+                        companyId: internship.companyId,
+                        internship: internship._id,
+                        type: 'approaching_deadline'
+                    },
+                    update: {
+                        $setOnInsert: {
+                            companyId: internship.companyId,
+                            type: 'approaching_deadline',
+                            title: 'Deadline Approaching',
+                            message: `The deadline for ${internship.title} is approaching in ${APPROACHING_DEADLINE_DAYS} days.`,
+                            link: `/company/dashboard`,
+                            internship: internship._id,
+                            isRead: false
+                        }
+                    },
+                    upsert: true
+                }
+            };
+        }).filter(Boolean);
+
+        if (operations.length > 0) {
+            await Notification.bulkWrite(operations, { ordered: false });
+        }
+        
+    } catch (error) {
+        console.error('[Scheduler] Error checking deadlines:', error);
+    }
+});

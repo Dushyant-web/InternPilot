@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
+const { notifyNewApplication, checkAndNotifyHighVolume } = require('../utils/recruiterNotifications');
 const { isAuthenticated, authorize } = require('../middleware/auth');
 
 function calculateSkillScore(userSkills = [], requiredSkills = []) {
@@ -149,11 +150,15 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
 
         const score = calculateSkillScore(candidate.skills || [], internship.requiredSkills || []);
 
-        await Application.create({
+        const newApp = await Application.create({
             internship: internship._id,
             candidate: candidate._id,
             matchScore: score
         });
+
+        // Trigger recruiter notifications (non-blocking)
+        notifyNewApplication(newApp, internship);
+        checkAndNotifyHighVolume(internship._id);
 
         req.flash('success_msg', 'Application submitted successfully!');
         res.redirect('/candidate/applications');

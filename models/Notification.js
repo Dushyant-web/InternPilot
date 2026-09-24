@@ -4,12 +4,27 @@ const notificationSchema = new mongoose.Schema({
     recipient: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        required: function() { return !this.companyId; },
+        index: true
+    },
+    companyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: function() { return !this.recipient; },
         index: true
     },
     type: {
         type: String,
-        enum: ['application_status', 'application_shortlisted', 'new_matching_internship'],
+        enum: [
+            'application_status', 
+            'application_shortlisted', 
+            'new_matching_internship',
+            'new_application',
+            'candidate_withdrawal',
+            'approaching_deadline',
+            'high_application_volume',
+            'upcoming_interview'
+        ],
         required: true
     },
     title: { type: String, required: true },
@@ -23,15 +38,47 @@ const notificationSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Application'
     },
+    metadata: {
+        threshold: { type: Number },
+        interviewId: { type: String }
+    },
     isRead: { type: Boolean, default: false, index: true }
 }, { timestamps: true });
 
+// Read state indices
 notificationSchema.index({ recipient: 1, isRead: 1, createdAt: -1 });
+notificationSchema.index({ companyId: 1, isRead: 1, createdAt: -1 });
+
+// Idempotency indices
 notificationSchema.index(
     { recipient: 1, internship: 1, type: 1 },
     {
         unique: true,
         partialFilterExpression: { type: 'new_matching_internship' }
+    }
+);
+
+notificationSchema.index(
+    { companyId: 1, internship: 1, type: 1 },
+    {
+        unique: true,
+        partialFilterExpression: { type: 'approaching_deadline' }
+    }
+);
+
+notificationSchema.index(
+    { companyId: 1, internship: 1, type: 1, 'metadata.threshold': 1 },
+    {
+        unique: true,
+        partialFilterExpression: { type: 'high_application_volume' }
+    }
+);
+
+notificationSchema.index(
+    { companyId: 1, application: 1, type: 1, 'metadata.interviewId': 1 },
+    {
+        unique: true,
+        partialFilterExpression: { type: 'upcoming_interview' }
     }
 );
 

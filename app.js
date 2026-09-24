@@ -70,12 +70,21 @@ app.use(async (req, res, next) => {
     res.locals.error = req.flash("error");
     res.locals.notificationUnreadCount = 0;
 
-    if (req.user?.role === 'candidate') {
+    if (req.user) {
         try {
-            res.locals.notificationUnreadCount = await Notification.countDocuments({
-                recipient: req.user._id,
-                isRead: false
-            });
+            const role = req.user.role;
+            if (role === 'candidate') {
+                res.locals.notificationUnreadCount = await Notification.countDocuments({
+                    recipient: req.user._id,
+                    isRead: false
+                });
+            } else if (role === 'company' || role === 'recruiter') {
+                const targetCompanyId = role === 'company' ? req.user._id : req.user.companyId;
+                res.locals.notificationUnreadCount = await Notification.countDocuments({
+                    companyId: targetCompanyId,
+                    isRead: false
+                });
+            }
         } catch (error) {
             // A notification lookup must never prevent the rest of the page
             // from loading while the feature is unavailable.
@@ -157,6 +166,9 @@ app.use((err, req, res, next) => {
         res.send(html);
     });
 });
+
+// Initialize background scheduler
+require('./utils/scheduler');
 
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
