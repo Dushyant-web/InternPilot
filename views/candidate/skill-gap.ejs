@@ -164,9 +164,11 @@
                                 <p class="text-xs text-slate-500">
                                     <% if (alreadyApplied) { %>
                                         You have already applied to this internship.
-                                        <% } else if (deadlinePassed) { %>
-                                            Applications for this internship are closed.
-                                            <% } else { %>
+                                        <% } else if (isPaused) { %>
+                                            The recruiter has temporarily paused new applications for this position.
+                                            <% } else if (deadlinePassed) { %>
+                                                Applications for this internship are closed.
+                                                <% } else { %>
                                                 A gap does not block you from applying. Recruiters can still see the
                                                 rest of your profile.
                                                 <% } %>
@@ -183,7 +185,13 @@
                                             class="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-4 py-2 rounded-lg cursor-not-allowed">
                                             <i class="ph-bold ph-check-circle"></i> Applied
                                         </button>
-                                        <% } else if (deadlinePassed) { %>
+                                        <% } else if (isPaused) { %>
+                                            <button disabled
+                                                class="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold px-4 py-2 rounded-lg cursor-not-allowed"
+                                                title="The recruiter has temporarily paused new applications for this position.">
+                                                <i class="ph-bold ph-pause-circle"></i> Applications Paused
+                                            </button>
+                                            <% } else if (deadlinePassed) { %>
                                             <button disabled
                                                 class="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-semibold px-4 py-2 rounded-lg cursor-not-allowed">
                                                 <i class="ph-bold ph-x-circle"></i> Applications Closed
