@@ -7,33 +7,69 @@
                 Official opportunities posted by top partner organizations under the Prime Minister's Internship Scheme.
             </p>
         </div>
+
+        <!-- Filter Tabs: All, Active, Paused -->
+        <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold self-start md:self-auto border border-slate-200">
+            <a href="/internships?status=all"
+                class="px-3 py-1.5 rounded-lg transition-colors <%= (typeof currentFilter === 'undefined' || currentFilter === 'all') ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900' %>">
+                All Listings
+            </a>
+            <a href="/internships?status=active"
+                class="px-3 py-1.5 rounded-lg transition-colors <%= (typeof currentFilter !== 'undefined' && currentFilter === 'active') ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-600 hover:text-slate-900' %>">
+                Active Openings
+            </a>
+            <a href="/internships?status=paused"
+                class="px-3 py-1.5 rounded-lg transition-colors <%= (typeof currentFilter !== 'undefined' && currentFilter === 'paused') ? 'bg-white text-amber-700 shadow-xs' : 'text-slate-600 hover:text-slate-900' %>">
+                Applications Paused
+            </a>
+        </div>
     </div>
 
     <div class="mb-5 flex justify-end">
+        <label for="sortInternships" class="sr-only">Sort listings</label>
         <select id="sortInternships"
-            class="text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700">
-            <option value="newest">Posting Date — Newest First</option>
-            <option value="stipend_desc">Stipend — High to Low</option>
-            <option value="stipend_asc">Stipend — Low to High</option>
-            <option value="duration_desc">Duration — High to Low</option>
-            <option value="duration_asc">Duration — Low to High</option>
+            class="text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+            <% const activeSort = (typeof currentSort !== 'undefined') ? currentSort : 'newest'; %>
+            <option value="newest" <%= activeSort === 'newest' ? 'selected' : '' %>>Posting Date &mdash; Newest First</option>
+            <option value="stipend_desc" <%= activeSort === 'stipend_desc' ? 'selected' : '' %>>Stipend &mdash; High to Low</option>
+            <option value="stipend_asc" <%= activeSort === 'stipend_asc' ? 'selected' : '' %>>Stipend &mdash; Low to High</option>
+            <option value="duration_desc" <%= activeSort === 'duration_desc' ? 'selected' : '' %>>Duration &mdash; Longest First</option>
+            <option value="duration_asc" <%= activeSort === 'duration_asc' ? 'selected' : '' %>>Duration &mdash; Shortest First</option>
         </select>
     </div>
 
+    <% if (!internships || internships.length === 0) { %>
+        <div class="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500">
+            <i class="ph-bold ph-magnifying-glass text-3xl text-slate-400 mb-2"></i>
+            <h3 class="font-bold text-slate-700 text-base">No listings found</h3>
+            <p class="text-xs text-slate-400 mt-1">
+                <%= typeof currentFilter !== 'undefined' && currentFilter === 'paused' ? 'There are currently no paused internship listings.' : 'No internships match your current filter.' %>
+            </p>
+            <a href="/internships?status=all" class="mt-4 inline-block px-4 py-2 bg-indigo-50 text-indigo-700 font-semibold text-xs rounded-lg hover:bg-indigo-100 transition-colors">
+                View All Listings
+            </a>
+        </div>
+    <% } else { %>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <% internships.forEach(item=> { %>
+            <% const isItemPaused = item.status === 'paused' || item.isPaused; %>
             <div
-                class="internship-card bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between relative group"
-                data-stipend="<%= item.monthlyStipend || 5000 %>"
-                data-duration="<%= parseInt(item.duration) || 12 %>"
-                data-posted="<%= item._id.getTimestamp().getTime() %>">
+                class="bg-white border <%= isItemPaused ? 'border-amber-300' : 'border-slate-200' %> rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between relative group">
 
                 <div>
                     <div class="flex items-center justify-between mb-3">
-                        <span
-                            class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
-                            <%= item.sector || "General" %>
-                        </span>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span
+                                class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
+                                <%= item.sector || "General" %>
+                            </span>
+                            <% if (isItemPaused) { %>
+                                <span
+                                    class="text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <i class="ph-bold ph-pause-circle"></i> Paused
+                                </span>
+                            <% } %>
+                        </div>
 
                         <div class="flex items-center gap-2">
                             <span
@@ -41,9 +77,23 @@
                                 <%= item.vacancies || 1 %> Openings
                             </span>
 
-                            <!-- Show Edit/Delete ONLY if Admin OR if logged in as the owning Company -->
-                            <% if (currentUser && (currentUser.role==='admin' || (currentUser.role==='company' &&
-                                item.postedBy && item.postedBy.toString()===currentUser._id.toString()))) { %>
+                            <!-- Show Edit/Pause/Delete ONLY if Admin OR if logged in as the owning Company -->
+                            <% if (currentUser && (currentUser.role==='admin' || ((currentUser.role==='company' || currentUser.role==='recruiter') &&
+                                item.companyId && currentUser.companyId && item.companyId.toString()===currentUser.companyId.toString()))) { %>
+                                <% if (isItemPaused) { %>
+                                    <form action="/internships/<%= item._id %>/resume" method="POST" class="inline" title="Resume Applications">
+                                        <button type="submit" class="text-amber-600 hover:text-emerald-600 transition-colors cursor-pointer p-0.5" title="Resume Applications">
+                                            <i class="ph-bold ph-play text-sm"></i>
+                                        </button>
+                                    </form>
+                                <% } else { %>
+                                    <form action="/internships/<%= item._id %>/pause" method="POST" class="inline" title="Pause Applications">
+                                        <button type="submit" class="text-slate-400 hover:text-amber-600 transition-colors cursor-pointer p-0.5" title="Pause Applications">
+                                            <i class="ph-bold ph-pause text-sm"></i>
+                                        </button>
+                                    </form>
+                                <% } %>
+
                                 <button onclick="openEditModal(this)" data-item='<%= JSON.stringify(item) %>'
                                     class="text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer p-0.5"
                                     title="Edit">
@@ -51,19 +101,21 @@
                                 </button>
 
                                 <form action="/internships/<%= item._id %>/delete" method="POST"
-                                    onsubmit="return confirm('Delete this internship?');" class="inline">
+                                    onsubmit="return confirm('Delete this internship?');" class="inline" data-loading-text="Deleting...">
                                     <button type="submit"
                                         class="text-slate-400 hover:text-rose-600 transition-colors cursor-pointer p-0.5"
                                         title="Delete">
                                         <i class="ph-bold ph-trash text-sm"></i>
                                     </button>
                                 </form>
-                                <% } %>
+                            <% } %>
                         </div>
                     </div>
 
                     <h3 class="text-base font-bold text-slate-900 leading-snug">
-                        <%= item.title %>
+                        <a href="/internships/<%= item._id %>" class="hover:text-indigo-600 transition-colors">
+                            <%= item.title %>
+                        </a>
                     </h3>
                     <p class="text-xs font-semibold text-slate-600 mt-0.5 flex items-center gap-1">
                         <i class="ph-bold ph-buildings text-slate-400"></i>
@@ -84,8 +136,7 @@
                             <span class="flex items-center gap-1.5">
                                 <i class="ph-bold ph-currency-inr text-emerald-600"></i>
                                 <strong class="text-slate-800">
-                                    ₹<%= item.monthlyStipend ? Number(item.monthlyStipend).toLocaleString('en-IN')
-                                        : '5,000' %> / month
+                                    ₹<%= Number(item.monthlyStipend ?? 5000).toLocaleString('en-IN') %> / month
                                 </strong>
                             </span>
                             <span class="text-slate-400">&bull;</span>
@@ -94,6 +145,20 @@
                                 <%= item.duration || "12 Months" %>
                             </span>
                         </div>
+                        <% if (item.applicationDeadline) { %>
+                        <div class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-100">
+                            <span class="flex items-center gap-1.5 <%= new Date() > item.applicationDeadline ? 'text-rose-600 font-semibold' : 'text-slate-500' %>">
+                                <i class="ph-bold ph-calendar-blank"></i>
+                                Apply By: <%= new Date(item.applicationDeadline).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) %>
+                            </span>
+                        </div>
+                        <% } %>
+                        <% if (isItemPaused) { %>
+                        <div class="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-amber-200 text-amber-800 font-semibold text-xs bg-amber-50/80 px-2 py-1 rounded">
+                            <i class="ph-bold ph-pause-circle text-amber-600 text-sm"></i>
+                            <span>Applications are temporarily paused.</span>
+                        </div>
+                        <% } %>
                     </div>
 
                     <div class="mb-4">
@@ -112,37 +177,58 @@
                     </div>
                 </div>
 
-                <!-- ACTION BUTTON AREA (HIDDEN FOR COMPANY & ADMIN ROLES) -->
-                <% if (!currentUser || (currentUser.role !=='company' && currentUser.role !=='admin' )) { %>
+                <!-- ACTION BUTTON AREA (HIDDEN FOR COMPANY, RECRUITER, & ADMIN ROLES) -->
+                <% if (!currentUser || (currentUser.role !=='company' && currentUser.role !=='admin' && currentUser.role !=='recruiter' )) { %>
                     <div class="pt-2">
                         <% if (!currentUser) { %>
-                            <!-- 1. NOT LOGGED IN -> Redirect to Login Page -->
-                            <a href="/auth/login"
-                                class="w-full text-center py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5">
-                                <i class="ph-bold ph-paper-plane-tilt"></i> Apply Now
-                            </a>
-                            <% } else if (typeof appliedIds !=='undefined' && appliedIds.includes(item._id.toString()))
-                                { %>
-                                <!-- 2. LOGGED IN CANDIDATE & ALREADY APPLIED -->
+                            <!-- 1. NOT LOGGED IN -> Redirect to Login Page or show Paused -->
+                            <% if (isItemPaused) { %>
                                 <button disabled
-                                    class="w-full text-center py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-not-allowed">
-                                    <i class="ph-bold ph-check-circle text-base"></i> Applied
+                                    class="w-full text-center py-2 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-not-allowed"
+                                    title="Applications for this position are temporarily paused.">
+                                    <i class="ph-bold ph-pause-circle text-base"></i> Applications Paused
                                 </button>
-                                <% } else { %>
-                                    <!-- 3. LOGGED IN CANDIDATE & HAS NOT APPLIED -->
-                                    <form action="/internships/<%= item._id %>/apply" method="POST" class="w-full">
-                                        <button type="submit"
-                                            class="w-full text-center py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5">
-                                            <i class="ph-bold ph-paper-plane-tilt"></i> Apply Now
-                                        </button>
-                                    </form>
-                                    <% } %>
+                            <% } else { %>
+                                <a href="/auth/login"
+                                    class="w-full text-center py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+                                    <i class="ph-bold ph-paper-plane-tilt"></i> Apply Now
+                                </a>
+                            <% } %>
+                        <% } else if (typeof appliedIds !=='undefined' && appliedIds.includes(item._id.toString())) { %>
+                            <!-- 2. LOGGED IN CANDIDATE & ALREADY APPLIED -->
+                            <button disabled
+                                class="w-full text-center py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-not-allowed">
+                                <i class="ph-bold ph-check-circle text-base"></i> Applied
+                            </button>
+                        <% } else if (isItemPaused) { %>
+                            <!-- 3. LOGGED IN CANDIDATE & APPLICATIONS PAUSED -->
+                            <button disabled
+                                class="w-full text-center py-2 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-not-allowed"
+                                title="The recruiter has temporarily paused new applications for this position.">
+                                <i class="ph-bold ph-pause-circle text-base"></i> Applications Paused
+                            </button>
+                        <% } else if (item.applicationDeadline && new Date() > item.applicationDeadline) { %>
+                            <!-- 4. DEADLINE PASSED -->
+                            <button disabled
+                                class="w-full text-center py-2 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-not-allowed">
+                                <i class="ph-bold ph-x-circle text-base"></i> Applications Closed
+                            </button>
+                        <% } else { %>
+                            <!-- 5. LOGGED IN CANDIDATE & HAS NOT APPLIED & OPEN -->
+                            <form action="/internships/<%= item._id %>/apply" method="POST" class="w-full">
+                                <button type="submit"
+                                    class="w-full text-center py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+                                    <i class="ph-bold ph-paper-plane-tilt"></i> Apply Now
+                                </button>
+                            </form>
+                        <% } %>
                     </div>
-                    <% } %>
+                <% } %>
 
             </div>
             <% }) %>
     </div>
+    <% } %>
 
     <!-- POST NEW MODAL -->
     <div id="postingModal"
@@ -158,7 +244,7 @@
                 </button>
             </div>
 
-            <form action="/internships/new" method="POST" class="mt-4 space-y-4">
+            <form action="/internships/new" method="POST" class="mt-4 space-y-4" data-loading-text="Posting...">
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1">Internship Role Title</label>
                     <input type="text" name="title" required placeholder="e.g. Quality Control Assistant"
@@ -202,15 +288,27 @@
                     </div>
                 </div>
                 <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Min Qualifications</label>
+                    <input type="text" name="minQualifications" placeholder="e.g. B.Tech / Diploma / Any"
+                        class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                </div>
+                <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1">Required Skills (Comma
                         Separated)</label>
                     <input type="text" name="requiredSkills" required placeholder="e.g. Quality Control, Python"
                         class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600">
                 </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Application Deadline (Optional)</label>
+                    <input type="date" name="deadline"
+                        class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-600">
+                </div>
                 <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
                     <button type="button" onclick="closeModal()"
                         class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200">Cancel</button>
-                    <button type="submit"
+                    <button type="submit" name="action" value="draft" formnovalidate
+                        class="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-300">Save as Draft</button>
+                    <button type="submit" name="action" value="publish"
                         class="px-4 py-2 text-xs font-semibold text-white bg-indigo-700 hover:bg-indigo-800 rounded-lg shadow-sm">Publish
                         Listing</button>
                 </div>
@@ -232,7 +330,7 @@
                 </button>
             </div>
 
-            <form id="editForm" method="POST" class="mt-4 space-y-4">
+            <form id="editForm" method="POST" class="mt-4 space-y-4" data-loading-text="Saving...">
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1">Internship Role Title</label>
                     <input type="text" id="edit_title" name="title" required
@@ -276,10 +374,20 @@
                     </div>
                 </div>
                 <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Min Qualifications</label>
+                    <input type="text" id="edit_minQualifications" name="minQualifications" placeholder="e.g. B.Tech / Diploma / Any"
+                        class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                </div>
+                <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1">Required Skills (Comma
                         Separated)</label>
                     <input type="text" id="edit_skills" name="requiredSkills" required
                         class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Application Deadline (Optional)</label>
+                    <input type="date" id="edit_deadline" name="deadline"
+                        class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-600">
                 </div>
                 <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
                     <button type="button" onclick="closeEditModal()"
@@ -319,7 +427,19 @@
                 document.getElementById('edit_vacancies').value = item.vacancies || 1;
                 document.getElementById('edit_stipend').value = item.monthlyStipend || 5000;
                 document.getElementById('edit_duration').value = item.duration || '12 Months';
+                document.getElementById('edit_minQualifications').value = item.minQualifications || item.minQualification || '';
                 document.getElementById('edit_skills').value = Array.isArray(item.requiredSkills) ? item.requiredSkills.join(', ') : '';
+
+                if (item.applicationDeadline) {
+                    const dateObj = new Date(item.applicationDeadline);
+                    if (!isNaN(dateObj.getTime())) {
+                        document.getElementById('edit_deadline').value = dateObj.toISOString().split('T')[0];
+                    } else {
+                        document.getElementById('edit_deadline').value = '';
+                    }
+                } else {
+                    document.getElementById('edit_deadline').value = '';
+                }
 
                 document.getElementById('editModal').classList.remove('hidden');
             } catch (err) {
@@ -331,40 +451,15 @@
             document.getElementById('editModal').classList.add('hidden');
         }
 
+        // Sorting is done on the server so it applies to the whole result set,
+        // not just the cards already on screen. Changing the dropdown reloads
+        // with the chosen sort while keeping the active status filter.
         const sortInternships = document.getElementById('sortInternships');
-
-        const currentSort = new URLSearchParams(window.location.search).get('sort') || 'newest';
-        sortInternships.value = currentSort;
-
-        sortInternships.addEventListener('change', () => {
-            const cards = Array.from(document.querySelectorAll('.internship-card'));
-            const sort = sortInternships.value;
-
-            cards.sort((a, b) => {
-                if (sort === 'stipend_desc') {
-                    return Number(b.dataset.stipend) - Number(a.dataset.stipend);
-                }
-
-                if (sort === 'stipend_asc') {
-                    return Number(a.dataset.stipend) - Number(b.dataset.stipend);
-                }
-
-                if (sort === 'duration_desc') {
-                    return Number(b.dataset.duration) - Number(a.dataset.duration);
-                }
-
-                if (sort === 'duration_asc') {
-                    return Number(a.dataset.duration) - Number(b.dataset.duration);
-                }
-
-                return Number(b.dataset.posted) - Number(a.dataset.posted);
+        if (sortInternships) {
+            sortInternships.addEventListener('change', () => {
+                const url = new URL(window.location.href);
+                url.searchParams.set('sort', sortInternships.value);
+                window.location.assign(url.toString());
             });
-
-            const grid = document.querySelector('.grid.grid-cols-1');
-            cards.forEach(card => grid.appendChild(card));
-
-            const url = new URL(window.location.href);
-            url.searchParams.set('sort', sort);
-            window.history.pushState({}, '', url);
-        });
+        }
     </script>
