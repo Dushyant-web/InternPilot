@@ -26,6 +26,7 @@ const Notification = require('./models/Notification');
 const authRoutes = require("./routes/auth");
 const internshipRoutes = require("./routes/internships");
 const userRoutes = require("./routes/user");
+const candidateRoutes = require('./routes/candidate');
 const companyRoutes = require('./routes/company');
 const adminRoutes = require('./routes/admin');
 const chatRoutes = require('./routes/chat');
@@ -112,6 +113,7 @@ app.get('/', async (req, res) => {
 app.use('/auth', authRoutes);
 app.use('/internships', internshipRoutes);
 app.use('/', userRoutes);
+app.use('/', candidateRoutes);
 app.use('/', companyRoutes);
 app.use('/admin', adminRoutes);
 app.use('/', chatRoutes);
