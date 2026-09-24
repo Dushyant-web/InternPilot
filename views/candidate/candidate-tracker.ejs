@@ -8,11 +8,21 @@
                     opportunities.</p>
             </div>
 
-            <a href="/internships"
-                class="inline-flex items-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-white font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm transition-colors">
-                <i class="ph-bold ph-magnifying-glass"></i>
-                Find More Internships
-            </a>
+            <div class="flex items-center gap-3">
+                <% const hasAnyInterview = applications.some(app => app.interview && app.interview.status); %>
+                <% if (hasAnyInterview) { %>
+                <button type="button" id="toggleInterviewsBtn"
+                    class="inline-flex items-center gap-2 bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm transition-colors">
+                    <i class="ph-bold ph-calendar-check"></i>
+                    My Interviews
+                </button>
+                <% } %>
+                <a href="/internships"
+                    class="inline-flex items-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-white font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm transition-colors">
+                    <i class="ph-bold ph-magnifying-glass"></i>
+                    Find More Internships
+                </a>
+            </div>
         </div>
 
         <% if (applications.length===0) { %>
@@ -28,7 +38,7 @@
             <% } else { %>
                 <div class="grid grid-cols-1 gap-4">
                     <% applications.forEach(app=> { %>
-                        <div class="flex flex-col">
+                        <div class="flex flex-col application-card" data-has-interview="<%= app.interview && app.interview.status ? 'true' : 'false' %>">
                             <div
                                 class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4">
 
@@ -237,5 +247,35 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeWithdrawModal();
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleBtn = document.getElementById('toggleInterviewsBtn');
+            const appCards = document.querySelectorAll('.application-card');
+
+            let showOnlyInterviews = false;
+
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    showOnlyInterviews = !showOnlyInterviews;
+
+                    if (showOnlyInterviews) {
+                        toggleBtn.classList.add('bg-indigo-50', 'border-indigo-300');
+                        toggleBtn.classList.remove('bg-white', 'border-indigo-200');
+                    } else {
+                        toggleBtn.classList.remove('bg-indigo-50', 'border-indigo-300');
+                        toggleBtn.classList.add('bg-white', 'border-indigo-200');
+                    }
+
+                    appCards.forEach(card => {
+                        const hasInterview = card.getAttribute('data-has-interview') === 'true';
+                        if (showOnlyInterviews && !hasInterview) {
+                            card.style.display = 'none';
+                        } else {
+                            card.style.display = 'flex';
+                        }
+                    });
+                });
+            }
         });
     </script>
