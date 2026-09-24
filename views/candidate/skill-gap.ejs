@@ -115,9 +115,13 @@
                                 </span>
                                 <% }) %>
                         </div>
-                        <% } else { %>
-                            <p class="text-xs text-slate-400 italic">Nothing missing. You cover every required skill.</p>
-                            <% } %>
+                        <% } else if (analysis.partial.length> 0) { %>
+                            <p class="text-xs text-amber-700">Nothing is outright missing, but some requirements only
+                                matched loosely. Check the close matches below before assuming you are covered.</p>
+                            <% } else { %>
+                                <p class="text-xs text-slate-400 italic">Nothing missing. You cover every required
+                                    skill.</p>
+                                <% } %>
                 </div>
 
             </div>
