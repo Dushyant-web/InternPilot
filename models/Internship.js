@@ -3,7 +3,18 @@ const mongoose = require("mongoose");
 const internshipSchema = new mongoose.Schema({
     companyName: { type: String, required: true },
     sector: String,
-    title: { type: String, required: true },
+    title: { 
+        type: String, 
+        required: function () {
+            return this.status === 'published';
+        }
+    },
+    status: {
+        type: String,
+        enum: ['published', 'draft', 'closed'],
+        default: 'published',
+        index: true
+    },
     location: {
         district: String,
         state: String

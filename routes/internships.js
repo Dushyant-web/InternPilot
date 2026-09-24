@@ -19,7 +19,7 @@ function calculateSkillScore(userSkills = [], requiredSkills = []) {
 
 router.get('/', async (req, res) => {
     try {
-        const internships = await Internship.find({}).sort({ _id: -1 });
+        const internships = await Internship.find({ status: { $ne: 'draft' } }).sort({ _id: -1 });
         const candidate = req.user;
 
         let appliedIds = [];
@@ -50,7 +50,7 @@ router.post('/new', isAuthenticated, requireCompanyRole(['company', 'recruiter']
         const locationParts = location ? location.split(',') : [];
         const district = locationParts[0] ? locationParts[0].trim() : '';
         const state = locationParts[1] ? locationParts[1].trim() : '';
-        const stipendNumber = stipend ? parseInt(stipend.toString().replace(/[^0-9]/g, '')) : 5000;
+        const stipendNumber = stipend ? parseInt(stipend.toString().replace(/[^0-9]/g, '')) : (isDraft ? 0 : 5000);
 
         let resolvedCompanyName = companyName || req.user.companyDetails?.companyName;
         if (!resolvedCompanyName && req.user.companyId) {
@@ -60,12 +60,13 @@ router.post('/new', isAuthenticated, requireCompanyRole(['company', 'recruiter']
         resolvedCompanyName = resolvedCompanyName || req.user.name;
 
         const newInternship = new Internship({
-            title,
+            title: resolvedTitle,
+            status,
             companyName: resolvedCompanyName,
             companyId: req.user.companyId,
-            sector: sector || 'General',
-            minQualifications: minQualifications || 'Any',
-            duration: duration || '12 Months',
+            sector: sector || (isDraft ? 'Uncategorized' : 'General'),
+            minQualifications: minQualifications || (isDraft ? '' : 'Any'),
+            duration: duration || (isDraft ? '' : '12 Months'),
             location: { district, state },
             monthlyStipend: stipendNumber,
             vacancies: vacancies ? parseInt(vacancies) : 1,
@@ -75,7 +76,14 @@ router.post('/new', isAuthenticated, requireCompanyRole(['company', 'recruiter']
         });
 
         await newInternship.save();
-        if (req.flash) req.flash('success_msg', 'Internship opportunity posted!');
+        if (req.flash) {
+            if (isDraft) {
+                req.flash('success_msg', 'Draft saved successfully!');
+                return res.redirect('/company/dashboard');
+            } else {
+                req.flash('success_msg', 'Internship opportunity posted!');
+            }
+        }
         res.redirect('/internships');
     } catch (error) {
         console.error('Error saving internship:', error);

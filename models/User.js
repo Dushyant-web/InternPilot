@@ -27,6 +27,22 @@ const userSchema = new mongoose.Schema({
     skills: [{ type: String }],
     resume: { type: String, default: '' },
 
+    resumeQuality: {
+    quantifiableAchievements: {
+        status: { type: String, default: '' },
+        feedback: { type: String, default: '' }
+    },
+    technicalSkills: {
+        status: { type: String, default: '' },
+        feedback: { type: String, default: '' }
+    },
+    projects: {
+        status: { type: String, default: '' },
+        feedback: { type: String, default: '' }
+    },
+    overallFeedback: { type: String, default: '' }
+},
+
     location: {
         district: { type: String, default: '' },
         state: { type: String, default: '' }
@@ -35,6 +51,26 @@ const userSchema = new mongoose.Schema({
         qualification: { type: String, default: '' },
         institutionName: { type: String, default: '' }
     },
+
+    certifications: [{
+        name: { type: String, required: true, trim: true, maxlength: 120 },
+        issuer: { type: String, default: '', trim: true, maxlength: 120 },
+        issueDate: { type: Date },
+        link: { type: String, default: '', trim: true },
+        fileUrl: { type: String, default: '' },
+        fileName: { type: String, default: '' },
+        createdAt: { type: Date, default: Date.now }
+    }],
+
+    projects: [{
+        title: { type: String, required: true, trim: true, maxlength: 120 },
+        description: { type: String, default: '', trim: true, maxlength: 1000 },
+        link: { type: String, default: '', trim: true },
+        techStack: [{ type: String, trim: true }],
+        fileUrl: { type: String, default: '' },
+        fileName: { type: String, default: '' },
+        createdAt: { type: Date, default: Date.now }
+    }],
 
     companyDetails: {
         companyName: { type: String },

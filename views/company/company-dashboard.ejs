@@ -82,54 +82,82 @@
                 </div>
             </form>
             <script>
-                const vacancyForm = document.getElementById('vacancy-form');
-
-                vacancyForm.addEventListener('reset', (event) => {
+                function handleFormReset() {
+                    const vacancyForm = document.getElementById('vacancy-form');
                     const hasMeaningfulData = Array.from(vacancyForm.elements)
                         .filter((element) => element.name)
                         .some((element) => element.value !== element.defaultValue);
 
-                    if (hasMeaningfulData && !confirm('Are you sure you want to reset the form?')) {
-                        event.preventDefault();
+                    if (!hasMeaningfulData || confirm('Are you sure you want to reset the form?')) {
+                        vacancyForm.reset();
                     }
-                });
+                }
             </script>
         </div>
 
-        <!-- Right Column: Active Internships -->
+        <!-- Right Column: Active Internships & Drafts -->
         <div class="lg:col-span-2 space-y-4">
-            <div class="flex justify-between items-center">
-                <h2 class="text-lg font-bold text-slate-900">Your Posted Internships</h2>
-                <span class="text-xs font-semibold bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">Your Posted Internships</h2>
+                    <p class="text-xs text-slate-500">Manage published roles and complete saved drafts.</p>
+                </div>
+                <span class="text-xs font-semibold bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full self-start sm:self-auto">
                     Total Applications Received: <%= totalApplicationsCount %>
                 </span>
             </div>
 
-            <% if (internships && internships.length> 0) { %>
+            <!-- Status Filter Tabs -->
+            <div class="flex items-center gap-2 text-xs font-medium border-b border-slate-200 pb-2">
+                <a href="/company/dashboard?status=all"
+                    class="px-3 py-1.5 rounded-lg transition-colors <%= (typeof currentFilter === 'undefined' || currentFilter === 'all') ? 'bg-indigo-600 text-white font-semibold shadow-xs' : 'text-slate-600 hover:bg-slate-100' %>">
+                    All (<%= typeof totalCount !== 'undefined' ? totalCount : (internships ? internships.length : 0) %>)
+                </a>
+                <a href="/company/dashboard?status=published"
+                    class="px-3 py-1.5 rounded-lg transition-colors <%= (typeof currentFilter !== 'undefined' && currentFilter === 'published') ? 'bg-emerald-600 text-white font-semibold shadow-xs' : 'text-slate-600 hover:bg-slate-100' %>">
+                    Published (<%= typeof publishedCount !== 'undefined' ? publishedCount : 0 %>)
+                </a>
+                <a href="/company/dashboard?status=draft"
+                    class="px-3 py-1.5 rounded-lg transition-colors <%= (typeof currentFilter !== 'undefined' && currentFilter === 'draft') ? 'bg-amber-600 text-white font-semibold shadow-xs' : 'text-slate-600 hover:bg-slate-100' %>">
+                    Drafts (<%= typeof draftCount !== 'undefined' ? draftCount : 0 %>)
+                </a>
+            </div>
+
+            <% if (internships && internships.length > 0) { %>
                 <div class="space-y-4">
-                    <% internships.forEach(internship=> { %>
-                        <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
-                            <div class="flex justify-between items-start">
+                    <% internships.forEach(internship => { %>
+                        <div class="bg-white border <%= internship.status === 'draft' ? 'border-amber-200 bg-amber-50/20' : 'border-slate-200' %> rounded-xl p-5 shadow-sm space-y-3">
+                            <div class="flex justify-between items-start gap-3">
                                 <div>
-                                    <h3 class="font-bold text-slate-800 text-base">
-                                        <%= internship.title %>
-                                    </h3>
-                                    <p class="text-xs text-slate-500">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <h3 class="font-bold text-slate-800 text-base">
+                                            <%= internship.title %>
+                                        </h3>
+                                        <% if (internship.status === 'draft') { %>
+                                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                                                <i class="ph-bold ph-pencil-simple-line"></i> Draft
+                                            </span>
+                                        <% } else { %>
+                                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                                <i class="ph-bold ph-check-circle"></i> Published
+                                            </span>
+                                        <% } %>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-0.5">
                                         Sector: <%= internship.sector || 'N/A' %> | Location: <%=
                                                 internship.location?.district || 'Remote' %>, <%=
                                                     internship.location?.state || '' %>
                                     </p>
                                 </div>
                                 <span
-                                    class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800">
-                                    ₹<%= internship.monthlyStipend ? internship.monthlyStipend.toLocaleString('en-IN') :
-                                        5000 %>/mo
+                                    class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 whitespace-nowrap">
+                                    ₹<%= (internship.monthlyStipend ?? 5000).toLocaleString('en-IN') %>/mo
                                 </span>
                             </div>
 
                             <div class="text-xs text-slate-600 space-y-1">
                                 <p><strong>Min Qualifications:</strong>
-                                    <%= internship.minQualifications %>
+                                    <%= internship.minQualifications || 'Any' %>
                                 </p>
                                 <p><strong>Vacancies:</strong>
                                     <%= internship.vacancies %> | <strong>Duration:</strong>
@@ -148,16 +176,29 @@
                                 </p>
                             </div>
 
-                            <div class="flex flex-wrap gap-1.5 pt-1">
-                                <% internship.requiredSkills.forEach(skill=> { %>
-                                    <span
-                                        class="bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-semibold px-2.5 py-1 rounded-md">
-                                        <%= skill %>
-                                    </span>
+                            <% if (internship.requiredSkills && internship.requiredSkills.length > 0) { %>
+                                <div class="flex flex-wrap gap-1.5 pt-1">
+                                    <% internship.requiredSkills.forEach(skill => { %>
+                                        <span
+                                            class="bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-semibold px-2.5 py-1 rounded-md">
+                                            <%= skill %>
+                                        </span>
                                     <% }) %>
-                            </div>
+                                </div>
+                            <% } %>
 
-                            <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                            <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 flex-wrap">
+                                <% if (internship.status === 'draft') { %>
+                                    <!-- Quick Publish Action Form -->
+                                    <form action="/company/internships/publish/<%= internship._id %>" method="POST">
+                                        <button type="submit"
+                                            class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3.5 py-2 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                                            <i class="ph-bold ph-paper-plane-tilt text-sm"></i>
+                                            Publish Now
+                                        </button>
+                                    </form>
+                                <% } %>
+
                                 <!-- Edit Button -->
                                 <a href="/company/internships/edit/<%= internship._id %>"
                                     class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold text-xs px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5">
@@ -176,19 +217,34 @@
                                 </form>
 
                                 <!-- View Applicants Button -->
-                                <a href="/company/internships/<%= internship._id %>/applicants"
-                                    class="bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5">
-                                    View Applicants &rarr;
-                                </a>
+                                <% const hasExistingApps = typeof appCountMap !== 'undefined' && (appCountMap[internship._id.toString()] || 0) > 0; %>
+                                <% if (internship.status === 'draft' && !hasExistingApps) { %>
+                                    <span class="bg-slate-100 text-slate-400 font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 cursor-not-allowed"
+                                        title="Drafts cannot receive applicants until published.">
+                                        <i class="ph-bold ph-lock-key text-sm"></i>
+                                        No Applicants
+                                    </span>
+                                <% } else { %>
+                                    <a href="/company/internships/<%= internship._id %>/applicants"
+                                        class="bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5">
+                                        View Applicants (<%= typeof appCountMap !== 'undefined' ? (appCountMap[internship._id.toString()] || 0) : 0 %>) &rarr;
+                                    </a>
+                                <% } %>
                             </div>
                         </div>
-                        <% }) %>
+                    <% }) %>
                 </div>
-                <% } else { %>
-                    <div class="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 text-sm">
-                        No active internships posted yet. Use the form on the left to publish your first role!
-                    </div>
+            <% } else { %>
+                <div class="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 text-sm">
+                    <% if (typeof currentFilter !== 'undefined' && currentFilter === 'draft') { %>
+                        No saved drafts. Use the "Save as Draft" button on the left to save incomplete listings!
+                    <% } else if (typeof currentFilter !== 'undefined' && currentFilter === 'published') { %>
+                        No published opportunities yet. Publish your first role using the form on the left!
+                    <% } else { %>
+                        No internships posted yet. Use the form on the left to publish or save your first role!
                     <% } %>
+                </div>
+            <% } %>
         </div>
 
     </div>

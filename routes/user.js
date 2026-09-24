@@ -1,4 +1,5 @@
 const express = require('express');
+const { GoogleGenAI } = require('@google/genai');
 const router = express.Router();
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
@@ -10,12 +11,15 @@ const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
 const { isAuthenticated, authorize } = require('../middleware/auth');
+const { documentUpload, uploadBufferToCloudinary } = require('../middleware/upload');
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -57,6 +61,69 @@ async function extractDocxText(buffer) {
 
 function escapeRegExp(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function analyzeResumeQuality(text) {
+    try {
+        const prompt = `
+Analyze this resume for quality improvement.
+
+Check specifically:
+1. Quantifiable achievements and measurable outcomes.
+2. Technical skills.
+3. Relevant projects.
+
+Give actionable feedback, not a numeric score.
+
+Return ONLY valid JSON in this format:
+{
+  "quantifiableAchievements": {
+    "status": "good" or "needs_improvement",
+    "feedback": "..."
+  },
+  "technicalSkills": {
+    "status": "good" or "needs_improvement",
+    "feedback": "..."
+  },
+  "projects": {
+    "status": "good" or "needs_improvement",
+    "feedback": "..."
+  },
+  "overallFeedback": "..."
+}
+
+Resume text:
+${text}
+`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{ role: 'user', parts: [{ text: prompt }] }]
+        });
+
+        const rawText = response.text || '{}';
+        const cleanedText = rawText.replace(/```json|```/g, '').trim();
+
+        return JSON.parse(cleanedText);
+    } catch (error) {
+        console.error('Error analyzing resume quality:', error);
+
+        return {
+            quantifiableAchievements: {
+                status: 'needs_improvement',
+                feedback: 'Resume quality analysis was unavailable.'
+            },
+            technicalSkills: {
+                status: 'needs_improvement',
+                feedback: 'Resume quality analysis was unavailable.'
+            },
+            projects: {
+                status: 'needs_improvement',
+                feedback: 'Resume quality analysis was unavailable.'
+            },
+            overallFeedback: 'Resume uploaded successfully, but AI quality feedback could not be generated.'
+        };
+    }
 }
 
 function calculateSkillScore(userSkills = [], requiredSkills = []) {
@@ -194,7 +261,10 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
 
         const userId = req.user._id || req.user.id;
         const updateDoc = {
-            $set: { resume: resumeUrl }
+            $set: {
+                resume: resumeUrl,
+                resumeQuality
+            }
         };
 
         if (extractedSkills.length > 0) {
@@ -212,6 +282,245 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
         console.error('Error uploading/parsing resume:', error);
         if (req.flash) req.flash('error_msg', `Failed to process resume upload: ${error.message}`);
         res.redirect('/candidate/profile');
+    }
+});
+
+function handleDocumentUpload(fieldName) {
+    return (req, res, next) => {
+        documentUpload.single(fieldName)(req, res, (err) => {
+            if (err) {
+                const message = err.code === 'LIMIT_FILE_SIZE'
+                    ? 'File is too large. Maximum allowed size is 5MB.'
+                    : (err.message || 'File upload failed.');
+                if (req.flash) req.flash('error_msg', message);
+                return res.redirect('/candidate/profile');
+            }
+            next();
+        });
+    };
+}
+
+function sanitizeLink(value) {
+    const link = (value || '').trim();
+    if (!link) return { link: '' };
+
+    try {
+        const parsed = new URL(link);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+            return { error: 'Links must start with http:// or https://' };
+        }
+        return { link: parsed.toString() };
+    } catch {
+        return { error: 'Please enter a valid URL (e.g. https://example.com/certificate).' };
+    }
+}
+
+function sanitizeIssueDate(value) {
+    const raw = (value || '').trim();
+    if (!raw) return { issueDate: null };
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+        return { error: 'Please enter a valid issue date.' };
+    }
+    if (parsed > new Date()) {
+        return { error: 'Issue date cannot be in the future.' };
+    }
+    return { issueDate: parsed };
+}
+
+function parseTechStack(value) {
+    return (value || '')
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean)
+        .slice(0, 20);
+}
+
+async function storeDocument(file, folder) {
+    if (!file) return null;
+    const result = await uploadBufferToCloudinary(file, folder);
+    return { fileUrl: result.secure_url, fileName: file.originalname };
+}
+
+function redirectWithError(req, res, message) {
+    if (req.flash) req.flash('error_msg', message);
+    return res.redirect('/candidate/profile');
+}
+
+
+router.post('/candidate/profile/certifications', isAuthenticated, authorize('candidate'),
+    handleDocumentUpload('certificate'), async (req, res) => {
+        try {
+            const name = (req.body.name || '').trim();
+            if (!name) return redirectWithError(req, res, 'Certification name is required.');
+            if (name.length > 120) return redirectWithError(req, res, 'Certification name must be 120 characters or fewer.');
+
+            const { link, error: linkError } = sanitizeLink(req.body.link);
+            if (linkError) return redirectWithError(req, res, linkError);
+
+            const { issueDate, error: dateError } = sanitizeIssueDate(req.body.issueDate);
+            if (dateError) return redirectWithError(req, res, dateError);
+
+            const certification = {
+                name,
+                issuer: (req.body.issuer || '').trim().slice(0, 120),
+                link,
+                issueDate: issueDate || undefined
+            };
+
+            const stored = await storeDocument(req.file, 'internpilot/certifications');
+            if (stored) Object.assign(certification, stored);
+
+            const userId = req.user._id || req.user.id;
+            await User.findByIdAndUpdate(userId, { $push: { certifications: certification } });
+
+            if (req.flash) req.flash('success_msg', 'Certification added successfully!');
+            res.redirect('/candidate/profile');
+        } catch (error) {
+            console.error('Error adding certification:', error);
+            redirectWithError(req, res, 'Failed to add certification. Please try again.');
+        }
+    });
+
+router.put('/candidate/profile/certifications/:certId', isAuthenticated, authorize('candidate'),
+    handleDocumentUpload('certificate'), async (req, res) => {
+        try {
+            const userId = req.user._id || req.user.id;
+            const user = await User.findById(userId);
+            const certification = user && user.certifications.id(req.params.certId);
+            if (!certification) return redirectWithError(req, res, 'Certification not found.');
+
+            const name = (req.body.name || '').trim();
+            if (!name) return redirectWithError(req, res, 'Certification name is required.');
+            if (name.length > 120) return redirectWithError(req, res, 'Certification name must be 120 characters or fewer.');
+
+            const { link, error: linkError } = sanitizeLink(req.body.link);
+            if (linkError) return redirectWithError(req, res, linkError);
+
+            const { issueDate, error: dateError } = sanitizeIssueDate(req.body.issueDate);
+            if (dateError) return redirectWithError(req, res, dateError);
+
+            certification.name = name;
+            certification.issuer = (req.body.issuer || '').trim().slice(0, 120);
+            certification.link = link;
+            certification.issueDate = issueDate || undefined;
+
+            const stored = await storeDocument(req.file, 'internpilot/certifications');
+            if (stored) {
+                certification.fileUrl = stored.fileUrl;
+                certification.fileName = stored.fileName;
+            }
+
+            await user.save();
+            if (req.flash) req.flash('success_msg', 'Certification updated successfully!');
+            res.redirect('/candidate/profile');
+        } catch (error) {
+            console.error('Error updating certification:', error);
+            redirectWithError(req, res, 'Failed to update certification. Please try again.');
+        }
+    });
+
+router.delete('/candidate/profile/certifications/:certId', isAuthenticated, authorize('candidate'), async (req, res) => {
+    try {
+        const userId = req.user._id || req.user.id;
+        const user = await User.findById(userId).select('certifications');
+        if (!user || !user.certifications.id(req.params.certId)) {
+            return redirectWithError(req, res, 'Certification not found.');
+        }
+
+        await User.findByIdAndUpdate(userId, { $pull: { certifications: { _id: req.params.certId } } });
+
+        if (req.flash) req.flash('success_msg', 'Certification removed.');
+        res.redirect('/candidate/profile');
+    } catch (error) {
+        console.error('Error deleting certification:', error);
+        redirectWithError(req, res, 'Failed to remove certification. Please try again.');
+    }
+});
+
+
+router.post('/candidate/profile/projects', isAuthenticated, authorize('candidate'),
+    handleDocumentUpload('attachment'), async (req, res) => {
+        try {
+            const title = (req.body.title || '').trim();
+            if (!title) return redirectWithError(req, res, 'Project title is required.');
+            if (title.length > 120) return redirectWithError(req, res, 'Project title must be 120 characters or fewer.');
+
+            const { link, error: linkError } = sanitizeLink(req.body.link);
+            if (linkError) return redirectWithError(req, res, linkError);
+
+            const project = {
+                title,
+                description: (req.body.description || '').trim().slice(0, 1000),
+                link,
+                techStack: parseTechStack(req.body.techStack)
+            };
+
+            const stored = await storeDocument(req.file, 'internpilot/projects');
+            if (stored) Object.assign(project, stored);
+
+            const userId = req.user._id || req.user.id;
+            await User.findByIdAndUpdate(userId, { $push: { projects: project } });
+
+            if (req.flash) req.flash('success_msg', 'Project added successfully!');
+            res.redirect('/candidate/profile');
+        } catch (error) {
+            console.error('Error adding project:', error);
+            redirectWithError(req, res, 'Failed to add project. Please try again.');
+        }
+    });
+
+router.put('/candidate/profile/projects/:projectId', isAuthenticated, authorize('candidate'),
+    handleDocumentUpload('attachment'), async (req, res) => {
+        try {
+            const userId = req.user._id || req.user.id;
+            const user = await User.findById(userId);
+            const project = user && user.projects.id(req.params.projectId);
+            if (!project) return redirectWithError(req, res, 'Project not found.');
+
+            const title = (req.body.title || '').trim();
+            if (!title) return redirectWithError(req, res, 'Project title is required.');
+            if (title.length > 120) return redirectWithError(req, res, 'Project title must be 120 characters or fewer.');
+
+            const { link, error: linkError } = sanitizeLink(req.body.link);
+            if (linkError) return redirectWithError(req, res, linkError);
+
+            project.title = title;
+            project.description = (req.body.description || '').trim().slice(0, 1000);
+            project.link = link;
+            project.techStack = parseTechStack(req.body.techStack);
+
+            const stored = await storeDocument(req.file, 'internpilot/projects');
+            if (stored) {
+                project.fileUrl = stored.fileUrl;
+                project.fileName = stored.fileName;
+            }
+
+            await user.save();
+            if (req.flash) req.flash('success_msg', 'Project updated successfully!');
+            res.redirect('/candidate/profile');
+        } catch (error) {
+            console.error('Error updating project:', error);
+            redirectWithError(req, res, 'Failed to update project. Please try again.');
+        }
+    });
+
+router.delete('/candidate/profile/projects/:projectId', isAuthenticated, authorize('candidate'), async (req, res) => {
+    try {
+        const userId = req.user._id || req.user.id;
+        const user = await User.findById(userId).select('projects');
+        if (!user || !user.projects.id(req.params.projectId)) {
+            return redirectWithError(req, res, 'Project not found.');
+        }
+
+        await User.findByIdAndUpdate(userId, { $pull: { projects: { _id: req.params.projectId } } });
+
+        if (req.flash) req.flash('success_msg', 'Project removed.');
+        res.redirect('/candidate/profile');
+    } catch (error) {
+        console.error('Error deleting project:', error);
+        redirectWithError(req, res, 'Failed to remove project. Please try again.');
     }
 });
 
@@ -272,12 +581,12 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
         }
 
         if (queryConditions.length > 0) {
-            internships = await Internship.find({ $or: queryConditions });
+            internships = await Internship.find({ status: { $ne: 'draft' }, $or: queryConditions });
         }
 
         // If no match by district/qualification or not set, fall back to open internships
         if (!internships || internships.length === 0) {
-            internships = await Internship.find({}).limit(20);
+            internships = await Internship.find({ status: { $ne: 'draft' } }).limit(20);
         }
 
         const recommendations = internships
