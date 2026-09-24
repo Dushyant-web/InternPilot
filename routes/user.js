@@ -512,12 +512,12 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
         }
 
         if (queryConditions.length > 0) {
-            internships = await Internship.find({ $or: queryConditions });
+            internships = await Internship.find({ status: { $ne: 'draft' }, $or: queryConditions });
         }
 
         // If no match by district/qualification or not set, fall back to open internships
         if (!internships || internships.length === 0) {
-            internships = await Internship.find({}).limit(20);
+            internships = await Internship.find({ status: { $ne: 'draft' } }).limit(20);
         }
 
         const recommendations = internships
