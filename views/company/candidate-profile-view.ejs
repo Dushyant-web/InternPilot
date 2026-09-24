@@ -1,0 +1,273 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- Back Navigation -->
+    <div class="flex items-center gap-2">
+        <a href="/company/internships/<%= internship._id %>/applicants"
+            class="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1">
+            <i class="ph-bold ph-arrow-left text-sm"></i> Back to Applicants
+        </a>
+        <span class="text-slate-300">&bull;</span>
+        <span class="text-xs text-slate-500"><%= internship.title %></span>
+    </div>
+
+    <!-- Header Card -->
+    <div
+        class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+        <div class="flex items-center gap-5">
+            <% if (candidate.avatar) { %>
+                <img src="<%= candidate.avatar %>" alt="<%= candidate.name %>"
+                    class="w-16 h-16 rounded-full object-cover border-2 border-indigo-200">
+            <% } else { %>
+                <div
+                    class="w-16 h-16 bg-indigo-100 text-indigo-700 font-extrabold text-2xl rounded-full flex items-center justify-center border-2 border-indigo-200">
+                    <%= candidate.name ? candidate.name.charAt(0).toUpperCase() : 'U' %>
+                </div>
+            <% } %>
+            <div>
+                <h1 class="text-xl font-bold text-slate-800 tracking-tight">
+                    <%= candidate.name || 'Unknown Candidate' %>
+                </h1>
+                <p class="text-xs text-slate-500 font-medium flex items-center gap-1 mt-1">
+                    <i class="ph-bold ph-map-pin text-rose-500 text-sm"></i>
+                    <%= (candidate.location && typeof candidate.location === 'object')
+                        ? ([candidate.location.district, candidate.location.state].filter(Boolean).join(', ') || 'Location Not Provided')
+                        : (candidate.location || 'Location Not Provided') %>
+                </p>
+                <% const isAgeEligible = candidate.age && candidate.age >= 21 && candidate.age <= 24; %>
+                <% const isIncomeEligible = candidate.familyIncome && candidate.familyIncome <= 800000; %>
+                <% if (isAgeEligible && isIncomeEligible) { %>
+                    <span
+                        class="inline-block mt-1.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                        PMIS Eligible
+                    </span>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 flex-shrink-0">
+            <% const resumeUrl = candidate.resume || candidate.resumeUrl; %>
+            <% if (resumeUrl) { %>
+                <a href="<%= resumeUrl %>" target="_blank"
+                    class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                    <i class="ph-bold ph-file-pdf text-sm"></i> View Resume
+                </a>
+            <% } else { %>
+                <span
+                    class="px-4 py-2 bg-slate-100 text-slate-400 border border-slate-200 text-xs font-medium rounded-lg flex items-center gap-1.5">
+                    <i class="ph-bold ph-file-x text-sm"></i> No Resume Uploaded
+                </span>
+            <% } %>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+
+            <!-- Application Context Card -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <h2
+                    class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <i class="ph-bold ph-briefcase text-indigo-600 text-lg"></i>
+                    Application Info
+                </h2>
+
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <span class="text-slate-400 font-medium block">Internship Applied For</span>
+                        <span class="font-bold text-slate-700 text-sm"><%= internship.title %></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-medium block">Company</span>
+                        <span class="font-bold text-slate-700 text-sm"><%= internship.companyName || 'N/A' %></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-medium block mb-1">Application Status</span>
+                        <form action="/company/applications/<%= application._id %>/status"
+                            method="POST" class="inline-block">
+                            <select name="status" onchange="this.form.submit()" class="px-3 py-1.5 text-xs font-semibold rounded-lg border shadow-sm cursor-pointer outline-none transition-colors <%=
+                                application.status === 'Shortlisted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                application.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                application.status === 'Under Review' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                'bg-indigo-50 text-indigo-700 border-indigo-200'
+                            %>">
+                                <option value="Submitted" <%=application.status==='Submitted' ? 'selected' : '' %>>Submitted</option>
+                                <option value="Under Review" <%=application.status==='Under Review' ? 'selected' : '' %>>Under Review</option>
+                                <option value="Shortlisted" <%=application.status==='Shortlisted' ? 'selected' : '' %>>Shortlisted</option>
+                                <option value="Rejected" <%=application.status==='Rejected' ? 'selected' : '' %>>Rejected</option>
+                            </select>
+                        </form>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-medium block">Match Score</span>
+                        <span class="inline-block mt-1 px-3 py-1 rounded-lg border text-xs font-bold <%=
+                            (application.matchScore || 0) >= 75 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
+                            ((application.matchScore || 0) >= 40 ? 'bg-amber-50 border-amber-200 text-amber-700' :
+                            'bg-rose-50 border-rose-200 text-rose-700')
+                        %>">
+                            <%= application.matchScore || 0 %>%
+                        </span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-medium block">Applied On</span>
+                        <span class="font-bold text-slate-700 text-sm">
+                            <%= application.appliedAt ? new Date(application.appliedAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A' %>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Main Content -->
+        <div class="lg:col-span-2 space-y-6">
+
+            <!-- Candidate Details Card -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <h2
+                    class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <i class="ph-bold ph-user text-indigo-600 text-lg"></i>
+                    Candidate Details
+                </h2>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                    <div>
+                        <span class="text-slate-400 font-medium block">Age</span>
+                        <span class="font-bold text-slate-700 text-sm">
+                            <%= candidate.age ? candidate.age : 'N/A' %>
+                        </span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-medium block">Qualification</span>
+                        <span class="font-bold text-slate-700 text-sm">
+                            <%= (candidate.education && candidate.education.qualification) ? candidate.education.qualification : 'N/A' %>
+                        </span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-medium block">Institution</span>
+                        <span class="font-bold text-slate-700 text-sm">
+                            <%= candidate.institution || candidate.education?.institutionName || candidate.institutionName || 'N/A' %>
+                        </span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-medium block">Family Income</span>
+                        <span class="font-bold text-slate-700 text-sm">
+                            <%= candidate.familyIncome ? '₹' + Number(candidate.familyIncome).toLocaleString('en-IN') + '/yr' : 'N/A' %>
+                        </span>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex items-center gap-2">
+                    <i class="ph-bold ph-warning text-amber-600 text-sm shrink-0"></i>
+                    Review PMIS Criteria (Age: 21–24, Family Income &lt; ₹8 Lakhs/year)
+                </div>
+            </div>
+
+            <!-- Skills Card -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <h2
+                    class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <i class="ph-bold ph-gear text-indigo-600 text-lg"></i>
+                    Skills
+                </h2>
+
+                <% if (candidate.skills && candidate.skills.length > 0) { %>
+                    <div class="flex flex-wrap gap-2">
+                        <% candidate.skills.forEach(skill => { %>
+                            <span
+                                class="bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm">
+                                <%= skill %>
+                            </span>
+                        <% }) %>
+                    </div>
+                <% } else { %>
+                    <p class="text-xs text-slate-400 italic">No skills added yet.</p>
+                <% } %>
+            </div>
+
+            <!-- Projects Card (future-ready) -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <h2
+                    class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <i class="ph-bold ph-code text-indigo-600 text-lg"></i>
+                    Projects
+                </h2>
+
+                <% if (candidate.projects && candidate.projects.length > 0) { %>
+                    <div class="space-y-3">
+                        <% candidate.projects.forEach(project => { %>
+                            <div class="border border-slate-100 rounded-lg p-3">
+                                <h4 class="text-sm font-bold text-slate-800"><%= project.title || project.name || 'Untitled' %></h4>
+                                <% if (project.description) { %>
+                                    <p class="text-xs text-slate-500 mt-1"><%= project.description %></p>
+                                <% } %>
+                                <% if (project.techStack && project.techStack.length > 0) { %>
+                                    <div class="flex flex-wrap gap-1.5 mt-2">
+                                        <% project.techStack.forEach(tech => { %>
+                                            <span class="bg-slate-100 border border-slate-200 text-slate-600 text-[11px] font-semibold px-2 py-0.5 rounded"><%= tech %></span>
+                                        <% }) %>
+                                    </div>
+                                <% } %>
+                                <div class="flex flex-wrap items-center gap-3 mt-1.5">
+                                    <% if (project.link) { %>
+                                        <a href="<%= project.link %>" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 hover:underline inline-block">View Project</a>
+                                    <% } %>
+                                    <% if (project.fileUrl) { %>
+                                        <a href="<%= project.fileUrl %>" target="_blank" rel="noopener noreferrer" class="text-xs text-emerald-700 hover:underline font-semibold inline-block">
+                                            <i class="ph-bold ph-paperclip"></i> <%= project.fileName || 'View Attachment' %>
+                                        </a>
+                                    <% } %>
+                                </div>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } else { %>
+                    <p class="text-xs text-slate-400 italic">No projects added yet.</p>
+                <% } %>
+            </div>
+
+            <!-- Certifications Card (future-ready) -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <h2
+                    class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <i class="ph-bold ph-certificate text-indigo-600 text-lg"></i>
+                    Certifications
+                </h2>
+
+                <% if (candidate.certifications && candidate.certifications.length > 0) { %>
+                    <div class="space-y-3">
+                        <% candidate.certifications.forEach(cert => { %>
+                            <div class="border border-slate-100 rounded-lg p-3">
+                                <h4 class="text-sm font-bold text-slate-800"><%= cert.name || cert.title || 'Untitled' %></h4>
+                                <% if (cert.issuer) { %>
+                                    <p class="text-xs text-slate-500 mt-0.5">Issued by: <%= cert.issuer %></p>
+                                <% } %>
+                                <% if (cert.issueDate) { %>
+                                    <p class="text-xs text-slate-400 mt-0.5"><%= new Date(cert.issueDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) %></p>
+                                <% } %>
+                                <div class="flex flex-wrap items-center gap-3 mt-1.5">
+                                    <% if (cert.link) { %>
+                                        <a href="<%= cert.link %>" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 hover:underline inline-block">Credential Link</a>
+                                    <% } %>
+                                    <% if (cert.fileUrl) { %>
+                                        <a href="<%= cert.fileUrl %>" target="_blank" rel="noopener noreferrer" class="text-xs text-emerald-700 hover:underline font-semibold inline-block">
+                                            <i class="ph-bold ph-paperclip"></i> <%= cert.fileName || 'View Certificate' %>
+                                        </a>
+                                    <% } %>
+                                </div>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } else { %>
+                    <p class="text-xs text-slate-400 italic">No certifications added yet.</p>
+                <% } %>
+            </div>
+
+        </div>
+    </div>
+
+</div>

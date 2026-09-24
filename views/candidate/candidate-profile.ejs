@@ -5,6 +5,24 @@
 
         <div class="max-w-7xl mx-auto space-y-6">
 
+            <% if (typeof success_msg !== 'undefined' && success_msg && success_msg.length > 0) { %>
+                <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl text-xs font-semibold flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-2">
+                        <i class="ph-bold ph-check-circle text-emerald-600 text-base"></i>
+                        <span><%= success_msg %></span>
+                    </div>
+                </div>
+            <% } %>
+
+            <% if (typeof error_msg !== 'undefined' && error_msg && error_msg.length > 0) { %>
+                <div class="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-xs font-semibold flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-2">
+                        <i class="ph-bold ph-warning-circle text-rose-600 text-base"></i>
+                        <span><%= error_msg %></span>
+                    </div>
+                </div>
+            <% } %>
+
             <div
                 class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div class="flex items-center gap-5">
@@ -25,7 +43,7 @@
                                     d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                             <%= (activeUser && activeUser.location) ? (typeof activeUser.location==='object' ?
-                                (activeUser.location.district || activeUser.location.state) : activeUser.location)
+                                ([activeUser.location.district, activeUser.location.state].filter(Boolean).join(', ') || 'Location Not Provided') : activeUser.location)
                                 : 'Location Not Provided' %>
                         </p>
                     </div>
@@ -41,6 +59,11 @@
                         </svg>
                         Edit Profile
                     </button>
+
+                    <a href="/candidate/resume-builder"
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg">
+                        Resume Builder
+                    </a>
                     <a href="/internships"
                         class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg transition-colors shadow-sm">
                         Browse Internships
@@ -135,6 +158,163 @@
                                     <% } %>
                     </div>
 
+                    <% const certifications = (activeUser && activeUser.certifications) ? activeUser.certifications : []; %>
+                        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                    <i class="ph-bold ph-certificate text-indigo-600 text-lg"></i>
+                                    Certifications
+                                </h2>
+                                <button type="button" data-cert-add
+                                    class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors shadow-sm cursor-pointer">
+                                    <i class="ph-bold ph-plus"></i> Add
+                                </button>
+                            </div>
+
+                            <% if (certifications.length> 0) { %>
+                                <div class="space-y-3">
+                                    <% certifications.forEach(cert=> { %>
+                                        <div class="border border-slate-100 rounded-lg p-3 flex items-start justify-between gap-3">
+                                            <div class="min-w-0">
+                                                <h4 class="text-sm font-bold text-slate-800 truncate">
+                                                    <%= cert.name %>
+                                                </h4>
+                                                <% if (cert.issuer) { %>
+                                                    <p class="text-xs text-slate-500 mt-0.5">Issued by <%= cert.issuer %>
+                                                    </p>
+                                                    <% } %>
+                                                        <% if (cert.issueDate) { %>
+                                                            <p class="text-xs text-slate-400 mt-0.5">
+                                                                <%= new Date(cert.issueDate).toLocaleDateString('en-IN', {
+                                                                    month: 'short' , year: 'numeric' }) %>
+                                                            </p>
+                                                            <% } %>
+                                                                <div class="flex flex-wrap items-center gap-3 mt-1.5">
+                                                                    <% if (cert.link) { %>
+                                                                        <a href="<%= cert.link %>" target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            class="text-xs text-indigo-600 hover:underline font-semibold">Credential
+                                                                            Link</a>
+                                                                        <% } %>
+                                                                            <% if (cert.fileUrl) { %>
+                                                                                <a href="<%= cert.fileUrl %>" target="_blank"
+                                                                                    rel="noopener noreferrer"
+                                                                                    class="text-xs text-emerald-700 hover:underline font-semibold">
+                                                                                    <%= cert.fileName || 'View Certificate' %>
+                                                                                </a>
+                                                                                <% } %>
+                                                                </div>
+                                            </div>
+
+                                            <div class="flex items-center gap-1 shrink-0">
+                                                <button type="button" class="text-slate-400 hover:text-indigo-600 p-1"
+                                                    title="Edit certification" data-cert-edit
+                                                    data-id="<%= cert._id %>"
+                                                    data-name="<%= cert.name %>"
+                                                    data-issuer="<%= cert.issuer || '' %>"
+                                                    data-link="<%= cert.link || '' %>"
+                                                    data-issuedate="<%= cert.issueDate ? new Date(cert.issueDate).toISOString().slice(0, 10) : '' %>">
+                                                    <i class="ph-bold ph-pencil-simple"></i>
+                                                </button>
+                                                <form action="/candidate/profile/certifications/<%= cert._id %>?_method=DELETE"
+                                                    method="POST"
+                                                    onsubmit="return confirm('Remove this certification?');">
+                                                    <button type="submit" class="text-slate-400 hover:text-rose-600 p-1"
+                                                        title="Delete certification">
+                                                        <i class="ph-bold ph-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        <% }) %>
+                                </div>
+                                <% } else { %>
+                                    <p class="text-xs text-slate-400 italic">No certifications added yet.</p>
+                                    <% } %>
+                        </div>
+
+                        <% const projects = (activeUser && activeUser.projects) ? activeUser.projects : []; %>
+                            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                    <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                        <i class="ph-bold ph-code text-indigo-600 text-lg"></i>
+                                        Projects
+                                    </h2>
+                                    <button type="button" data-project-add
+                                        class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors shadow-sm cursor-pointer">
+                                        <i class="ph-bold ph-plus"></i> Add
+                                    </button>
+                                </div>
+
+                                <% if (projects.length> 0) { %>
+                                    <div class="space-y-3">
+                                        <% projects.forEach(project=> { %>
+                                            <div
+                                                class="border border-slate-100 rounded-lg p-3 flex items-start justify-between gap-3">
+                                                <div class="min-w-0">
+                                                    <h4 class="text-sm font-bold text-slate-800 truncate">
+                                                        <%= project.title %>
+                                                    </h4>
+                                                    <% if (project.description) { %>
+                                                        <p class="text-xs text-slate-500 mt-1">
+                                                            <%= project.description %>
+                                                        </p>
+                                                        <% } %>
+                                                            <% if (project.techStack && project.techStack.length> 0) { %>
+                                                                <div class="flex flex-wrap gap-1.5 mt-2">
+                                                                    <% project.techStack.forEach(tech=> { %>
+                                                                        <span
+                                                                            class="bg-slate-100 border border-slate-200 text-slate-600 text-[11px] font-semibold px-2 py-0.5 rounded">
+                                                                            <%= tech %>
+                                                                        </span>
+                                                                        <% }) %>
+                                                                </div>
+                                                                <% } %>
+                                                                    <div class="flex flex-wrap items-center gap-3 mt-1.5">
+                                                                        <% if (project.link) { %>
+                                                                            <a href="<%= project.link %>" target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                class="text-xs text-indigo-600 hover:underline font-semibold">View
+                                                                                Project</a>
+                                                                            <% } %>
+                                                                                <% if (project.fileUrl) { %>
+                                                                                    <a href="<%= project.fileUrl %>"
+                                                                                        target="_blank"
+                                                                                        rel="noopener noreferrer"
+                                                                                        class="text-xs text-emerald-700 hover:underline font-semibold">
+                                                                                        <%= project.fileName || 'View Attachment' %>
+                                                                                    </a>
+                                                                                    <% } %>
+                                                                    </div>
+                                                </div>
+
+                                                <div class="flex items-center gap-1 shrink-0">
+                                                    <button type="button" class="text-slate-400 hover:text-indigo-600 p-1"
+                                                        title="Edit project" data-project-edit
+                                                        data-id="<%= project._id %>"
+                                                        data-title="<%= project.title %>"
+                                                        data-description="<%= project.description || '' %>"
+                                                        data-link="<%= project.link || '' %>"
+                                                        data-techstack="<%= (project.techStack || []).join(', ') %>">
+                                                        <i class="ph-bold ph-pencil-simple"></i>
+                                                    </button>
+                                                    <form action="/candidate/profile/projects/<%= project._id %>?_method=DELETE"
+                                                        method="POST"
+                                                        onsubmit="return confirm('Remove this project?');">
+                                                        <button type="submit" class="text-slate-400 hover:text-rose-600 p-1"
+                                                            title="Delete project">
+                                                            <i class="ph-bold ph-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                            <% }) %>
+                                    </div>
+                                    <% } else { %>
+                                        <p class="text-xs text-slate-400 italic">No projects added yet.</p>
+                                        <% } %>
+                            </div>
+
                 </div>
 
                 <div class="space-y-6">
@@ -150,7 +330,7 @@
                         </h2>
 
                         <form action="/candidate/parse-resume" method="POST" enctype="multipart/form-data"
-                            class="space-y-4">
+                            class="space-y-4" data-loading-text="Parsing Resume...">
                             <div
                                 class="border-2 border-dashed border-indigo-200 rounded-xl p-6 text-center bg-indigo-50/50 hover:bg-indigo-50 transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-500 mx-auto mb-2"
@@ -176,10 +356,44 @@
                                 </div>
                                 <% } %>
 
-                                    <button type="submit"
-                                        class="w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs py-2.5 rounded-lg transition-colors shadow-sm">
-                                        Extract Details
-                                    </button>
+                                <% if (activeUser && activeUser.resumeQuality) { %>
+                                    <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-4 space-y-3">
+                                        <h3 class="text-sm font-bold text-slate-800">Resume Quality Feedback</h3>
+
+                                        <% if (activeUser.resumeQuality.quantifiableAchievements && activeUser.resumeQuality.quantifiableAchievements.feedback) { %>
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-700">Quantifiable Achievements</p>
+                                            <p class="text-xs text-slate-600"><%= activeUser.resumeQuality.quantifiableAchievements.feedback %></p>
+                                        </div>
+                                        <% } %>
+
+                                        <% if (activeUser.resumeQuality.technicalSkills && activeUser.resumeQuality.technicalSkills.feedback) { %>
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-700">Technical Skills</p>
+                                            <p class="text-xs text-slate-600"><%= activeUser.resumeQuality.technicalSkills.feedback %></p>
+                                        </div>
+                                        <% } %>
+
+                                        <% if (activeUser.resumeQuality.projects && activeUser.resumeQuality.projects.feedback) { %>
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-700">Projects</p>
+                                            <p class="text-xs text-slate-600"><%= activeUser.resumeQuality.projects.feedback %></p>
+                                        </div>
+                                        <% } %>
+
+                                        <% if (activeUser.resumeQuality.overallFeedback) { %>
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-700">Overall Feedback</p>
+                                            <p class="text-xs text-slate-600"><%= activeUser.resumeQuality.overallFeedback %></p>
+                                        </div>
+                                        <% } %>
+                                    </div>
+                                <% } %>
+
+                                <button type="submit"
+                                    class="w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs py-2.5 rounded-lg transition-colors shadow-sm">
+                                    Extract Details
+                                </button>
                         </form>
                     </div>
                 </div>
@@ -188,6 +402,9 @@
 
         </div>
 
+        <% if (typeof showConflictModal !== 'undefined' && showConflictModal && typeof conflicts !== 'undefined' && conflicts.length > 0) { %>
+            <%- include('../partials/profileConflictModal') %>
+        <% } %>
 
         <div id="editProfileModal"
             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -200,11 +417,11 @@
                     </button>
                 </div>
 
-                <form action="/candidate/profile/edit" method="POST" class="mt-4 space-y-3 text-xs">
+                <form id="editProfileForm" action="/candidate/profile/edit" method="POST" class="mt-4 space-y-3 text-xs">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Location (District, State)</label>
                         <input type="text" name="location"
-                            value="<%= (activeUser && activeUser.location) ? (typeof activeUser.location === 'object' ? activeUser.location.district : activeUser.location) : '' %>"
+                            value="<%= (activeUser && activeUser.location) ? (typeof activeUser.location === 'object' ? [activeUser.location.district, activeUser.location.state].filter(Boolean).join(', ') : activeUser.location) : '' %>"
                             placeholder="e.g. Noida, Uttar Pradesh"
                             class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
                     </div>
@@ -248,10 +465,116 @@
 
                     <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                         <button type="button" id="cancelModalBtn"
-                            class="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200 cursor-pointer">Cancel</button>
-                        <button type="submit"
-                            class="px-4 py-2 font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm cursor-pointer">Save
+                            class="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">Cancel</button>
+                        <button type="submit" id="saveProfileBtn"
+                            class="px-4 py-2 font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">Save
                             Profile</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+
+        <div id="certModal"
+            class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+            <div class="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <h3 id="certModalTitle" class="text-base font-bold text-slate-900">Add Certification</h3>
+                    <button type="button" data-close-modal="certModal"
+                        class="text-slate-400 hover:text-slate-600 p-1 text-lg font-bold">✕</button>
+                </div>
+
+                <form id="certForm" action="/candidate/profile/certifications" method="POST"
+                    enctype="multipart/form-data" class="mt-4 space-y-3 text-xs">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Certification Name *</label>
+                        <input type="text" name="name" id="certName" required maxlength="120"
+                            placeholder="e.g. Google Data Analytics"
+                            class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Issuing Organization</label>
+                        <input type="text" name="issuer" id="certIssuer" maxlength="120" placeholder="e.g. Coursera"
+                            class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Issue Date</label>
+                        <input type="date" name="issueDate" id="certIssueDate" data-max-today
+                            class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Credential Link</label>
+                        <input type="url" name="link" id="certLink" placeholder="https://..."
+                            class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Certificate File (PDF/PNG/JPG, max
+                            5MB)</label>
+                        <input type="file" name="certificate" accept=".pdf,.png,.jpg,.jpeg" data-max-size="5242880"
+                            class="w-full border border-slate-200 rounded-lg px-3 py-2 file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-100 file:text-slate-700">
+                        <p class="text-slate-400 mt-1" id="certFileHint">Leave empty to keep the existing file.</p>
+                        <p class="text-rose-600 font-semibold mt-1 hidden" data-file-error></p>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 pt-2">
+                        <button type="button" data-close-modal="certModal"
+                            class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-lg">Cancel</button>
+                        <button type="submit"
+                            class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg">Save
+                            Certification</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="projectModal"
+            class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+            <div class="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <h3 id="projectModalTitle" class="text-base font-bold text-slate-900">Add Project</h3>
+                    <button type="button" data-close-modal="projectModal"
+                        class="text-slate-400 hover:text-slate-600 p-1 text-lg font-bold">✕</button>
+                </div>
+
+                <form id="projectForm" action="/candidate/profile/projects" method="POST"
+                    enctype="multipart/form-data" class="mt-4 space-y-3 text-xs">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Project Title *</label>
+                        <input type="text" name="title" id="projectTitle" required maxlength="120"
+                            placeholder="e.g. InternPilot Clone"
+                            class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Description</label>
+                        <textarea name="description" id="projectDescription" rows="3" maxlength="1000"
+                            placeholder="What does the project do?"
+                            class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200"></textarea>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Tech Stack (Comma Separated)</label>
+                        <input type="text" name="techStack" id="projectTechStack" placeholder="Node.js, MongoDB, EJS"
+                            class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Project Link</label>
+                        <input type="url" name="link" id="projectLink" placeholder="https://github.com/..."
+                            class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Supporting File (PDF/PNG/JPG, max
+                            5MB)</label>
+                        <input type="file" name="attachment" accept=".pdf,.png,.jpg,.jpeg" data-max-size="5242880"
+                            class="w-full border border-slate-200 rounded-lg px-3 py-2 file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-100 file:text-slate-700">
+                        <p class="text-slate-400 mt-1" id="projectFileHint">Leave empty to keep the existing file.</p>
+                        <p class="text-rose-600 font-semibold mt-1 hidden" data-file-error></p>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 pt-2">
+                        <button type="button" data-close-modal="projectModal"
+                            class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-lg">Cancel</button>
+                        <button type="submit"
+                            class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg">Save
+                            Project</button>
                     </div>
                 </form>
             </div>
@@ -260,10 +583,135 @@
 
         <script>
             document.addEventListener('DOMContentLoaded', () => {
+                const MAX_FILE_BYTES = 5 * 1024 * 1024;
+                const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg'];
+
+                const openEntryModal = (id) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    el.classList.remove('hidden');
+                    el.classList.add('flex');
+                };
+
+                const closeEntryModal = (id) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    el.classList.add('hidden');
+                    el.classList.remove('flex');
+                };
+
+                document.querySelectorAll('[data-close-modal]').forEach(btn => {
+                    btn.addEventListener('click', () => closeEntryModal(btn.dataset.closeModal));
+                });
+
+                const certForm = document.getElementById('certForm');
+                const certTitle = document.getElementById('certModalTitle');
+                const certHint = document.getElementById('certFileHint');
+
+                const resetCertForm = () => {
+                    if (certForm) certForm.reset();
+                };
+
+                document.querySelectorAll('[data-cert-add]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        resetCertForm();
+                        if (certForm) certForm.action = '/candidate/profile/certifications';
+                        if (certTitle) certTitle.textContent = 'Add Certification';
+                        if (certHint) certHint.textContent = 'Optional. PDF, PNG or JPG up to 5MB.';
+                        openEntryModal('certModal');
+                    });
+                });
+
+                document.querySelectorAll('[data-cert-edit]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        resetCertForm();
+                        const d = btn.dataset;
+                        if (certForm) certForm.action = `/candidate/profile/certifications/${d.id}?_method=PUT`;
+                        if (certTitle) certTitle.textContent = 'Edit Certification';
+                        if (certHint) certHint.textContent = 'Leave empty to keep the existing file.';
+                        document.getElementById('certName').value = d.name || '';
+                        document.getElementById('certIssuer').value = d.issuer || '';
+                        document.getElementById('certLink').value = d.link || '';
+                        document.getElementById('certIssueDate').value = d.issuedate || '';
+                        openEntryModal('certModal');
+                    });
+                });
+
+                const projectForm = document.getElementById('projectForm');
+                const projectTitle = document.getElementById('projectModalTitle');
+                const projectHint = document.getElementById('projectFileHint');
+
+                const resetProjectForm = () => {
+                    if (projectForm) projectForm.reset();
+                };
+
+                document.querySelectorAll('[data-project-add]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        resetProjectForm();
+                        if (projectForm) projectForm.action = '/candidate/profile/projects';
+                        if (projectTitle) projectTitle.textContent = 'Add Project';
+                        if (projectHint) projectHint.textContent = 'Optional. PDF, PNG or JPG up to 5MB.';
+                        openEntryModal('projectModal');
+                    });
+                });
+
+                document.querySelectorAll('[data-project-edit]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        resetProjectForm();
+                        const d = btn.dataset;
+                        if (projectForm) projectForm.action = `/candidate/profile/projects/${d.id}?_method=PUT`;
+                        if (projectTitle) projectTitle.textContent = 'Edit Project';
+                        if (projectHint) projectHint.textContent = 'Leave empty to keep the existing file.';
+                        document.getElementById('projectTitle').value = d.title || '';
+                        document.getElementById('projectDescription').value = d.description || '';
+                        document.getElementById('projectLink').value = d.link || '';
+                        document.getElementById('projectTechStack').value = d.techstack || '';
+                        openEntryModal('projectModal');
+                    });
+                });
+
+                document.querySelectorAll('input[type="date"][data-max-today]').forEach(input => {
+                    input.max = new Date().toISOString().slice(0, 10);
+                });
+
+                document.querySelectorAll('input[type="file"][data-max-size]').forEach(input => {
+                    const errorEl = input.parentElement.querySelector('[data-file-error]');
+
+                    const showError = (message) => {
+                        input.value = '';
+                        if (!errorEl) return;
+                        errorEl.textContent = message;
+                        errorEl.classList.remove('hidden');
+                    };
+
+                    const clearError = () => {
+                        if (errorEl) errorEl.classList.add('hidden');
+                    };
+
+                    input.addEventListener('change', () => {
+                        clearError();
+
+                        const file = input.files && input.files[0];
+                        if (!file) return;
+
+                        const name = file.name.toLowerCase();
+                        const hasAllowedExtension = ALLOWED_EXTENSIONS.some(ext => name.endsWith(ext));
+
+                        if (!hasAllowedExtension) {
+                            return showError('Only PDF, PNG or JPG files are allowed.');
+                        }
+                        if (file.size > MAX_FILE_BYTES) {
+                            return showError('File is too large. Maximum allowed size is 5MB.');
+                        }
+                    });
+                });
+
                 const modal = document.getElementById('editProfileModal');
                 const openBtn = document.getElementById('openModalBtn');
                 const closeBtn = document.getElementById('closeModalBtn');
                 const cancelBtn = document.getElementById('cancelModalBtn');
+                const profileForm = document.getElementById('editProfileForm');
+                const saveBtn = document.getElementById('saveProfileBtn');
 
                 if (openBtn && modal) {
                     openBtn.addEventListener('click', () => {
@@ -277,5 +725,20 @@
 
                 if (closeBtn) closeBtn.addEventListener('click', closeModal);
                 if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+                if (profileForm && saveBtn) {
+                    profileForm.addEventListener('submit', () => {
+                        saveBtn.disabled = true;
+                        if (cancelBtn) cancelBtn.disabled = true;
+                        if (closeBtn) closeBtn.disabled = true;
+                        saveBtn.innerHTML = `
+                            <svg class="animate-spin h-4 w-4 text-white shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Saving...
+                        `;
+                    });
+                }
             });
         </script>
