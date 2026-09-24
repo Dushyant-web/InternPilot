@@ -121,10 +121,15 @@ app.use((err, req, res, next) => {
         error: process.env.NODE_ENV === 'development' ? err : {}
     }, (renderErr, html) => {
         if (renderErr) {
+            const safeMessage = String(errorMessage)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
             return res.status(statusCode).send(`
                 <div style="font-family: sans-serif; padding: 2rem; max-width: 600px; margin: auto;">
                     <h2>Something went wrong (${statusCode})</h2>
-                    <p><strong>Error:</strong> ${errorMessage}</p>
+                    <p><strong>Error:</strong> ${safeMessage}</p>
                     <a href="/">Return to Home</a>
                 </div>
             `);

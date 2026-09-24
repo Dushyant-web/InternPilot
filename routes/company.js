@@ -7,6 +7,7 @@ const Application = require('../models/Application');
 const { isAuthenticated, requireCompanyRole } = require('../middleware/auth');
 const { sendStatusUpdateEmail } = require('../utils/sendEmail');
 const { parseISTEndOfDay } = require('../utils/dateUtils');
+
 router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
         const currentFilter = req.query.status || 'all'; // 'all', 'published', 'draft'
@@ -55,7 +56,10 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
 
 router.post('/company/internships/create', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
-        const { title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state, deadline } = req.body;
+        const { title, sector, requiredSkills, minQualifications, monthlyStipend, stipend, vacancies, duration, district, state, location, deadline, action } = req.body;
+
+        const isDraft = action === 'draft';
+        const status = isDraft ? 'draft' : 'published';
 
         let applicationDeadline;
         try {
@@ -83,6 +87,16 @@ router.post('/company/internships/create', isAuthenticated, requireCompanyRole([
             ? requiredSkills.split(',').map(s => s.trim()).filter(Boolean)
             : [];
 
+        let resolvedDistrict = district || '';
+        let resolvedState = state || '';
+        if ((!resolvedDistrict && !resolvedState) && location) {
+            const locParts = location.split(',');
+            resolvedDistrict = locParts[0] ? locParts[0].trim() : '';
+            resolvedState = locParts[1] ? locParts[1].trim() : '';
+        }
+        const rawStipend = monthlyStipend !== undefined ? monthlyStipend : stipend;
+        const stipendNumber = rawStipend ? parseInt(rawStipend.toString().replace(/[^0-9]/g, '')) : (isDraft ? 0 : 5000);
+
         await Internship.create({
             companyId: req.user.companyId,
             postedBy: req.user._id,
@@ -92,12 +106,12 @@ router.post('/company/internships/create', isAuthenticated, requireCompanyRole([
             sector: sector || (isDraft ? 'Uncategorized' : 'General'),
             minQualifications: minQualifications || (isDraft ? '' : 'Any'),
             requiredSkills: skillsArray,
-            monthlyStipend: monthlyStipend ? Number(monthlyStipend) : (isDraft ? 0 : 5000),
+            monthlyStipend: stipendNumber,
             vacancies: vacancies ? Number(vacancies) : 1,
             duration: duration || (isDraft ? '' : '12 Months'),
             location: {
-                district: district || '',
-                state: state || ''
+                district: resolvedDistrict,
+                state: resolvedState
             },
             applicationDeadline
         });
@@ -346,8 +360,13 @@ router.post('/company/applications/:id/status', isAuthenticated, requireCompanyR
 
         if (req.flash) req.flash('success_msg', `Application marked as ${status}`);
         const referrer = req.get('Referrer');
-        if (referrer && referrer.includes('/company/')) {
-            return res.redirect(referrer);
+        if (referrer) {
+            try {
+                const refUrl = new URL(referrer, `${req.protocol}://${req.get('host')}`);
+                if (refUrl.host === req.get('host') && refUrl.pathname.startsWith('/company/')) {
+                    return res.redirect(refUrl.pathname + refUrl.search);
+                }
+            } catch (_) { /* malformed referrer — fall through */ }
         }
         res.redirect(`/company/internships/${application.internship._id}/applicants`);
     } catch (error) {
@@ -378,7 +397,12 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
         const internship = await Internship.findOne({ _id: req.params.id, companyId: req.user.companyId });
         if (!internship) return res.status(404).send('Internship not found or unauthorized.');
 
-        const { title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state, deadline } = req.body;
+        const { title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state, deadline, action } = req.body;
+
+        const isDraft = action === 'draft';
+        const isPublish = action === 'publish';
+        const trimmedTitle = title && typeof title === 'string' ? title.trim() : '';
+        const parsedVacancies = parseInt(vacancies);
 
         if (deadline !== undefined) {
             try {

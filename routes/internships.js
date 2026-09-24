@@ -37,7 +37,18 @@ router.get('/', async (req, res) => {
 
 router.post('/new', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
-        const { title, company: companyName, location, sector, stipend, vacancies, duration, requiredSkills, minQualifications, deadline } = req.body;
+        const { title, company: companyName, location, sector, stipend, monthlyStipend, vacancies, duration, requiredSkills, minQualifications, deadline, action } = req.body;
+
+        const isDraft = action === 'draft';
+        const status = isDraft ? 'draft' : 'published';
+        const trimmedTitle = title && typeof title === 'string' ? title.trim() : '';
+
+        if (!isDraft && !trimmedTitle) {
+            if (req.flash) req.flash('error_msg', 'Internship title is required to publish an opportunity.');
+            return res.redirect('/internships');
+        }
+
+        const resolvedTitle = trimmedTitle || (isDraft ? 'Untitled Draft' : 'Internship Opportunity');
 
         let applicationDeadline;
         try {
@@ -50,7 +61,8 @@ router.post('/new', isAuthenticated, requireCompanyRole(['company', 'recruiter']
         const locationParts = location ? location.split(',') : [];
         const district = locationParts[0] ? locationParts[0].trim() : '';
         const state = locationParts[1] ? locationParts[1].trim() : '';
-        const stipendNumber = stipend ? parseInt(stipend.toString().replace(/[^0-9]/g, '')) : (isDraft ? 0 : 5000);
+        const rawStipend = stipend !== undefined ? stipend : monthlyStipend;
+        const stipendNumber = rawStipend ? parseInt(rawStipend.toString().replace(/[^0-9]/g, '')) : (isDraft ? 0 : 5000);
 
         let resolvedCompanyName = companyName || req.user.companyDetails?.companyName;
         if (!resolvedCompanyName && req.user.companyId) {
@@ -194,6 +206,11 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
 
         if (!candidate || !internship) {
             return res.status(404).send('Candidate or Internship not found');
+        }
+
+        if (internship.status === 'draft') {
+            if (req.flash) req.flash('error_msg', 'This opportunity is not currently accepting applications.');
+            return res.redirect('/internships');
         }
 
         if (internship.applicationDeadline && new Date() > internship.applicationDeadline) {
