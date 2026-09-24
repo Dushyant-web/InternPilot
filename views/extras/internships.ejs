@@ -136,6 +136,14 @@
                                         </button>
                                     </form>
                                     <% } %>
+
+                                        <% if (currentUser && currentUser.role==='candidate' ) { %>
+                                            <a href="/internships/<%= item._id %>/skill-gap"
+                                                class="mt-2 w-full text-center py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+                                                <i class="ph-bold ph-chart-donut text-base text-indigo-600"></i>
+                                                Skill Gap Analysis
+                                            </a>
+                                            <% } %>
                     </div>
                     <% } %>
 
