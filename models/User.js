@@ -36,6 +36,26 @@ const userSchema = new mongoose.Schema({
         institutionName: { type: String, default: '' }
     },
 
+    certifications: [{
+        name: { type: String, required: true, trim: true, maxlength: 120 },
+        issuer: { type: String, default: '', trim: true, maxlength: 120 },
+        issueDate: { type: Date },
+        link: { type: String, default: '', trim: true },
+        fileUrl: { type: String, default: '' },
+        fileName: { type: String, default: '' },
+        createdAt: { type: Date, default: Date.now }
+    }],
+
+    projects: [{
+        title: { type: String, required: true, trim: true, maxlength: 120 },
+        description: { type: String, default: '', trim: true, maxlength: 1000 },
+        link: { type: String, default: '', trim: true },
+        techStack: [{ type: String, trim: true }],
+        fileUrl: { type: String, default: '' },
+        fileName: { type: String, default: '' },
+        createdAt: { type: Date, default: Date.now }
+    }],
+
     companyDetails: {
         companyName: { type: String },
         cin: { type: String },
