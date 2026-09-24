@@ -347,6 +347,12 @@ router.post('/company/applications/:id/status', isAuthenticated, requireCompanyR
             return res.redirect('/company/dashboard');
         }
 
+        if (application.status === 'Withdrawn' || application.status === 'withdrawn') {
+            if (req.flash) req.flash('error_msg', 'Cannot modify status: This candidate has already withdrawn their application.');
+            const referrer = req.get('Referrer');
+            return res.redirect(referrer || `/company/internships/${internship._id}/applicants`);
+        }
+
         const previousStatus = application.status;
         // The Application pre-save hook records statusUpdatedAt only when this
         // assignment represents an actual status transition.
