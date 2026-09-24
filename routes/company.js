@@ -6,8 +6,7 @@ const Internship = require('../models/Internship');
 const Application = require('../models/Application');
 const { isAuthenticated, requireCompanyRole } = require('../middleware/auth');
 const { sendStatusUpdateEmail } = require('../utils/sendEmail');
-const chatRouter = require('./chat');
-
+const { parseISTEndOfDay } = require('../utils/dateUtils');
 router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
         const currentFilter = req.query.status || 'all'; // 'all', 'published', 'draft'
@@ -56,9 +55,15 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
 
 router.post('/company/internships/create', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
-        const { action, title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state } = req.body;
-        const isDraft = action === 'draft';
-        const status = isDraft ? 'draft' : 'published';
+        const { title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state, deadline } = req.body;
+
+        let applicationDeadline;
+        try {
+            applicationDeadline = parseISTEndOfDay(deadline);
+        } catch (err) {
+            if (req.flash) req.flash('error_msg', err.message || 'Invalid deadline date provided.');
+            return res.redirect('/company/dashboard');
+        }
 
         let companyName = req.user.companyDetails?.companyName;
         if (!companyName) {
@@ -93,7 +98,8 @@ router.post('/company/internships/create', isAuthenticated, requireCompanyRole([
             location: {
                 district: district || '',
                 state: state || ''
-            }
+            },
+            applicationDeadline
         });
 
         if (req.flash) {
@@ -372,21 +378,15 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
         const internship = await Internship.findOne({ _id: req.params.id, companyId: req.user.companyId });
         if (!internship) return res.status(404).send('Internship not found or unauthorized.');
 
-        const { action, title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state } = req.body;
+        const { title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state, deadline } = req.body;
 
-        const isPublish = action === 'publish';
-        const isDraft = action === 'draft';
-
-        const trimmedTitle = title && typeof title === 'string' ? title.trim() : '';
-        if (isPublish && (!trimmedTitle || trimmedTitle === 'Untitled Draft')) {
-            if (req.flash) req.flash('error_msg', 'A valid internship title is required to publish.');
-            return res.redirect(`/company/internships/edit/${internship._id}`);
-        }
-
-        const parsedVacancies = vacancies ? Number(vacancies) : 1;
-        if (isPublish && (isNaN(parsedVacancies) || parsedVacancies < 1)) {
-            if (req.flash) req.flash('error_msg', 'Vacancies must be at least 1 to publish.');
-            return res.redirect(`/company/internships/edit/${internship._id}`);
+        if (deadline !== undefined) {
+            try {
+                internship.applicationDeadline = parseISTEndOfDay(deadline);
+            } catch (err) {
+                if (req.flash) req.flash('error_msg', err.message || 'Invalid deadline date provided.');
+                return res.redirect(`/company/internships/edit/${internship._id}`);
+            }
         }
 
         const skillsArray = requiredSkills

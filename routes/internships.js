@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
 const { isAuthenticated, authorize, requireCompanyRole } = require('../middleware/auth');
+const { parseISTEndOfDay } = require('../utils/dateUtils');
 
 function calculateSkillScore(userSkills = [], requiredSkills = []) {
     if (!requiredSkills || !requiredSkills.length) return 100;
@@ -36,17 +37,15 @@ router.get('/', async (req, res) => {
 
 router.post('/new', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
-        const { action, title, company: companyName, location, sector, stipend, vacancies, duration, requiredSkills, minQualifications } = req.body;
-        const isDraft = action === 'draft' || req.body.status === 'draft';
-        const status = isDraft ? 'draft' : 'published';
+        const { title, company: companyName, location, sector, stipend, vacancies, duration, requiredSkills, minQualifications, deadline } = req.body;
 
-        const trimmedTitle = title && typeof title === 'string' ? title.trim() : '';
-        if (!isDraft && !trimmedTitle) {
-            if (req.flash) req.flash('error_msg', 'Internship title is required to publish.');
+        let applicationDeadline;
+        try {
+            applicationDeadline = parseISTEndOfDay(deadline);
+        } catch (err) {
+            if (req.flash) req.flash('error_msg', err.message || 'Invalid deadline date provided.');
             return res.redirect('/internships');
         }
-
-        const resolvedTitle = trimmedTitle || (isDraft ? 'Untitled Draft' : 'Internship Opportunity');
 
         const locationParts = location ? location.split(',') : [];
         const district = locationParts[0] ? locationParts[0].trim() : '';
@@ -72,7 +71,8 @@ router.post('/new', isAuthenticated, requireCompanyRole(['company', 'recruiter']
             monthlyStipend: stipendNumber,
             vacancies: vacancies ? parseInt(vacancies) : 1,
             requiredSkills: requiredSkills ? requiredSkills.split(',').map(s => s.trim()).filter(Boolean) : [],
-            postedBy: req.user._id
+            postedBy: req.user._id,
+            applicationDeadline
         });
 
         await newInternship.save();
@@ -116,7 +116,16 @@ router.post('/:id/edit', isAuthenticated, async (req, res) => {
             return res.redirect('/internships');
         }
 
-        const { title, company: companyName, location, sector, stipend, duration, vacancies, requiredSkills, minQualifications } = req.body;
+        const { title, company: companyName, location, sector, stipend, duration, vacancies, requiredSkills, minQualifications, deadline } = req.body;
+
+        if (deadline !== undefined) {
+            try {
+                internship.applicationDeadline = parseISTEndOfDay(deadline);
+            } catch (err) {
+                if (req.flash) req.flash('error_msg', err.message || 'Invalid deadline date provided.');
+                return res.redirect('/internships');
+            }
+        }
 
         const locationParts = location ? location.split(',') : [];
         const district = locationParts[0] ? locationParts[0].trim() : '';
@@ -187,8 +196,8 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
             return res.status(404).send('Candidate or Internship not found');
         }
 
-        if (internship.status === 'draft') {
-            if (req.flash) req.flash('error_msg', 'This internship listing is currently a draft and not accepting applications.');
+        if (internship.applicationDeadline && new Date() > internship.applicationDeadline) {
+            if (req.flash) req.flash('error_msg', 'The application deadline for this internship has passed.');
             return res.redirect('/internships');
         }
 
