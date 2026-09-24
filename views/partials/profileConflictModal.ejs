@@ -1,0 +1,259 @@
+<%
+/**
+ * profileConflictModal.ejs
+ * -----------------------------------------------------------------------
+ * A full-page overlay modal showing a side-by-side comparison of every
+ * conflicting field between the current profile and the parsed resume.
+ *
+ * Expected locals:
+ *   conflicts  – Array of { fieldKey, fieldLabel, currentValue, parsedValue }
+ *   autoMerged – Object of already-resolved fields (hidden inputs)
+ *   resumeUrl  – (optional) URL of the uploaded resume file
+ *   resumeQuality – (optional) AI quality analysis object
+ *
+ * The form POSTs to /candidate/profile/confirm-update with:
+ *   field_<fieldKey> = "current" | "parsed"  (one per conflict row)
+ *   autoMerged       = JSON string of pre-merged data
+ *   resumeUrl        = cloudinary URL (hidden)
+ *   resumeQuality    = JSON string (hidden)
+ */
+%>
+
+<!-- ─── Conflict Resolution Modal ──────────────────────────────────────── -->
+<div id="conflictModal"
+     class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+     role="dialog" aria-modal="true" aria-labelledby="conflictModalTitle">
+
+    <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-[fadeInUp_0.35s_ease-out]">
+
+        <!-- ── Header ──────────────────────────────────────────────── -->
+        <div class="px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-violet-50 shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 id="conflictModalTitle" class="text-base font-bold text-slate-900">
+                        Review Profile Conflicts
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Your resume contains <strong class="text-slate-700"><%= conflicts.length %></strong>
+                        field<%= conflicts.length !== 1 ? 's' : '' %> that differ from your current profile.
+                        Choose which value to keep for each.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Scrollable body ─────────────────────────────────────── -->
+        <form id="conflictForm" action="/candidate/profile/confirm-update" method="POST"
+              class="flex flex-col flex-1 overflow-hidden">
+
+            <!-- Hidden fields for auto-merged data & resume info -->
+            <input type="hidden" name="autoMerged" value="<%= typeof autoMerged !== 'undefined' ? JSON.stringify(autoMerged) : '{}' %>">
+            <% if (typeof resumeUrl !== 'undefined' && resumeUrl) { %>
+                <input type="hidden" name="resumeUrl" value="<%= resumeUrl %>">
+            <% } %>
+            <% if (typeof resumeQuality !== 'undefined' && resumeQuality) { %>
+                <input type="hidden" name="resumeQuality" value="<%= JSON.stringify(resumeQuality) %>">
+            <% } %>
+
+            <!-- Quick-select buttons -->
+            <div class="px-6 pt-4 pb-2 flex flex-wrap gap-2 shrink-0">
+                <button type="button" id="keepAllCurrentBtn"
+                        class="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:border-slate-300 transition-all cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Keep All Current
+                </button>
+                <button type="button" id="acceptAllParsedBtn"
+                        class="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Accept All Parsed
+                </button>
+            </div>
+
+            <!-- ── Conflict table ──────────────────────────────────── -->
+            <div class="flex-1 overflow-y-auto px-6 pb-4">
+                <div class="space-y-3 mt-2">
+
+                    <!-- Column headers (visible on md+) -->
+                    <div class="hidden md:grid md:grid-cols-[1fr_1.2fr_1.2fr_auto] gap-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1 pb-1 border-b border-slate-100">
+                        <span>Field</span>
+                        <span>Current Profile</span>
+                        <span>Parsed Resume</span>
+                        <span class="text-center">Choice</span>
+                    </div>
+
+                    <% conflicts.forEach(function(c, idx) { %>
+
+                    <div class="group border border-slate-100 rounded-xl p-4 hover:border-indigo-200 hover:shadow-sm transition-all bg-white"
+                         data-conflict-row="<%= idx %>">
+
+                        <!-- Hidden input carrying the parsed value for server-side processing -->
+                        <input type="hidden" name="parsedValue_<%= c.fieldKey %>" value="<%= c.parsedValue %>">
+
+                        <!-- ── Desktop grid ────────────────────────── -->
+                        <div class="hidden md:grid md:grid-cols-[1fr_1.2fr_1.2fr_auto] gap-3 items-start">
+
+                            <!-- Field label -->
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <span class="text-xs font-bold text-slate-800"><%= c.fieldLabel %></span>
+                            </div>
+
+                            <!-- Current value -->
+                            <div class="bg-slate-50 rounded-lg px-3 py-2 text-xs text-slate-700 break-words min-h-[2.25rem] flex items-center border border-slate-100">
+                                <span class="line-clamp-3"><%= c.currentValue || '—' %></span>
+                            </div>
+
+                            <!-- Parsed value -->
+                            <div class="bg-emerald-50 rounded-lg px-3 py-2 text-xs text-emerald-800 break-words min-h-[2.25rem] flex items-center border border-emerald-100">
+                                <span class="line-clamp-3"><%= c.parsedValue || '—' %></span>
+                            </div>
+
+                            <!-- Radio choice -->
+                            <div class="flex flex-col gap-2 pl-2">
+                                <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs text-slate-600 hover:text-indigo-600 transition-colors">
+                                    <input type="radio" name="field_<%= c.fieldKey %>" value="current"
+                                           class="accent-indigo-600 w-3.5 h-3.5 conflict-radio" data-side="current" checked>
+                                    <span class="font-medium">Current</span>
+                                </label>
+                                <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs text-slate-600 hover:text-emerald-600 transition-colors">
+                                    <input type="radio" name="field_<%= c.fieldKey %>" value="parsed"
+                                           class="accent-emerald-600 w-3.5 h-3.5 conflict-radio" data-side="parsed">
+                                    <span class="font-medium">Parsed</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- ── Mobile stack ─────────────────────────── -->
+                        <div class="md:hidden space-y-3">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <span class="text-xs font-bold text-slate-800"><%= c.fieldLabel %></span>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <label class="flex items-start gap-2 cursor-pointer bg-slate-50 border border-slate-100 rounded-lg p-3 hover:border-indigo-300 transition-colors has-[:checked]:ring-2 has-[:checked]:ring-indigo-500 has-[:checked]:border-indigo-300">
+                                    <input type="radio" name="field_<%= c.fieldKey %>_mobile" value="current"
+                                           class="accent-indigo-600 w-3.5 h-3.5 mt-0.5 conflict-radio-mobile" data-field="<%= c.fieldKey %>" data-side="current" checked>
+                                    <div>
+                                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Current</span>
+                                        <span class="text-xs text-slate-700 break-words"><%= c.currentValue || '—' %></span>
+                                    </div>
+                                </label>
+                                <label class="flex items-start gap-2 cursor-pointer bg-emerald-50 border border-emerald-100 rounded-lg p-3 hover:border-emerald-300 transition-colors has-[:checked]:ring-2 has-[:checked]:ring-emerald-500 has-[:checked]:border-emerald-300">
+                                    <input type="radio" name="field_<%= c.fieldKey %>_mobile" value="parsed"
+                                           class="accent-emerald-600 w-3.5 h-3.5 mt-0.5 conflict-radio-mobile" data-field="<%= c.fieldKey %>" data-side="parsed">
+                                    <div>
+                                        <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-500 block">Parsed</span>
+                                        <span class="text-xs text-emerald-800 break-words"><%= c.parsedValue || '—' %></span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <% }); %>
+                </div>
+            </div>
+
+            <!-- ── Footer actions ──────────────────────────────────── -->
+            <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/80 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+                <p class="text-[11px] text-slate-400 hidden sm:block">
+                    Non-conflicting fields have already been merged automatically.
+                </p>
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <a href="/candidate/profile"
+                       class="flex-1 sm:flex-none text-center px-4 py-2.5 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors">
+                        Cancel
+                    </a>
+                    <button type="submit" id="confirmUpdateBtn"
+                            class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Confirm &amp; Save
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ─── Animation keyframe + conflict modal interactivity ─────────────── -->
+<style>
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(24px) scale(0.97); }
+        to   { opacity: 1; transform: translateY(0)    scale(1);    }
+    }
+</style>
+
+<script>
+(function () {
+    'use strict';
+
+    // ── Quick-select buttons ───────────────────────────────────────────
+    var keepAllBtn   = document.getElementById('keepAllCurrentBtn');
+    var acceptAllBtn = document.getElementById('acceptAllParsedBtn');
+
+    function selectAll(side) {
+        // Desktop radios
+        document.querySelectorAll('.conflict-radio').forEach(function (radio) {
+            radio.checked = (radio.dataset.side === side);
+        });
+        // Mobile radios
+        document.querySelectorAll('.conflict-radio-mobile').forEach(function (radio) {
+            radio.checked = (radio.dataset.side === side);
+        });
+    }
+
+    if (keepAllBtn)   keepAllBtn.addEventListener('click',   function () { selectAll('current'); });
+    if (acceptAllBtn) acceptAllBtn.addEventListener('click', function () { selectAll('parsed');  });
+
+    // ── Sync mobile radios into hidden desktop radios on submit ────────
+    var conflictForm = document.getElementById('conflictForm');
+    var confirmBtn   = document.getElementById('confirmUpdateBtn');
+
+    if (conflictForm) {
+        conflictForm.addEventListener('submit', function () {
+            // On mobile, the radio names have a _mobile suffix. Before
+            // submission we copy their values into the canonical hidden
+            // inputs so the server always receives field_<key>=value.
+            document.querySelectorAll('.conflict-radio-mobile:checked').forEach(function (radio) {
+                var fieldKey = radio.dataset.field;
+                var canonical = conflictForm.querySelector('input[name="field_' + fieldKey + '"][value="' + radio.value + '"]');
+                if (canonical) canonical.checked = true;
+            });
+
+            // Disable button to prevent double-submit
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<svg class="animate-spin h-4 w-4 text-white shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Saving\u2026';
+            }
+        });
+    }
+
+    // ── Close on Escape key ────────────────────────────────────────────
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            window.location.href = '/candidate/profile';
+        }
+    });
+})();
+</script>

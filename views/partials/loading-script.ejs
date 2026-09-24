@@ -1,0 +1,75 @@
+<script>
+  (function () {
+    document.addEventListener('submit', function (e) {
+      var form = e.target;
+      if (!form || form.tagName !== 'FORM') return;
+
+      // Skip forms explicitly opting out
+      if (form.hasAttribute('data-no-loading')) return;
+
+      // Respect HTML5 form validation
+      if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+        return;
+      }
+
+      // Prevent double submit if already processing
+      if (form.getAttribute('aria-busy') === 'true') {
+        e.preventDefault();
+        return;
+      }
+
+      var submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+      if (!submitBtn) return;
+
+      var loadingText = form.getAttribute('data-loading-text') || submitBtn.getAttribute('data-loading-text');
+      if (!loadingText) {
+        var textContent = (submitBtn.textContent || submitBtn.value || '').trim();
+        if (/log\s*in/i.test(textContent)) {
+          loadingText = 'Logging in...';
+        } else if (/register|create account/i.test(textContent)) {
+          loadingText = 'Creating Account...';
+        } else if (/upload/i.test(textContent)) {
+          loadingText = 'Uploading...';
+        } else if (/parse/i.test(textContent)) {
+          loadingText = 'Parsing...';
+        } else if (/save|update/i.test(textContent)) {
+          loadingText = 'Saving...';
+        } else if (/apply/i.test(textContent)) {
+          loadingText = 'Submitting...';
+        } else if (/post/i.test(textContent)) {
+          loadingText = 'Posting...';
+        } else if (/delete|remove/i.test(textContent)) {
+          loadingText = 'Deleting...';
+        } else {
+          loadingText = 'Processing...';
+        }
+      }
+
+      // Mark form as busy
+      form.setAttribute('aria-busy', 'true');
+
+      // Lock submit button immediately via pointer events and opacity
+      submitBtn.classList.add('pointer-events-none', 'opacity-80');
+      submitBtn.setAttribute('aria-disabled', 'true');
+
+      // Preserve element min-width to avoid layout shifts
+      var rect = submitBtn.getBoundingClientRect();
+      if (rect.width > 0) {
+        submitBtn.style.minWidth = rect.width + 'px';
+      }
+
+      var spinnerSvg = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 inline-block text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+
+      if (submitBtn.tagName === 'INPUT') {
+        submitBtn.value = loadingText;
+      } else {
+        submitBtn.innerHTML = spinnerSvg + '<span>' + loadingText + '</span>';
+      }
+
+      // Disable button after tick so form submission fires natively
+      setTimeout(function () {
+        submitBtn.disabled = true;
+      }, 0);
+    }, true);
+  })();
+</script>

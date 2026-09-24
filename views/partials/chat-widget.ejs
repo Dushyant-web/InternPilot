@@ -62,6 +62,7 @@
 
     async function sendChatMessage() {
         const input = document.getElementById('chat-input');
+        const sendBtn = document.querySelector('#chat-box button[onclick="sendChatMessage()"]');
         const container = document.getElementById('chat-messages');
         const text = input.value.trim();
         if (!text) return;
@@ -72,12 +73,14 @@
             ${escapeHtml(text)}
         </div>`;
         input.value = '';
+        if (input) input.disabled = true;
+        if (sendBtn) sendBtn.disabled = true;
         container.scrollTop = container.scrollHeight;
 
         // Add loading state indicator
         const loadingId = 'loading-' + Date.now();
         container.innerHTML += `
-        <div id="${loadingId}" class="bg-white border border-gray-200 text-gray-500 p-3 rounded-xl max-w-[85%] self-start shadow-sm italic flex items-center gap-1.5">
+        <div id="${loadingId}" class="bg-white border border-gray-200 text-gray-500 p-3 rounded-xl max-w-[85%] self-start shadow-sm italic flex items-center gap-1.5" aria-busy="true">
             <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
             <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-100"></span>
             <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-200"></span>
@@ -94,7 +97,8 @@
             const data = await res.json();
 
             // Remove loading indicator
-            document.getElementById(loadingId).remove();
+            const loadingElem = document.getElementById(loadingId);
+            if (loadingElem) loadingElem.remove();
 
             // Format markdown response safely from Gemini
             const formattedReply = formatMarkdown(data.reply || "Sorry, no response received.");
@@ -105,12 +109,19 @@
             </div>`;
             container.scrollTop = container.scrollHeight;
         } catch (err) {
-            document.getElementById(loadingId).remove();
+            const loadingElem = document.getElementById(loadingId);
+            if (loadingElem) loadingElem.remove();
             container.innerHTML += `
             <div class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs self-start shadow-sm">
                 ⚠️ Failed to connect to AI assistant. Please try again later.
             </div>`;
             container.scrollTop = container.scrollHeight;
+        } finally {
+            if (input) {
+                input.disabled = false;
+                input.focus();
+            }
+            if (sendBtn) sendBtn.disabled = false;
         }
     }
 
