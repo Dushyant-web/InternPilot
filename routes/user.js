@@ -13,6 +13,7 @@ const Application = require('../models/Application');
 const { isAuthenticated, authorize } = require('../middleware/auth');
 const { documentUpload, uploadBufferToCloudinary } = require('../middleware/upload');
 const { detectProfileConflicts } = require('../utils/conflictDetector');
+const { formatRelativeTime, formatLocalizedDateTime } = require('../utils/dateFormat');
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -680,7 +681,12 @@ router.get('/candidate/applications', isAuthenticated, authorize('candidate'), a
         const applications = await Application.find({ candidate: userId })
             .populate('internship');
 
-        res.render('candidate/candidate-tracker', { candidate, applications });
+        res.render('candidate/candidate-tracker', {
+            candidate,
+            applications,
+            formatRelativeTime,
+            formatLocalizedDateTime
+        });
     } catch (error) {
         console.error('Error fetching tracker data:', error);
         res.status(500).send('Database Error');

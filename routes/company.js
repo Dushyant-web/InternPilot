@@ -348,6 +348,8 @@ router.post('/company/applications/:id/status', isAuthenticated, requireCompanyR
         }
 
         const previousStatus = application.status;
+        // The Application pre-save hook records statusUpdatedAt only when this
+        // assignment represents an actual status transition.
         application.status = status;
         await application.save();
 

@@ -27,8 +27,11 @@
             </div>
             <% } else { %>
                 <div class="grid grid-cols-1 gap-4">
-                    <% applications.forEach(app=> { %>
-                        <div
+                        <% applications.forEach(app=> { %>
+                            <% const statusUpdatedAt = app.statusUpdatedAt || app.appliedAt; %>
+                            <% const relativeStatusUpdatedAt = formatRelativeTime(statusUpdatedAt); %>
+                            <% const localizedStatusUpdatedAt = formatLocalizedDateTime(statusUpdatedAt); %>
+                            <div
                             class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4">
 
                             <div class="space-y-2 max-w-xl">
@@ -112,6 +115,12 @@
                                                         Rejected
                                                     </span>
                                                     <% } %>
+                                    <% if (relativeStatusUpdatedAt) { %>
+                                        <time title="<%= localizedStatusUpdatedAt %>"
+                                            class="block mt-1 text-[11px] text-slate-500 whitespace-nowrap">
+                                            Updated <%= relativeStatusUpdatedAt %>
+                                        </time>
+                                    <% } %>
                                 </div>
                             </div>
 

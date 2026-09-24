@@ -18,12 +18,27 @@ const applicationSchema = new mongoose.Schema({
     },
     matchScore: { type: Number, default: 0 },
     appliedAt: { type: Date, default: Date.now },
+    // Tracks the most recent status transition independently from application
+    // creation, notes, and other edits.
+    statusUpdatedAt: { type: Date, default: Date.now },
     notes: [{
         text: { type: String, required: true },
         createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         createdAt: { type: Date, default: Date.now },
         updatedAt: { type: Date }
     }]
+});
+
+// Keep the timestamp correct regardless of which route changes an
+// application's status. Existing records receive their applied date as the
+// best available historical value the next time they are saved without a
+// status transition.
+applicationSchema.pre('save', function updateStatusTimestamp() {
+    if (this.isNew || this.isModified('status')) {
+        this.statusUpdatedAt = new Date();
+    } else if (!this.statusUpdatedAt) {
+        this.statusUpdatedAt = this.appliedAt || new Date();
+    }
 });
 
 module.exports = mongoose.model("Application", applicationSchema);
