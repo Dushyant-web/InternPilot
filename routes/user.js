@@ -153,6 +153,20 @@ router.get('/candidate/profile', isAuthenticated, authorize('candidate'), async 
     }
 });
 
+router.get('/candidate/resume-builder', isAuthenticated, authorize('candidate'), async (req, res) => {
+    try {
+        const userId = req.user._id || req.user.id;
+        const candidate = await User.findById(userId);
+
+        res.render('candidate/resume-builder', {
+            candidate
+        });
+    } catch (error) {
+        console.error('Error loading resume builder:', error);
+        res.status(500).send('Database Error');
+    }
+});
+
 router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
         const { location, age, familyIncome, qualification, institution, skills } = req.body;

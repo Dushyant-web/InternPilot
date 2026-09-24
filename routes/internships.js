@@ -148,6 +148,12 @@ router.post('/new', isAuthenticated, requireCompanyRole(['company', 'recruiter']
         });
 
         await newInternship.save();
+        if (status === 'published') {
+            notifyRelevantCandidates(newInternship).catch(notificationError => {
+                console.error('Failed to create internship match notifications:', notificationError);
+            });
+        }
+
         if (req.flash) {
             if (isDraft) {
                 req.flash('success_msg', 'Draft saved successfully!');

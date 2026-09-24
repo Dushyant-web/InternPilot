@@ -102,7 +102,7 @@ router.post('/company/internships/create', isAuthenticated, requireCompanyRole([
         const rawStipend = monthlyStipend !== undefined ? monthlyStipend : stipend;
         const stipendNumber = rawStipend ? parseInt(rawStipend.toString().replace(/[^0-9]/g, '')) : (isDraft ? 0 : 5000);
 
-        await Internship.create({
+        const internship = await Internship.create({
             companyId: req.user.companyId,
             postedBy: req.user._id,
             companyName,
@@ -120,6 +120,10 @@ router.post('/company/internships/create', isAuthenticated, requireCompanyRole([
             },
             applicationDeadline
         });
+
+        if (status === 'published') {
+            notifyPublishedInternship(internship);
+        }
 
         if (req.flash) {
             if (isDraft) {
@@ -347,6 +351,14 @@ router.post('/company/applications/:id/status', isAuthenticated, requireCompanyR
         application.status = status;
         await application.save();
 
+        if (previousStatus !== status) {
+            try {
+                await notifyApplicationStatusChange(application, application.internship, status);
+            } catch (notificationError) {
+                console.error('Failed to create application status notification:', notificationError);
+            }
+        }
+
         if (previousStatus !== status && application.candidate?.email) {
             try {
                 const candidateName = application.candidate.name || 'Candidate';
@@ -449,7 +461,11 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
 
         await internship.save();
 
-        if (prevStatus !== internship.status && typeof chatRouter.invalidateChatCache === 'function') {
+        if (prevStatus !== 'published' && internship.status === 'published') {
+            notifyPublishedInternship(internship);
+        }
+
+        if (prevStatus !== internship.status && typeof chatRouter !== 'undefined' && typeof chatRouter.invalidateChatCache === 'function') {
             chatRouter.invalidateChatCache();
         }
 
@@ -487,11 +503,16 @@ router.post('/company/internships/publish/:id', isAuthenticated, requireCompanyR
             return res.redirect(`/company/internships/edit/${internship._id}`);
         }
 
+        const previousStatus = internship.status;
         internship.status = 'published';
         internship.isPaused = false;
         await internship.save();
 
-        if (typeof chatRouter.invalidateChatCache === 'function') {
+        if (previousStatus !== 'published') {
+            notifyPublishedInternship(internship);
+        }
+
+        if (typeof chatRouter !== 'undefined' && typeof chatRouter.invalidateChatCache === 'function') {
             chatRouter.invalidateChatCache();
         }
 
