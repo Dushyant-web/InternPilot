@@ -17,7 +17,18 @@ function calculateSkillScore(userSkills = [], requiredSkills = []) {
 
 router.get('/', async (req, res) => {
     try {
-        const internships = await Internship.find({}).sort({ _id: -1 });
+        const sort = req.query.sort || 'newest';
+
+        const sortOptions = {
+            stipend_desc: { monthlyStipend: -1 },
+            stipend_asc: { monthlyStipend: 1 },
+            duration_desc: { duration: -1 },
+            duration_asc: { duration: 1 },
+            newest: { _id: -1 }
+        };
+
+        const internships = await Internship.find({}).sort(sortOptions[sort] || sortOptions.newest);
+
         const candidate = req.user || await User.findOne();
 
         let appliedIds = [];
