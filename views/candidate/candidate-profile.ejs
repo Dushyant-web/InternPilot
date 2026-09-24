@@ -333,10 +333,36 @@
                                 </div>
                                 <% } %>
 
-                                    <button type="submit"
-                                        class="w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs py-2.5 rounded-lg transition-colors shadow-sm">
-                                        Extract Details
-                                    </button>
+                                <% if (activeUser && activeUser.resumeQuality) { %>
+                                    <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-4 space-y-3">
+                                        <h3 class="text-sm font-bold text-slate-800">Resume Quality Feedback</h3>
+
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-700">Quantifiable Achievements</p>
+                                            <p class="text-xs text-slate-600"><%= activeUser.resumeQuality.quantifiableAchievements.feedback %></p>
+                                        </div>
+
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-700">Technical Skills</p>
+                                            <p class="text-xs text-slate-600"><%= activeUser.resumeQuality.technicalSkills.feedback %></p>
+                                        </div>
+
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-700">Projects</p>
+                                            <p class="text-xs text-slate-600"><%= activeUser.resumeQuality.projects.feedback %></p>
+                                        </div>
+
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-700">Overall Feedback</p>
+                                            <p class="text-xs text-slate-600"><%= activeUser.resumeQuality.overallFeedback %></p>
+                                        </div>
+                                    </div>
+                                <% } %>
+
+                                <button type="submit"
+                                    class="w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs py-2.5 rounded-lg transition-colors shadow-sm">
+                                    Extract Details
+                                </button>
                         </form>
                     </div>
                 </div>

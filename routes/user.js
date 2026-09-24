@@ -1,4 +1,5 @@
 const express = require('express');
+const { GoogleGenAI } = require('@google/genai');
 const router = express.Router();
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
@@ -17,6 +18,8 @@ cloudinary.config({
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -58,6 +61,69 @@ async function extractDocxText(buffer) {
 
 function escapeRegExp(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function analyzeResumeQuality(text) {
+    try {
+        const prompt = `
+Analyze this resume for quality improvement.
+
+Check specifically:
+1. Quantifiable achievements and measurable outcomes.
+2. Technical skills.
+3. Relevant projects.
+
+Give actionable feedback, not a numeric score.
+
+Return ONLY valid JSON in this format:
+{
+  "quantifiableAchievements": {
+    "status": "good" or "needs_improvement",
+    "feedback": "..."
+  },
+  "technicalSkills": {
+    "status": "good" or "needs_improvement",
+    "feedback": "..."
+  },
+  "projects": {
+    "status": "good" or "needs_improvement",
+    "feedback": "..."
+  },
+  "overallFeedback": "..."
+}
+
+Resume text:
+${text}
+`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{ role: 'user', parts: [{ text: prompt }] }]
+        });
+
+        const rawText = response.text || '{}';
+        const cleanedText = rawText.replace(/```json|```/g, '').trim();
+
+        return JSON.parse(cleanedText);
+    } catch (error) {
+        console.error('Error analyzing resume quality:', error);
+
+        return {
+            quantifiableAchievements: {
+                status: 'needs_improvement',
+                feedback: 'Resume quality analysis was unavailable.'
+            },
+            technicalSkills: {
+                status: 'needs_improvement',
+                feedback: 'Resume quality analysis was unavailable.'
+            },
+            projects: {
+                status: 'needs_improvement',
+                feedback: 'Resume quality analysis was unavailable.'
+            },
+            overallFeedback: 'Resume uploaded successfully, but AI quality feedback could not be generated.'
+        };
+    }
 }
 
 function calculateSkillScore(userSkills = [], requiredSkills = []) {
@@ -195,7 +261,10 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
 
         const userId = req.user._id || req.user.id;
         const updateDoc = {
-            $set: { resume: resumeUrl }
+            $set: {
+                resume: resumeUrl,
+                resumeQuality
+            }
         };
 
         if (extractedSkills.length > 0) {
