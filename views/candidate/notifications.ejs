@@ -35,11 +35,19 @@
         <% } else { %>
             <div class="space-y-3">
                 <% notifications.forEach(notification => { %>
-                    <% const typeStyle = notification.type === 'application_shortlisted'
-                        ? { icon: 'ph-trophy', iconClass: 'bg-emerald-100 text-emerald-700', label: 'Shortlisted' }
-                        : notification.type === 'new_matching_internship'
-                            ? { icon: 'ph-sparkle', iconClass: 'bg-indigo-100 text-indigo-700', label: 'New match' }
-                            : { icon: 'ph-clipboard-text', iconClass: 'bg-amber-100 text-amber-700', label: 'Application update' }; %>
+                    <% let typeStyle;
+                        if (notification.type === 'application_shortlisted') {
+                            typeStyle = { icon: 'ph-trophy', iconClass: 'bg-emerald-100 text-emerald-700', label: 'Shortlisted' };
+                        } else if (notification.type === 'new_matching_internship') {
+                            typeStyle = { icon: 'ph-sparkle', iconClass: 'bg-indigo-100 text-indigo-700', label: 'New match' };
+                        } else if (notification.type === 'interview_scheduled' || notification.type === 'interview_rescheduled') {
+                            typeStyle = { icon: 'ph-calendar-check', iconClass: 'bg-indigo-100 text-indigo-700', label: 'Interview Scheduled' };
+                        } else if (notification.type === 'interview_cancelled') {
+                            typeStyle = { icon: 'ph-calendar-x', iconClass: 'bg-rose-100 text-rose-700', label: 'Interview Cancelled' };
+                        } else {
+                            typeStyle = { icon: 'ph-clipboard-text', iconClass: 'bg-amber-100 text-amber-700', label: 'Application update' };
+                        }
+                    %>
 
                     <article class="flex gap-4 rounded-xl border p-4 sm:p-5 shadow-sm <%= notification.isRead ? 'border-slate-200 bg-white' : 'border-indigo-200 bg-indigo-50/40' %>">
                         <div class="shrink-0 h-10 w-10 rounded-full flex items-center justify-center <%= typeStyle.iconClass %>">

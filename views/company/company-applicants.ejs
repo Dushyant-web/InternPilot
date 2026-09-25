@@ -83,6 +83,13 @@
                                                         <i class="ph-bold ph-arrow-u-up-left"></i> Withdrawn
                                                     </span>
                                                 <% } %>
+                                                <% if (app.interview && app.interview.status && app.interview.status !== 'Cancelled') { %>
+                                                    <span
+                                                        class="text-[10px] font-bold px-2 py-0.5 rounded border flex items-center gap-1
+                                                        <%= app.interview.status === 'Scheduled' ? 'text-indigo-700 bg-indigo-50 border-indigo-200' : 'text-amber-700 bg-amber-50 border-amber-200' %>">
+                                                        <i class="ph-bold ph-calendar"></i> <%= app.interview.status %> Interview
+                                                    </span>
+                                                <% } %>
                                                 <% const isPmisEligible = app.candidate && app.candidate.age >= 21 && app.candidate.age <= 24 && app.candidate.familyIncome !== undefined && app.candidate.familyIncome !== null && app.candidate.familyIncome <= 800000; %>
                                                 <% if (isPmisEligible) { %>
                                                     <span
@@ -167,6 +174,12 @@
                                                                 title="Candidate withdrew their application <%= app.withdrawalReason ? '(' + app.withdrawalReason + ')' : '' %>">
                                                                 <i class="ph-bold ph-arrow-u-up-left text-slate-500"></i>
                                                                 Withdrawn
+                                                            </div>
+                                                        <% } else if (app.status === 'Interview') { %>
+                                                            <div class="px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg flex items-center gap-1"
+                                                                title="Candidate is in the interview stage">
+                                                                <i class="ph-bold ph-calendar text-indigo-600"></i>
+                                                                Interview
                                                             </div>
                                                         <% } else { %>
                                                             <form action="/company/applications/<%= app._id %>/status"
@@ -290,7 +303,7 @@
 
             candidateCards.forEach(card => {
                 const cardData = (card.getAttribute('data-search-text') || '').toLowerCase();
-                
+
                 if (cardData.includes(searchTerm)) {
                     card.style.display = 'flex';
                     visibleCount++;

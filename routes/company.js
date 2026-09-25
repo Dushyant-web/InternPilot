@@ -5,13 +5,15 @@ const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
 const { isAuthenticated, requireCompanyRole } = require('../middleware/auth');
-const { sendStatusUpdateEmail } = require('../utils/sendEmail');
-const { parseISTEndOfDay } = require('../utils/dateUtils');
+const { sendStatusUpdateEmail, sendInterviewScheduledEmail, sendInterviewRescheduledEmail, sendInterviewCancelledEmail } = require('../utils/sendEmail');
+const { parseISTEndOfDay, parseISTDatetime } = require('../utils/dateUtils');
+const { notifyApplicationStatusChange, notifyInterviewScheduled, notifyInterviewRescheduled, notifyInterviewCancelled } = require('../utils/notifications');
 const chatRouter = require('./chat');
 
 router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
         const currentFilter = req.query.status || 'all'; // 'all', 'published', 'paused', 'draft'
+        const currentSort = req.query.sort || 'newest';
         const allInternships = await Internship.find({ companyId: req.user.companyId }).sort({ _id: -1 });
 
         const publishedCount = allInternships.filter(i => (i.status === 'published' || (!i.status && !i.isPaused)) && !i.isPaused && i.status !== 'paused').length;
@@ -42,6 +44,27 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
             appCountMap[item._id.toString()] = item.count;
         });
 
+        if (currentSort === 'oldest') {
+            filteredInternships.sort((a, b) => a._id.getTimestamp() - b._id.getTimestamp());
+        } else if (currentSort === 'most_applications' || currentSort === 'applications' || currentSort === 'applications_desc') {
+            filteredInternships.sort((a, b) => {
+                const countA = appCountMap[a._id.toString()] || 0;
+                const countB = appCountMap[b._id.toString()] || 0;
+                if (countB !== countA) return countB - countA;
+                return b._id.getTimestamp() - a._id.getTimestamp();
+            });
+        } else if (currentSort === 'deadline' || currentSort === 'deadline_soonest' || currentSort === 'deadline_asc') {
+            filteredInternships.sort((a, b) => {
+                const deadlineA = a.applicationDeadline ? new Date(a.applicationDeadline).getTime() : Infinity;
+                const deadlineB = b.applicationDeadline ? new Date(b.applicationDeadline).getTime() : Infinity;
+                if (deadlineA !== deadlineB) return deadlineA - deadlineB;
+                return b._id.getTimestamp() - a._id.getTimestamp();
+            });
+        } else {
+            // Default: newest
+            filteredInternships.sort((a, b) => b._id.getTimestamp() - a._id.getTimestamp());
+        }
+
         res.render('company/company-dashboard', {
             user: req.user,
             internships: filteredInternships,
@@ -51,6 +74,7 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
             draftCount,
             totalCount,
             currentFilter,
+            currentSort,
             appCountMap
         });
     } catch (error) {
@@ -61,7 +85,7 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
 
 router.post('/company/internships/create', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
-        const { title, sector, requiredSkills, minQualifications, monthlyStipend, stipend, vacancies, duration, district, state, location, deadline, action } = req.body;
+        const { title, sector, requiredSkills, minQualifications, monthlyStipend, stipend, vacancies, duration, district, state, location, deadline, action, description } = req.body;
 
         const isDraft = action === 'draft';
         const status = isDraft ? 'draft' : 'published';
@@ -87,6 +111,7 @@ router.post('/company/internships/create', isAuthenticated, requireCompanyRole([
         }
 
         const resolvedTitle = trimmedTitle || (isDraft ? 'Untitled Draft' : 'Internship Opportunity');
+
 
         const skillsArray = requiredSkills
             ? requiredSkills.split(',').map(s => s.trim()).filter(Boolean)
@@ -114,6 +139,8 @@ router.post('/company/internships/create', isAuthenticated, requireCompanyRole([
             monthlyStipend: stipendNumber,
             vacancies: vacancies ? Number(vacancies) : 1,
             duration: duration || (isDraft ? '' : '12 Months'),
+            description: description || '',
+
             location: {
                 district: resolvedDistrict,
                 state: resolvedState
@@ -420,7 +447,7 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
         const internship = await Internship.findOne({ _id: req.params.id, companyId: req.user.companyId });
         if (!internship) return res.status(404).send('Internship not found or unauthorized.');
 
-        const { title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state, deadline, action } = req.body;
+        const { title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state, deadline, action, description } = req.body;
 
         const isDraft = action === 'draft';
         const isPublish = action === 'publish' || action === 'resume';
@@ -448,10 +475,12 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
         internship.monthlyStipend = monthlyStipend !== undefined && monthlyStipend !== '' ? Number(monthlyStipend) : 0;
         internship.vacancies = isNaN(parsedVacancies) ? 1 : parsedVacancies;
         internship.duration = duration || '12 Months';
+        internship.description = description || '';
         internship.location = {
             district: district || '',
             state: state || ''
         };
+
 
         const prevStatus = internship.status;
         if (isPublish) {
@@ -760,6 +789,239 @@ router.get('/company/applications/:id/candidate', isAuthenticated, requireCompan
     } catch (error) {
         console.error('Error loading candidate profile:', error);
         if (req.flash) req.flash('error_msg', 'Failed to load candidate profile.');
+        res.redirect('/company/dashboard');
+    }
+});
+
+// --- Interview Scheduling Routes ---
+
+router.post('/company/applications/:id/interview/schedule', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
+    try {
+        const { scheduledAt, duration, mode, meetingLink, location, instructions } = req.body;
+        const application = await Application.findById(req.params.id).populate('candidate').populate('internship');
+
+        if (!application || !application.internship) {
+            if (req.flash) req.flash('error_msg', 'Application not found.');
+            return res.redirect('/company/dashboard');
+        }
+
+        const internship = application.internship;
+        const companyName = req.user.companyDetails?.companyName || req.user.name;
+        const isAuthorizedCompany = (internship.companyId && req.user.companyId && internship.companyId.toString() === req.user.companyId.toString()) ||
+            (internship.postedBy && internship.postedBy.toString() === req.user._id.toString()) ||
+            (internship.companyName === companyName);
+
+        if (!isAuthorizedCompany) {
+            if (req.flash) req.flash('error_msg', 'Unauthorized access.');
+            return res.redirect('/company/dashboard');
+        }
+
+        if (application.status === 'Rejected' || application.status === 'rejected') {
+            if (req.flash) req.flash('error_msg', 'Cannot schedule interview for a rejected application.');
+            return res.redirect(`/company/applications/${req.params.id}/candidate`);
+        }
+
+        if (application.interview && application.interview.status && application.interview.status !== 'Cancelled') {
+            if (req.flash) req.flash('error_msg', 'An interview is already active. Please use the reschedule option.');
+            return res.redirect(`/company/applications/${req.params.id}/candidate`);
+        }
+
+        if (mode === 'Online' && (!meetingLink || !meetingLink.trim())) {
+            if (req.flash) req.flash('error_msg', 'Meeting link is required for Online interviews.');
+            return res.redirect(`/company/applications/${req.params.id}/candidate`);
+        }
+        if (mode === 'In-Person' && (!location || !location.trim())) {
+            if (req.flash) req.flash('error_msg', 'Location is required for In-Person interviews.');
+            return res.redirect(`/company/applications/${req.params.id}/candidate`);
+        }
+
+        let parsedDate;
+        try {
+            parsedDate = parseISTDatetime(scheduledAt);
+            if (parsedDate < new Date()) {
+                throw new Error('Interview must be scheduled in the future.');
+            }
+        } catch (err) {
+            if (req.flash) req.flash('error_msg', err.message);
+            return res.redirect(`/company/applications/${req.params.id}/candidate`);
+        }
+
+        application.status = 'Interview';
+        application.interview = {
+            status: 'Scheduled',
+            scheduledAt: parsedDate,
+            duration: Number(duration) || 30,
+            mode,
+            meetingLink: mode === 'Online' ? meetingLink.trim() : '',
+            location: mode === 'In-Person' ? location.trim() : '',
+            instructions: instructions ? instructions.trim() : '',
+            scheduledBy: req.user._id,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
+
+        await application.save();
+
+        if (application.candidate?.email) {
+            try {
+                await sendInterviewScheduledEmail(
+                    application.candidate.email,
+                    application.candidate.name || 'Candidate',
+                    internship.title,
+                    application.interview
+                );
+            } catch (emailErr) {
+                console.error('Failed to send interview email:', emailErr);
+            }
+        }
+
+        try {
+            await notifyInterviewScheduled(application, internship, parsedDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }));
+        } catch (notifErr) {
+            console.error('Failed to create interview scheduled notification:', notifErr);
+        }
+
+        if (req.flash) req.flash('success_msg', 'Interview scheduled successfully.');
+        res.redirect(`/company/applications/${req.params.id}/candidate`);
+    } catch (error) {
+        console.error('Error scheduling interview:', error);
+        if (req.flash) req.flash('error_msg', 'An error occurred while scheduling the interview.');
+        res.redirect('/company/dashboard');
+    }
+});
+
+router.post('/company/applications/:id/interview/reschedule', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
+    try {
+        const { scheduledAt, duration, mode, meetingLink, location, instructions } = req.body;
+        const application = await Application.findById(req.params.id).populate('candidate').populate('internship');
+
+        if (!application || !application.internship) {
+            return res.redirect('/company/dashboard');
+        }
+
+        const internship = application.internship;
+        const companyName = req.user.companyDetails?.companyName || req.user.name;
+        const isAuthorizedCompany = (internship.companyId && req.user.companyId && internship.companyId.toString() === req.user.companyId.toString()) ||
+            (internship.postedBy && internship.postedBy.toString() === req.user._id.toString()) ||
+            (internship.companyName === companyName);
+
+        if (!isAuthorizedCompany) return res.redirect('/company/dashboard');
+
+        if (!application.interview || !application.interview.status || application.interview.status === 'Cancelled') {
+            if (req.flash) req.flash('error_msg', 'No active interview to reschedule.');
+            return res.redirect(`/company/applications/${req.params.id}/candidate`);
+        }
+
+        if (mode === 'Online' && (!meetingLink || !meetingLink.trim())) {
+            if (req.flash) req.flash('error_msg', 'Meeting link is required for Online interviews.');
+            return res.redirect(`/company/applications/${req.params.id}/candidate`);
+        }
+        if (mode === 'In-Person' && (!location || !location.trim())) {
+            if (req.flash) req.flash('error_msg', 'Location is required for In-Person interviews.');
+            return res.redirect(`/company/applications/${req.params.id}/candidate`);
+        }
+
+        let parsedDate;
+        try {
+            parsedDate = parseISTDatetime(scheduledAt);
+            if (parsedDate < new Date()) {
+                throw new Error('Interview must be scheduled in the future.');
+            }
+        } catch (err) {
+            if (req.flash) req.flash('error_msg', err.message);
+            return res.redirect(`/company/applications/${req.params.id}/candidate`);
+        }
+
+        application.status = 'Interview';
+        application.interview.status = 'Rescheduled';
+        application.interview.scheduledAt = parsedDate;
+        application.interview.duration = Number(duration) || 30;
+        application.interview.mode = mode;
+        application.interview.meetingLink = mode === 'Online' ? meetingLink.trim() : '';
+        application.interview.location = mode === 'In-Person' ? location.trim() : '';
+        application.interview.instructions = instructions ? instructions.trim() : '';
+        application.interview.updatedAt = new Date();
+
+        await application.save();
+
+        if (application.candidate?.email) {
+            try {
+                await sendInterviewRescheduledEmail(
+                    application.candidate.email,
+                    application.candidate.name || 'Candidate',
+                    internship.title,
+                    application.interview
+                );
+            } catch (emailErr) {
+                console.error('Failed to send interview rescheduled email:', emailErr);
+            }
+        }
+
+        try {
+            await notifyInterviewRescheduled(application, internship, parsedDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }));
+        } catch (notifErr) {
+            console.error('Failed to create interview rescheduled notification:', notifErr);
+        }
+
+        if (req.flash) req.flash('success_msg', 'Interview rescheduled successfully.');
+        res.redirect(`/company/applications/${req.params.id}/candidate`);
+    } catch (error) {
+        console.error('Error rescheduling interview:', error);
+        res.redirect('/company/dashboard');
+    }
+});
+
+router.post('/company/applications/:id/interview/cancel', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
+    try {
+        const { cancelReason } = req.body;
+        const application = await Application.findById(req.params.id).populate('candidate').populate('internship');
+
+        if (!application || !application.internship) return res.redirect('/company/dashboard');
+
+        const internship = application.internship;
+        const companyName = req.user.companyDetails?.companyName || req.user.name;
+        const isAuthorizedCompany = (internship.companyId && req.user.companyId && internship.companyId.toString() === req.user.companyId.toString()) ||
+            (internship.postedBy && internship.postedBy.toString() === req.user._id.toString()) ||
+            (internship.companyName === companyName);
+
+        if (!isAuthorizedCompany) return res.redirect('/company/dashboard');
+
+        if (!application.interview || !application.interview.status || application.interview.status === 'Cancelled') {
+            if (req.flash) req.flash('error_msg', 'No active interview to cancel.');
+            return res.redirect(`/company/applications/${req.params.id}/candidate`);
+        }
+
+        application.interview.status = 'Cancelled';
+        application.interview.cancelledAt = new Date();
+        application.interview.cancelReason = cancelReason ? cancelReason.trim() : '';
+
+        // As requested by user, we do NOT revert the application.status here. We leave it as 'Interview'.
+
+        await application.save();
+
+        if (application.candidate?.email) {
+            try {
+                await sendInterviewCancelledEmail(
+                    application.candidate.email,
+                    application.candidate.name || 'Candidate',
+                    internship.title,
+                    application.interview.cancelReason
+                );
+            } catch (emailErr) {
+                console.error('Failed to send interview cancelled email:', emailErr);
+            }
+        }
+
+        try {
+            await notifyInterviewCancelled(application, internship);
+        } catch (notifErr) {
+            console.error('Failed to create interview cancelled notification:', notifErr);
+        }
+
+        if (req.flash) req.flash('success_msg', 'Interview cancelled successfully.');
+        res.redirect(`/company/applications/${req.params.id}/candidate`);
+    } catch (error) {
+        console.error('Error cancelling interview:', error);
         res.redirect('/company/dashboard');
     }
 });

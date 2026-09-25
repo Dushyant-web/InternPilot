@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
+const Recommendation = require('../models/Recommendation');
 const { isAuthenticated, authorize, requireCompanyRole } = require('../middleware/auth');
 const { parseISTEndOfDay } = require('../utils/dateUtils');
 const { notifyRelevantCandidates } = require('../utils/notifications');
@@ -20,36 +21,37 @@ function calculateSkillScore(userSkills = [], requiredSkills = []) {
     return Math.round((matchCount / requiredSkills.length) * 100);
 }
 
+const { parseInternshipQuery, buildPaginationData, buildQueryString } = require('../utils/queryHelper');
+
 router.get('/', async (req, res) => {
     try {
-        const filter = req.query.status || req.query.filter || 'all'; // 'all', 'active', 'paused'
-        let query = { status: { $ne: 'draft' } };
+        const { filterObj, sortObj, state, page, limit } = parseInternshipQuery(req.query);
+
+        // Drafts never belong on the public board. The status tabs narrow it
+        // further to active or paused listings.
+        const filter = req.query.status || req.query.filter || 'all';
+        let statusCondition = { status: { $ne: 'draft' } };
 
         if (filter === 'active') {
-            query = { status: { $nin: ['draft', 'paused'] }, isPaused: { $ne: true } };
+            statusCondition = { status: { $nin: ['draft', 'paused'] }, isPaused: { $ne: true } };
         } else if (filter === 'paused') {
-            query = { $or: [{ status: 'paused' }, { isPaused: true }] };
+            statusCondition = { $or: [{ status: 'paused' }, { isPaused: true }] };
         }
 
-        const sort = req.query.sort || 'newest';
+        // Combined with $and so it cannot clobber the $or that search and
+        // location filters build.
+        filterObj.$and = (filterObj.$and || []).concat([statusCondition]);
 
-        // Sorts MongoDB can do directly. Duration is stored as a string
-        // ("12 Months"), so sorting it in the query would order it
-        // alphabetically and put "6 Months" above "12 Months".
-        const dbSortOptions = {
-            stipend_desc: { monthlyStipend: -1 },
-            stipend_asc: { monthlyStipend: 1 },
-            newest: { _id: -1 }
-        };
+        const totalItems = await Internship.countDocuments(filterObj);
+        const pagination = buildPaginationData(totalItems, page, limit);
 
-        let internships = await Internship.find(query).sort(dbSortOptions[sort] || dbSortOptions.newest);
+        const internships = await Internship.find(filterObj)
+            .sort(sortObj)
+            .skip(pagination.skip)
+            .limit(pagination.limit);
 
-        if (sort === 'duration_desc' || sort === 'duration_asc') {
-            const direction = sort === 'duration_asc' ? 1 : -1;
-            internships = internships.sort((a, b) =>
-                direction * ((parseInt(a.duration, 10) || 0) - (parseInt(b.duration, 10) || 0))
-            );
-        }
+        const availableSectors = await Internship.distinct('sector');
+        const sectors = availableSectors.filter(Boolean).sort();
 
         const candidate = req.user;
 
@@ -59,7 +61,16 @@ router.get('/', async (req, res) => {
             appliedIds = apps.map(appDoc => appDoc.internship ? appDoc.internship.toString() : null).filter(Boolean);
         }
 
-        res.render('extras/internships', { internships, candidate, appliedIds, currentFilter: filter, currentSort: sort });
+        res.render('extras/internships', {
+            internships,
+            candidate,
+            appliedIds,
+            currentFilter: filter,
+            queryState: state,
+            pagination,
+            sectors,
+            buildQueryString
+        });
     } catch (error) {
         console.error('Error fetching internships:', error);
         res.status(500).send('Database Error');
@@ -332,6 +343,12 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
             internship: internship._id,
             candidate: candidate._id,
             matchScore: score
+        });
+
+        // Delete from recommendations cache if it exists
+        await Recommendation.findOneAndDelete({
+            internship: internship._id,
+            candidate: candidate._id
         });
 
         if (req.flash) req.flash('success_msg', 'Application submitted successfully!');
