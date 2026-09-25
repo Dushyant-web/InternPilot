@@ -7,8 +7,22 @@ const Application = require('../models/Application');
 const { isAuthenticated, requireCompanyRole } = require('../middleware/auth');
 const { sendStatusUpdateEmail, sendInterviewScheduledEmail, sendInterviewRescheduledEmail, sendInterviewCancelledEmail } = require('../utils/sendEmail');
 const { parseISTEndOfDay, parseISTDatetime } = require('../utils/dateUtils');
-const { notifyApplicationStatusChange, notifyInterviewScheduled, notifyInterviewRescheduled, notifyInterviewCancelled } = require('../utils/notifications');
+const {
+    notifyRelevantCandidates,
+    notifyApplicationStatusChange,
+    notifyInterviewScheduled,
+    notifyInterviewRescheduled,
+    notifyInterviewCancelled
+} = require('../utils/notifications');
 const chatRouter = require('./chat');
+
+const notifyPublishedInternship = (internship) => {
+    if (typeof notifyRelevantCandidates === 'function') {
+        notifyRelevantCandidates(internship).catch(err => {
+            console.error('Failed to notify candidates for published internship:', err);
+        });
+    }
+};
 
 router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
@@ -381,6 +395,8 @@ router.post('/company/applications/:id/status', isAuthenticated, requireCompanyR
         }
 
         const previousStatus = application.status;
+        // The Application pre-save hook records statusUpdatedAt only when this
+        // assignment represents an actual status transition.
         application.status = status;
         await application.save();
 
