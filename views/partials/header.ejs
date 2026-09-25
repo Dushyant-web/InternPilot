@@ -60,8 +60,9 @@
 
                 <div class="h-10 w-[1px] bg-slate-200 hidden md:block"></div>
 
-                <% if (currentUser && currentUser.role === 'candidate') { %>
-                    <a href="/notifications" aria-label="Notifications"
+                <% if (currentUser && ['candidate', 'company', 'recruiter'].includes(currentUser.role)) { %>
+                    <% const notifLink = currentUser.role === 'candidate' ? '/notifications' : '/company/notifications'; %>
+                    <a href="<%= notifLink %>" aria-label="Notifications"
                         class="relative inline-flex items-center justify-center rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-indigo-700 transition-colors"
                         title="Notifications">
                         <i class="ph-bold ph-bell text-lg"></i>
