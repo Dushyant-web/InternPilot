@@ -15,6 +15,7 @@ const {
     notifyInterviewCancelled
 } = require('../utils/notifications');
 const chatRouter = require('./chat');
+const { logRecruiterActivity } = require('../utils/activityLogger');
 
 const notifyPublishedInternship = (internship) => {
     if (typeof notifyRelevantCandidates === 'function') {
@@ -162,6 +163,13 @@ router.post('/company/internships/create', isAuthenticated, requireCompanyRole([
             applicationDeadline
         });
 
+        logRecruiterActivity(req, {
+            action: 'CREATE_LISTING',
+            targetType: 'Listing',
+            targetId: internship._id,
+            targetName: internship.title
+        });
+
         if (status === 'published') {
             notifyPublishedInternship(internship);
         }
@@ -250,6 +258,15 @@ router.post('/company/applications/:id/notes', isAuthenticated, requireCompanyRo
             createdBy: req.user._id
         });
         await application.save();
+
+        if (previousStatus !== status) {
+            logRecruiterActivity(req, {
+                action: status === 'Shortlisted' ? 'SHORTLIST_CANDIDATE' : 'UPDATE_APPLICATION_STATUS',
+                targetType: 'Candidate',
+                targetId: application.candidate._id,
+                targetName: application.candidate.name || 'Candidate'
+            });
+        }
 
         if (req.flash) req.flash('success_msg', 'Note added successfully!');
         res.redirect(`/company/internships/${internshipId}/applicants`);
@@ -512,6 +529,13 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
 
         await internship.save();
 
+        logRecruiterActivity(req, {
+            action: isPause ? 'PAUSE_LISTING' : (isPublish ? 'PUBLISH_LISTING' : 'EDIT_LISTING'),
+            targetType: 'Listing',
+            targetId: internship._id,
+            targetName: internship.title
+        });
+
         if (prevStatus !== 'published' && internship.status === 'published') {
             notifyPublishedInternship(internship);
         }
@@ -559,6 +583,13 @@ router.post('/company/internships/publish/:id', isAuthenticated, requireCompanyR
         internship.isPaused = false;
         await internship.save();
 
+        logRecruiterActivity(req, {
+            action: 'PUBLISH_LISTING',
+            targetType: 'Listing',
+            targetId: internship._id,
+            targetName: internship.title
+        });
+
         if (previousStatus !== 'published') {
             notifyPublishedInternship(internship);
         }
@@ -590,6 +621,13 @@ const handlePause = async (req, res) => {
         internship.isPaused = true;
         await internship.save();
 
+        logRecruiterActivity(req, {
+            action: 'PAUSE_LISTING',
+            targetType: 'Listing',
+            targetId: internship._id,
+            targetName: internship.title
+        });
+
         if (typeof chatRouter.invalidateChatCache === 'function') {
             chatRouter.invalidateChatCache();
         }
@@ -616,6 +654,13 @@ const handleResume = async (req, res) => {
         internship.status = 'published';
         internship.isPaused = false;
         await internship.save();
+
+        logRecruiterActivity(req, {
+            action: 'RESUME_LISTING',
+            targetType: 'Listing',
+            targetId: internship._id,
+            targetName: internship.title
+        });
 
         if (typeof chatRouter.invalidateChatCache === 'function') {
             chatRouter.invalidateChatCache();
@@ -655,6 +700,13 @@ const handleTogglePause = async (req, res) => {
         }
         await internship.save();
 
+        logRecruiterActivity(req, {
+            action: willPause ? 'PAUSE_LISTING' : 'RESUME_LISTING',
+            targetType: 'Listing',
+            targetId: internship._id,
+            targetName: internship.title
+        });
+
         if (typeof chatRouter.invalidateChatCache === 'function') {
             chatRouter.invalidateChatCache();
         }
@@ -689,6 +741,13 @@ router.post('/company/internships/delete/:id', isAuthenticated, requireCompanyRo
 
         // Clean up orphaned applications for this deleted internship
         await Application.deleteMany({ internship: req.params.id });
+
+        logRecruiterActivity(req, {
+            action: 'DELETE_LISTING',
+            targetType: 'Listing',
+            targetId: internship._id,
+            targetName: internship.title
+        });
 
         if (req.flash) req.flash('success_msg', 'Internship deleted successfully!');
         res.redirect('/company/dashboard');
@@ -728,7 +787,7 @@ router.post('/company/team/add', isAuthenticated, requireCompanyRole(['company']
             return res.redirect('/company/team');
         }
 
-        await User.create({
+        const recruiter = await User.create({
             name,
             email: email.toLowerCase(),
             password,
@@ -736,6 +795,13 @@ router.post('/company/team/add', isAuthenticated, requireCompanyRole(['company']
             companyId: req.user.companyId,
             isEmailVerified: true,
             isActive: true
+        });
+
+        logRecruiterActivity(req, {
+            action: 'ADD_TEAM_MEMBER',
+            targetType: 'Recruiter',
+            targetId: recruiter._id,
+            targetName: recruiter.name
         });
 
         if (req.flash) req.flash('success_msg', 'Recruiter added successfully!');
@@ -757,6 +823,13 @@ router.post('/company/team/remove/:id', isAuthenticated, requireCompanyRole(['co
 
         member.isActive = false;
         await member.save();
+
+        logRecruiterActivity(req, {
+            action: 'REMOVE_TEAM_MEMBER',
+            targetType: 'Recruiter',
+            targetId: member._id,
+            targetName: member.name
+        });
 
         if (req.flash) req.flash('success_msg', 'Recruiter deactivated successfully!');
         res.redirect('/company/team');
