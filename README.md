@@ -462,8 +462,8 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
 
 ## Contributors
 
-<!-- readme: contributors -start -->
-<!-- readme: contributors -end -->
+<!-- readme: contributors-start -->
+<!-- readme: contributors-end -->
 
 ## ⭐ Acknowledgement
 
