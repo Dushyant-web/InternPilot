@@ -17,7 +17,17 @@ const applicationSchema = new mongoose.Schema({
         default: 'Submitted'
     },
     matchScore: { type: Number, default: 0 },
-    appliedAt: { type: Date, default: Date.now }
+    appliedAt: { type: Date, default: Date.now },
+    statusHistory: [
+        {
+            status: {
+                type: String,
+                enum: ['Submitted', 'Under Review', 'Shortlisted', 'Rejected'],
+                required: true
+            },
+            changedAt: { type: Date, default: Date.now }
+        }
+    ]
 });
 
 module.exports = mongoose.model("Application", applicationSchema);

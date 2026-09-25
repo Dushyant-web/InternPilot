@@ -199,9 +199,27 @@ router.get('/candidate/applications', isAuthenticated, authorize('candidate'), a
         const userId = req.user._id || req.user.id;
         const candidate = await User.findById(userId);
         const applications = await Application.find({ candidate: userId })
-            .populate('internship');
+            .populate('internship')
+            .sort({ appliedAt: -1, _id: -1 });
 
-        res.render('candidate/candidate-tracker', { candidate, applications });
+        const stats = {
+            total: applications.length,
+            submitted: applications.filter(a => a.status === 'Submitted').length,
+            underReview: applications.filter(a => a.status === 'Under Review').length,
+            shortlisted: applications.filter(a => a.status === 'Shortlisted').length,
+            rejected: applications.filter(a => a.status === 'Rejected').length
+        };
+
+        const searchQuery = (req.query.search || '').trim();
+        const statusFilter = (req.query.status || 'all').trim();
+
+        res.render('candidate/candidate-tracker', {
+            candidate,
+            applications,
+            stats,
+            searchQuery,
+            statusFilter
+        });
     } catch (error) {
         console.error('Error fetching tracker data:', error);
         res.status(500).send('Database Error');

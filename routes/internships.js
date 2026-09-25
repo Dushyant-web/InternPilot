@@ -138,10 +138,13 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
 
         const score = calculateSkillScore(candidate.skills || [], internship.requiredSkills || []);
 
+        const now = new Date();
         await Application.create({
             internship: internship._id,
             candidate: candidate._id,
-            matchScore: score
+            matchScore: score,
+            appliedAt: now,
+            statusHistory: [{ status: 'Submitted', changedAt: now }]
         });
 
         req.flash('success_msg', 'Application submitted successfully!');

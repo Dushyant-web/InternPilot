@@ -1,120 +1,471 @@
 <% layout('layouts/boilerplate') %>
 
-    <div class="max-w-5xl mx-auto space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-                <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Application Tracker</h2>
-                <p class="text-xs text-slate-500 mt-1">Track real-time updates and AI fit scores for your applied
-                    opportunities.</p>
-            </div>
+<div class="max-w-6xl mx-auto space-y-6 px-2 sm:px-4 py-4">
 
-            <a href="/internships"
-                class="inline-flex items-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-white font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm transition-colors">
-                <i class="ph-bold ph-magnifying-glass"></i>
-                Find More Internships
-            </a>
+    <!-- Top Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+        <div>
+            <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                <i class="ph-bold ph-tray text-indigo-600"></i>
+                Application Tracker
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">Track real-time status updates, application timelines, and AI match scores.</p>
         </div>
 
-        <% if (applications.length===0) { %>
-            <div class="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-sm">
-                <i class="ph-bold ph-paper-plane-tilt text-4xl text-slate-300 mb-2"></i>
-                <h3 class="text-base font-bold text-slate-800">No applications submitted yet</h3>
-                <p class="text-xs text-slate-500 mt-1 mb-4">Browse internships and click "Apply Now" to get started.</p>
-                <a href="/internships"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold rounded-lg transition-colors">
-                    Browse Opportunities &rarr;
-                </a>
-            </div>
-            <% } else { %>
-                <div class="grid grid-cols-1 gap-4">
-                    <% applications.forEach(app=> { %>
-                        <div
-                            class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4">
-
-                            <div class="space-y-2 max-w-xl">
-                                <div class="flex items-center gap-2">
-                                    <span
-                                        class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
-                                        <%= app.internship.sector || "General" %>
-                                    </span>
-                                    <span class="text-xs text-slate-400">&bull;</span>
-                                    <span class="text-xs text-slate-500 font-medium">
-                                        Applied on <%= new Date(app.appliedAt).toLocaleDateString('en-IN', {
-                                            day: 'numeric' , month: 'short' , year: 'numeric' }) %>
-                                    </span>
-                                </div>
-
-                                <h3 class="text-base font-bold text-slate-900 leading-snug">
-                                    <%= app.internship.title %>
-                                </h3>
-                                <p class="text-xs font-semibold text-slate-600 flex items-center gap-1">
-                                    <i class="ph-bold ph-buildings text-slate-400"></i>
-                                    <%= app.internship.companyName %>
-                                </p>
-
-                                <div class="flex items-center gap-4 text-xs text-slate-500 pt-1">
-                                    <span class="flex items-center gap-1">
-                                        <i class="ph-bold ph-map-pin text-rose-500"></i>
-                                        <%= typeof app.internship.location==='object' && app.internship.location !==null
-                                            ? ((app.internship.location.district ? app.internship.location.district
-                                            + ', ' : '' ) + (app.internship.location.state || '' )) :
-                                            (app.internship.location || 'N/A' ) %>
-                                    </span>
-                                    <span>&bull;</span>
-                                    <span class="flex items-center gap-1 text-emerald-600 font-semibold">
-                                        <i class="ph-bold ph-currency-inr"></i>
-                                        ₹<%= app.internship.monthlyStipend ?
-                                            Number(app.internship.monthlyStipend).toLocaleString('en-IN') : '5,000' %> /
-                                            mo
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div
-                                class="flex items-center justify-between md:justify-end gap-6 pt-3 md:pt-0 border-t md:border-0 border-slate-100">
-                                <div class="text-center">
-                                    <span
-                                        class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">AI
-                                        Skill Fit</span>
-                                    <div
-                                        class="px-3 py-1 rounded-lg border text-xs font-bold <%= app.matchScore >= 75 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : (app.matchScore >= 40 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-rose-50 border-rose-200 text-rose-700') %>">
-                                        <%= app.matchScore %>% Match
-                                    </div>
-                                </div>
-
-                                <div class="text-right">
-                                    <span
-                                        class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Status</span>
-                                    <% if (app.status==='Submitted' ) { %>
-                                        <span
-                                            class="inline-flex items-center gap-1 text-xs font-medium text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Submitted
-                                        </span>
-                                        <% } else if (app.status==='Under Review' ) { %>
-                                            <span
-                                                class="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
-                                                <span
-                                                    class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                                                Under Review
-                                            </span>
-                                            <% } else if (app.status==='Shortlisted' ) { %>
-                                                <span
-                                                    class="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
-                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                                    Shortlisted
-                                                </span>
-                                                <% } else if (app.status==='Rejected' ) { %>
-                                                    <span
-                                                        class="inline-flex items-center gap-1 text-xs font-medium text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-md">
-                                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                                                        Rejected
-                                                    </span>
-                                                    <% } %>
-                                </div>
-                            </div>
-
-                        </div>
-                        <% }) %>
-                </div>
-                <% } %>
+        <a href="/internships"
+            class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm transition-colors self-start sm:self-auto">
+            <i class="ph-bold ph-magnifying-glass"></i>
+            Find More Internships
+        </a>
     </div>
+
+    <!-- 1. Application Overview Statistics -->
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <!-- Total Applications -->
+        <div class="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs text-center flex flex-col justify-between">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Applications</span>
+            <span class="text-2xl font-black text-slate-800 mt-1"><%= (typeof stats !== 'undefined' && stats.total) ? stats.total : (applications ? applications.length : 0) %></span>
+        </div>
+
+        <!-- Submitted -->
+        <div class="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs text-center flex flex-col justify-between">
+            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Submitted</span>
+            <span class="text-2xl font-black text-slate-600 mt-1"><%= (typeof stats !== 'undefined' && stats.submitted) ? stats.submitted : 0 %></span>
+        </div>
+
+        <!-- Under Review -->
+        <div class="bg-white border border-amber-200 bg-amber-50/30 rounded-xl p-3.5 shadow-2xs text-center flex flex-col justify-between">
+            <span class="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Under Review</span>
+            <span class="text-2xl font-black text-amber-600 mt-1"><%= (typeof stats !== 'undefined' && stats.underReview) ? stats.underReview : 0 %></span>
+        </div>
+
+        <!-- Shortlisted -->
+        <div class="bg-white border border-emerald-200 bg-emerald-50/30 rounded-xl p-3.5 shadow-2xs text-center flex flex-col justify-between">
+            <span class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Shortlisted</span>
+            <span class="text-2xl font-black text-emerald-600 mt-1"><%= (typeof stats !== 'undefined' && stats.shortlisted) ? stats.shortlisted : 0 %></span>
+        </div>
+
+        <!-- Rejected -->
+        <div class="bg-white border border-rose-200 bg-rose-50/30 rounded-xl p-3.5 shadow-2xs text-center flex flex-col justify-between col-span-2 sm:col-span-1">
+            <span class="text-[10px] font-bold text-rose-700 uppercase tracking-wider">Rejected</span>
+            <span class="text-2xl font-black text-rose-600 mt-1"><%= (typeof stats !== 'undefined' && stats.rejected) ? stats.rejected : 0 %></span>
+        </div>
+    </div>
+
+    <!-- 2. Search & Filter Bar -->
+    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
+        <form id="tracker-filter-form" method="GET" action="/candidate/applications" class="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+
+            <!-- Search Keyword Input -->
+            <div class="relative flex-1">
+                <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input type="text" id="search-input" name="search" value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>"
+                    placeholder="Search by internship title or company..."
+                    class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-slate-800" />
+            </div>
+
+            <!-- Status Dropdown Filter -->
+            <div class="w-full md:w-48">
+                <select id="status-select" name="status" class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-slate-700 font-medium">
+                    <option value="all" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'all') ? 'selected' : '' %>>All Statuses</option>
+                    <option value="Submitted" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Submitted') ? 'selected' : '' %>>Submitted</option>
+                    <option value="Under Review" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Under Review') ? 'selected' : '' %>>Under Review</option>
+                    <option value="Shortlisted" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Shortlisted') ? 'selected' : '' %>>Shortlisted</option>
+                    <option value="Rejected" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Rejected') ? 'selected' : '' %>>Rejected</option>
+                </select>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-2">
+                <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-lg transition-colors shadow-2xs">
+                    Filter
+                </button>
+
+                <button type="button" id="reset-filters-btn" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg transition-colors border border-slate-200">
+                    Reset
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 3. Skeleton Loading Placeholder (Hidden by default, shown during client search transitions) -->
+    <div id="tracker-skeleton" class="hidden space-y-4">
+        <% for(let i = 0; i < 3; i++) { %>
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-xs animate-pulse space-y-3">
+                <div class="flex justify-between items-start">
+                    <div class="space-y-2 w-2/3">
+                        <div class="h-4 bg-slate-200 rounded w-1/4"></div>
+                        <div class="h-5 bg-slate-200 rounded w-3/4"></div>
+                        <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+                    </div>
+                    <div class="h-8 bg-slate-200 rounded w-24"></div>
+                </div>
+            </div>
+        <% } %>
+    </div>
+
+    <!-- 4. Application Listing -->
+    <div id="tracker-content">
+        <% if (!applications || applications.length === 0) { %>
+
+            <!-- NO APPLICATIONS SUBMITTED AT ALL -->
+            <div class="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-sm space-y-3">
+                <div class="w-14 h-14 mx-auto rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center text-2xl">
+                    <i class="ph-bold ph-paper-plane-tilt"></i>
+                </div>
+                <h3 class="text-base font-bold text-slate-800">No applications submitted yet</h3>
+                <p class="text-xs text-slate-500 max-w-sm mx-auto">Browse available PMIS opportunities and submit your application with one click.</p>
+                <div class="pt-2">
+                    <a href="/internships"
+                        class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors">
+                        Browse Opportunities &rarr;
+                    </a>
+                </div>
+            </div>
+
+        <% } else { %>
+
+            <!-- NO MATCHING SEARCH RESULTS STATE -->
+            <div id="no-results-state" class="hidden bg-white border border-slate-200 rounded-xl p-10 text-center shadow-sm space-y-3">
+                <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-xl">
+                    <i class="ph-bold ph-funnel-x"></i>
+                </div>
+                <h3 class="text-sm font-bold text-slate-800">No matching applications found</h3>
+                <p class="text-xs text-slate-500 max-w-xs mx-auto">Try adjusting your keyword search or status filter options.</p>
+                <div>
+                    <button type="button" onclick="clearFilters()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline">
+                        Clear all filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- APPLICATIONS CARDS LIST -->
+            <div id="applications-list" class="grid grid-cols-1 gap-4">
+                <% applications.forEach(app => { %>
+                    <%
+                        const searchContent = `${app.internship?.title || ''} ${app.internship?.companyName || ''} ${app.internship?.sector || ''}`.toLowerCase();
+                        const appStatus = app.status || 'Submitted';
+                    %>
+                    <div class="app-card bg-white border border-slate-200 rounded-xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                        data-search="<%= searchContent %>"
+                        data-status="<%= appStatus %>">
+
+                        <!-- Role & Company Info -->
+                        <div class="space-y-2 max-w-xl">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
+                                    <%= app.internship?.sector || "General" %>
+                                </span>
+                                <span class="text-xs text-slate-400">&bull;</span>
+                                <span class="text-xs text-slate-500 font-medium">
+                                    Applied on <%= new Date(app.appliedAt || app._id.getTimestamp()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %>
+                                </span>
+                            </div>
+
+                            <h3 class="text-base font-bold text-slate-900 leading-snug">
+                                <%= app.internship?.title || 'Internship Position' %>
+                            </h3>
+
+                            <p class="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+                                <i class="ph-bold ph-buildings text-slate-400 text-sm"></i>
+                                <%= app.internship?.companyName || 'Company' %>
+                            </p>
+
+                            <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500 pt-1">
+                                <span class="flex items-center gap-1">
+                                    <i class="ph-bold ph-map-pin text-rose-500"></i>
+                                    <%= typeof app.internship?.location === 'object' && app.internship?.location !== null
+                                        ? ((app.internship.location.district ? app.internship.location.district + ', ' : '') + (app.internship.location.state || 'Remote'))
+                                        : (app.internship?.location || 'Remote') %>
+                                </span>
+                                <span>&bull;</span>
+                                <span class="flex items-center gap-1 text-emerald-700 font-semibold">
+                                    <i class="ph-bold ph-currency-inr"></i>
+                                    ₹<%= app.internship?.monthlyStipend ? Number(app.internship.monthlyStipend).toLocaleString('en-IN') : '5,000' %>/mo
+                                </span>
+                                <% if (app.internship?.duration) { %>
+                                    <span>&bull;</span>
+                                    <span class="flex items-center gap-1">
+                                        <i class="ph-bold ph-clock text-indigo-500"></i>
+                                        <%= app.internship.duration %>
+                                    </span>
+                                <% } %>
+                            </div>
+                        </div>
+
+                        <!-- Right Actions & Badges -->
+                        <div class="flex items-center justify-between md:justify-end gap-5 pt-3 md:pt-0 border-t md:border-0 border-slate-100 flex-wrap sm:flex-nowrap">
+
+                            <!-- AI Fit Score -->
+                            <div class="text-center shrink-0">
+                                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">AI Skill Fit</span>
+                                <div class="px-3 py-1 rounded-lg border text-xs font-bold <%= app.matchScore >= 75 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : (app.matchScore >= 40 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-rose-50 border-rose-200 text-rose-700') %>">
+                                    <%= app.matchScore || 0 %>% Match
+                                </div>
+                            </div>
+
+                            <!-- Current Status Pill -->
+                            <div class="text-right shrink-0">
+                                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status</span>
+                                <% if (appStatus === 'Submitted') { %>
+                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> Submitted
+                                    </span>
+                                <% } else if (appStatus === 'Under Review') { %>
+                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Under Review
+                                    </span>
+                                <% } else if (appStatus === 'Shortlisted') { %>
+                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Shortlisted
+                                    </span>
+                                <% } else if (appStatus === 'Rejected') { %>
+                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-800 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-md">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Rejected
+                                    </span>
+                                <% } %>
+                            </div>
+
+                            <!-- View Details Action Button -->
+                            <div class="w-full sm:w-auto text-right">
+                                <button type="button"
+                                    onclick='openAppDetailsModal(<%= JSON.stringify(app) %>)'
+                                    class="w-full sm:w-auto px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1">
+                                    <span>View Details</span>
+                                    <i class="ph-bold ph-caret-right"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                <% }) %>
+            </div>
+        <% } %>
+    </div>
+
+</div>
+
+<!-- 5. Application Detail & Timeline Modal -->
+<div id="app-detail-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-200">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto space-y-6 p-6 relative animate-in fade-in zoom-in duration-150">
+
+        <!-- Modal Header -->
+        <div class="flex items-start justify-between border-b border-slate-100 pb-4">
+            <div>
+                <span id="modal-sector" class="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full uppercase">
+                    Sector
+                </span>
+                <h3 id="modal-title" class="text-xl font-extrabold text-slate-900 mt-1">Internship Position</h3>
+                <p id="modal-company" class="text-xs font-semibold text-slate-600 flex items-center gap-1 mt-0.5">
+                    <i class="ph-bold ph-buildings text-slate-400"></i> Company Name
+                </p>
+            </div>
+
+            <button type="button" onclick="closeAppDetailsModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                <i class="ph-bold ph-x text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Key Metrics Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                <span class="block text-[10px] font-bold text-slate-400 uppercase">Location</span>
+                <span id="modal-location" class="text-xs font-bold text-slate-800 mt-0.5 block truncate">District, State</span>
+            </div>
+            <div class="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                <span class="block text-[10px] font-bold text-slate-400 uppercase">Monthly Stipend</span>
+                <span id="modal-stipend" class="text-xs font-bold text-emerald-700 mt-0.5 block">₹5,000 / mo</span>
+            </div>
+            <div class="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                <span class="block text-[10px] font-bold text-slate-400 uppercase">Duration</span>
+                <span id="modal-duration" class="text-xs font-bold text-slate-800 mt-0.5 block">12 Months</span>
+            </div>
+            <div class="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                <span class="block text-[10px] font-bold text-slate-400 uppercase">AI Fit Score</span>
+                <span id="modal-match" class="text-xs font-bold text-indigo-700 mt-0.5 block">0% Match</span>
+            </div>
+        </div>
+
+        <!-- Chronological Status History Timeline -->
+        <div class="space-y-3">
+            <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <i class="ph-bold ph-clock-counter-clockwise text-indigo-600 text-sm"></i>
+                Application Status Timeline
+            </h4>
+
+            <div id="modal-timeline" class="space-y-4 pl-2 pt-2 relative border-l-2 border-slate-200">
+                <!-- Timeline items populated dynamically via JS -->
+            </div>
+        </div>
+
+        <!-- Footer Action -->
+        <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+            <a id="modal-internship-link" href="#" class="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1">
+                <span>View Full Internship Listing</span>
+                <i class="ph-bold ph-arrow-square-out text-xs"></i>
+            </a>
+
+            <button type="button" onclick="closeAppDetailsModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg transition-colors">
+                Close
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<!-- Interactive Client-side Script -->
+<script>
+    const searchInput = document.getElementById('search-input');
+    const statusSelect = document.getElementById('status-select');
+    const resetBtn = document.getElementById('reset-filters-btn');
+    const cardsList = document.getElementById('applications-list');
+    const noResultsState = document.getElementById('no-results-state');
+
+    function filterApplications() {
+        const query = (searchInput?.value || '').toLowerCase().trim();
+        const selectedStatus = (statusSelect?.value || 'all');
+        const cards = document.querySelectorAll('.app-card');
+
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const searchData = card.getAttribute('data-search') || '';
+            const cardStatus = card.getAttribute('data-status') || '';
+
+            const matchesSearch = !query || searchData.includes(query);
+            const matchesStatus = (selectedStatus === 'all') || (cardStatus === selectedStatus);
+
+            if (matchesSearch && matchesStatus) {
+                card.classList.remove('hidden');
+                visibleCount++;
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+
+        if (noResultsState) {
+            if (visibleCount === 0 && cards.length > 0) {
+                noResultsState.classList.remove('hidden');
+            } else {
+                noResultsState.classList.add('hidden');
+            }
+        }
+    }
+
+    function clearFilters() {
+        if (searchInput) searchInput.value = '';
+        if (statusSelect) statusSelect.value = 'all';
+        filterApplications();
+    }
+
+    if (searchInput) searchInput.addEventListener('input', filterApplications);
+    if (statusSelect) statusSelect.addEventListener('change', filterApplications);
+    if (resetBtn) resetBtn.addEventListener('click', clearFilters);
+
+    // Initial trigger to apply URL search params if present
+    document.addEventListener('DOMContentLoaded', filterApplications);
+
+    // Application Details Modal Functions
+    function openAppDetailsModal(app) {
+        if (!app) return;
+
+        const modal = document.getElementById('app-detail-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalCompany = document.getElementById('modal-company');
+        const modalSector = document.getElementById('modal-sector');
+        const modalLocation = document.getElementById('modal-location');
+        const modalStipend = document.getElementById('modal-stipend');
+        const modalDuration = document.getElementById('modal-duration');
+        const modalMatch = document.getElementById('modal-match');
+        const modalLink = document.getElementById('modal-internship-link');
+        const modalTimeline = document.getElementById('modal-timeline');
+
+        const internship = app.internship || {};
+
+        if (modalTitle) modalTitle.innerText = internship.title || 'Internship Position';
+        if (modalCompany) modalCompany.innerHTML = `<i class="ph-bold ph-buildings text-slate-400"></i> ${internship.companyName || 'Company'}`;
+        if (modalSector) modalSector.innerText = internship.sector || 'General';
+
+        let locStr = 'Remote';
+        if (typeof internship.location === 'object' && internship.location !== null) {
+            locStr = (internship.location.district ? internship.location.district + ', ' : '') + (internship.location.state || 'Remote');
+        } else if (internship.location) {
+            locStr = internship.location;
+        }
+        if (modalLocation) modalLocation.innerText = locStr;
+
+        if (modalStipend) modalStipend.innerText = `₹${internship.monthlyStipend ? Number(internship.monthlyStipend).toLocaleString('en-IN') : '5,000'} / mo`;
+        if (modalDuration) modalDuration.innerText = internship.duration || '12 Months';
+        if (modalMatch) modalMatch.innerText = `${app.matchScore || 0}% Match`;
+        if (modalLink) modalLink.href = `/internships/${internship._id || ''}`;
+
+        // Build Chronological Status History Timeline
+        if (modalTimeline) {
+            modalTimeline.innerHTML = '';
+
+            let history = Array.isArray(app.statusHistory) && app.statusHistory.length > 0
+                ? app.statusHistory
+                : [{ status: app.status || 'Submitted', changedAt: app.appliedAt || new Date() }];
+
+            // Sort history by changedAt ascending
+            history = history.slice().sort((a, b) => new Date(a.changedAt) - new Date(b.changedAt));
+
+            history.forEach((item, index) => {
+                const dateObj = new Date(item.changedAt);
+                const formattedDate = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                const formattedTime = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+                let badgeStyle = 'bg-slate-100 text-slate-700 border-slate-200';
+                let iconClass = 'ph-bold ph-check text-slate-500';
+
+                if (item.status === 'Submitted') {
+                    badgeStyle = 'bg-slate-100 text-slate-700 border-slate-200';
+                    iconClass = 'ph-bold ph-paper-plane text-slate-600';
+                } else if (item.status === 'Under Review') {
+                    badgeStyle = 'bg-amber-50 text-amber-800 border-amber-200';
+                    iconClass = 'ph-bold ph-hourglass-medium text-amber-600';
+                } else if (item.status === 'Shortlisted') {
+                    badgeStyle = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+                    iconClass = 'ph-bold ph-check-circle text-emerald-600';
+                } else if (item.status === 'Rejected') {
+                    badgeStyle = 'bg-rose-50 text-rose-800 border-rose-200';
+                    iconClass = 'ph-bold ph-x-circle text-rose-600';
+                }
+
+                const isLatest = (index === history.length - 1);
+
+                const timelineHtml = `
+                    <div class="relative pl-6 pb-2">
+                        <div class="absolute -left-[17px] top-1.5 w-8 h-8 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center text-xs shadow-2xs">
+                            <i class="${iconClass}"></i>
+                        </div>
+                        <div class="flex items-center justify-between gap-2 flex-wrap">
+                            <span class="inline-flex items-center gap-1.5 text-xs font-bold border px-2.5 py-0.5 rounded-md ${badgeStyle}">
+                                ${item.status} ${isLatest ? '<span class="text-[9px] uppercase tracking-wider font-extrabold px-1 bg-white rounded border border-current">Current</span>' : ''}
+                            </span>
+                            <span class="text-[11px] font-medium text-slate-400">
+                                ${formattedDate} at ${formattedTime}
+                            </span>
+                        </div>
+                    </div>
+                `;
+                modalTimeline.insertAdjacentHTML('beforeend', timelineHtml);
+            });
+        }
+
+        if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeAppDetailsModal() {
+        const modal = document.getElementById('app-detail-modal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    // Close modal on backdrop click or ESC key
+    document.getElementById('app-detail-modal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'app-detail-modal') closeAppDetailsModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeAppDetailsModal();
+    });
+</script>

@@ -95,7 +95,22 @@ router.post('/company/applications/:id/status', isAuthenticated, authorize('comp
         }
 
         const previousStatus = application.status;
-        application.status = status;
+        if (previousStatus !== status) {
+            application.status = status;
+            if (!Array.isArray(application.statusHistory)) {
+                application.statusHistory = [];
+            }
+            if (application.statusHistory.length === 0) {
+                application.statusHistory.push({
+                    status: 'Submitted',
+                    changedAt: application.appliedAt || new Date()
+                });
+            }
+            application.statusHistory.push({
+                status,
+                changedAt: new Date()
+            });
+        }
         await application.save();
 
         if (previousStatus !== status && application.candidate?.email) {
