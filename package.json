@@ -6,11 +6,9 @@
   "author": "Somsubhra Chatterjee",
   "type": "commonjs",
   "main": "index.js",
-"scripts": {
-    "start": "node app.js",
-    "dev": "node --watch app.js",
+  "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
-},
+  },
   "dependencies": {
     "@google/genai": "^2.13.0",
     "bcryptjs": "^3.0.3",

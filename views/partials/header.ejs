@@ -41,19 +41,36 @@
                     <a href="/internships" class="hover:text-indigo-700 transition-colors">Opportunities</a>
 
                     <% if (currentUser) { %>
-                        <% if (currentUser.role==='candidate' ) { %>
-                            <a href="/candidate/profile" class="hover:text-indigo-700 transition-colors">Candidate
-                                Profile</a>
-                            <a href="/candidate/applications" class="hover:text-indigo-700 transition-colors">My
-                                Applications</a>
-                            <% } else if (currentUser.role==='company' ) { %>
-                                <a href="/company/dashboard" class="hover:text-indigo-700 transition-colors">Company
-                                    Dashboard</a>
-                                <% } %>
-                                    <% } %>
+                        <% if (currentUser.role === 'candidate') { %>
+                            <a href="/candidate/profile" class="hover:text-indigo-700 transition-colors">Candidate Profile</a>
+                            <a href="/candidate/applications" class="hover:text-indigo-700 transition-colors">My Applications</a>
+                            <a href="/recommendations/<%= currentUser._id %>" class="hover:text-indigo-700 transition-colors">Recommendations</a>
+                        <% } else if (currentUser.role === 'company' || currentUser.role === 'recruiter') { %>
+                            <a href="/company/dashboard" class="hover:text-indigo-700 transition-colors">Company Dashboard</a>
+                            <% if (currentUser.role === 'company') { %>
+                                <a href="/company/team" class="hover:text-indigo-700 transition-colors">Manage Team</a>
+                            <% } %>
+                        <% } else if (currentUser.role === 'admin') { %>
+                            <a href="/admin/dashboard" class="hover:text-indigo-700 transition-colors">Admin Dashboard</a>
+                        <% } %>
+                    <% } %>
                 </nav>
 
                 <div class="h-10 w-[1px] bg-slate-200 hidden md:block"></div>
+
+                <% if (currentUser && currentUser.role === 'candidate') { %>
+                    <a href="/notifications" aria-label="Notifications"
+                        class="relative inline-flex items-center justify-center rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-indigo-700 transition-colors"
+                        title="Notifications">
+                        <i class="ph-bold ph-bell text-lg"></i>
+                        <% if (notificationUnreadCount > 0) { %>
+                            <span
+                                class="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] leading-4 text-center font-bold">
+                                <%= notificationUnreadCount > 99 ? '99+' : notificationUnreadCount %>
+                            </span>
+                        <% } %>
+                    </a>
+                <% } %>
 
                 <!-- Dynamic Auth Actions (Login / Register vs User Menu & Logout) -->
                 <div class="flex items-center gap-3">

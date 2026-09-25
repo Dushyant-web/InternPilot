@@ -1,0 +1,487 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- Back Navigation -->
+    <div class="flex items-center gap-2">
+        <a href="/company/internships/<%= internship._id %>/applicants"
+            class="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1">
+            <i class="ph-bold ph-arrow-left text-sm"></i> Back to Applicants
+        </a>
+        <span class="text-slate-300">&bull;</span>
+        <span class="text-xs text-slate-500"><%= internship.title %></span>
+    </div>
+
+    <!-- Header Card -->
+    <div
+        class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+        <div class="flex items-center gap-5">
+            <% if (candidate.avatar) { %>
+                <img src="<%= candidate.avatar %>" alt="<%= candidate.name %>"
+                    class="w-16 h-16 rounded-full object-cover border-2 border-indigo-200">
+            <% } else { %>
+                <div
+                    class="w-16 h-16 bg-indigo-100 text-indigo-700 font-extrabold text-2xl rounded-full flex items-center justify-center border-2 border-indigo-200">
+                    <%= candidate.name ? candidate.name.charAt(0).toUpperCase() : 'U' %>
+                </div>
+            <% } %>
+            <div>
+                <h1 class="text-xl font-bold text-slate-800 tracking-tight">
+                    <%= candidate.name || 'Unknown Candidate' %>
+                </h1>
+                <p class="text-xs text-slate-500 font-medium flex items-center gap-1 mt-1">
+                    <i class="ph-bold ph-map-pin text-rose-500 text-sm"></i>
+                    <%= (candidate.location && typeof candidate.location === 'object')
+                        ? ([candidate.location.district, candidate.location.state].filter(Boolean).join(', ') || 'Location Not Provided')
+                        : (candidate.location || 'Location Not Provided') %>
+                </p>
+                <% const isAgeEligible = candidate.age && candidate.age >= 21 && candidate.age <= 24; %>
+                <% const isIncomeEligible = candidate.familyIncome && candidate.familyIncome <= 800000; %>
+                <% if (isAgeEligible && isIncomeEligible) { %>
+                    <span
+                        class="inline-block mt-1.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                        PMIS Eligible
+                    </span>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 flex-shrink-0">
+            <% const resumeUrl = candidate.resume || candidate.resumeUrl; %>
+            <% if (resumeUrl) { %>
+                <a href="<%= resumeUrl %>" target="_blank"
+                    class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                    <i class="ph-bold ph-file-pdf text-sm"></i> View Resume
+                </a>
+            <% } else { %>
+                <span
+                    class="px-4 py-2 bg-slate-100 text-slate-400 border border-slate-200 text-xs font-medium rounded-lg flex items-center gap-1.5">
+                    <i class="ph-bold ph-file-x text-sm"></i> No Resume Uploaded
+                </span>
+            <% } %>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+
+            <!-- Application Context Card -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <h2
+                    class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <i class="ph-bold ph-briefcase text-indigo-600 text-lg"></i>
+                    Application Info
+                </h2>
+
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <span class="text-slate-400 font-medium block">Internship Applied For</span>
+                        <span class="font-bold text-slate-700 text-sm"><%= internship.title %></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-medium block">Company</span>
+                        <span class="font-bold text-slate-700 text-sm"><%= internship.companyName || 'N/A' %></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-medium block mb-1">Application Status</span>
+                        <% if (application.status === 'Interview') { %>
+                            <span class="inline-block px-3 py-1.5 text-xs font-semibold rounded-lg border shadow-sm bg-indigo-50 text-indigo-700 border-indigo-200">
+                                Interview
+                            </span>
+                        <% } else { %>
+                        <form action="/company/applications/<%= application._id %>/status"
+                            method="POST" class="inline-block">
+                            <select name="status" onchange="this.form.submit()" class="px-3 py-1.5 text-xs font-semibold rounded-lg border shadow-sm cursor-pointer outline-none transition-colors <%=
+                                application.status === 'Shortlisted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                application.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                application.status === 'Under Review' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                'bg-indigo-50 text-indigo-700 border-indigo-200'
+                            %>">
+                                <option value="Submitted" <%=application.status==='Submitted' ? 'selected' : '' %>>Submitted</option>
+                                <option value="Under Review" <%=application.status==='Under Review' ? 'selected' : '' %>>Under Review</option>
+                                <option value="Shortlisted" <%=application.status==='Shortlisted' ? 'selected' : '' %>>Shortlisted</option>
+                                <option value="Rejected" <%=application.status==='Rejected' ? 'selected' : '' %>>Rejected</option>
+                            </select>
+                        </form>
+                        <% } %>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-medium block">Match Score</span>
+                        <span class="inline-block mt-1 px-3 py-1 rounded-lg border text-xs font-bold <%=
+                            (application.matchScore || 0) >= 75 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
+                            ((application.matchScore || 0) >= 40 ? 'bg-amber-50 border-amber-200 text-amber-700' :
+                            'bg-rose-50 border-rose-200 text-rose-700')
+                        %>">
+                            <%= application.matchScore || 0 %>%
+                        </span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-medium block">Applied On</span>
+                        <span class="font-bold text-slate-700 text-sm">
+                            <%= application.appliedAt ? new Date(application.appliedAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A' %>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interview Card -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <h2 class="text-sm font-bold text-slate-800 flex items-center justify-between border-b border-slate-100 pb-3">
+                    <span class="flex items-center gap-2">
+                        <i class="ph-bold ph-calendar text-indigo-600 text-lg"></i>
+                        Interview
+                    </span>
+                    <% if (application.interview && application.interview.status && application.interview.status !== 'Cancelled') { %>
+                        <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full
+                            <%= application.interview.status === 'Scheduled' ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700' %>">
+                            <%= application.interview.status %>
+                        </span>
+                    <% } else if (application.interview && application.interview.status === 'Cancelled') { %>
+                        <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700">
+                            Cancelled
+                        </span>
+                    <% } %>
+                </h2>
+
+                <% if (application.interview && application.interview.status && application.interview.status !== 'Cancelled') { %>
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <span class="text-slate-400 font-medium block">Date & Time (IST)</span>
+                            <span class="font-bold text-slate-700 text-sm">
+                                <%= application.interview.scheduledAt ? new Date(application.interview.scheduledAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) : 'N/A' %>
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div>
+                                <span class="text-slate-400 font-medium block">Duration</span>
+                                <span class="font-bold text-slate-700 text-sm"><%= application.interview.duration %> mins</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 font-medium block">Mode</span>
+                                <span class="font-bold text-slate-700 text-sm"><%= application.interview.mode %></span>
+                            </div>
+                        </div>
+                        <% if (application.interview.mode === 'Online' && application.interview.meetingLink) { %>
+                            <div>
+                                <span class="text-slate-400 font-medium block">Meeting Link</span>
+                                <a href="<%= application.interview.meetingLink %>" target="_blank" class="font-bold text-indigo-600 hover:underline break-all"><%= application.interview.meetingLink %></a>
+                            </div>
+                        <% } else if (application.interview.mode === 'In-Person' && application.interview.location) { %>
+                            <div>
+                                <span class="text-slate-400 font-medium block">Location</span>
+                                <span class="font-bold text-slate-700"><%= application.interview.location %></span>
+                            </div>
+                        <% } %>
+                        <% if (application.interview.instructions) { %>
+                            <div>
+                                <span class="text-slate-400 font-medium block">Instructions</span>
+                                <p class="text-slate-700 mt-0.5 p-2 bg-slate-50 rounded border border-slate-100 whitespace-pre-line"><%= application.interview.instructions %></p>
+                            </div>
+                        <% } %>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-100 flex flex-col gap-2">
+                        <button type="button" onclick="openScheduleModal(true)" class="w-full px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg transition-colors border border-indigo-200">
+                            Reschedule Interview
+                        </button>
+                        <button type="button" onclick="document.getElementById('cancelInterviewModal').classList.remove('hidden')" class="w-full px-4 py-2 bg-white hover:bg-rose-50 text-rose-600 text-xs font-semibold rounded-lg transition-colors border border-rose-200">
+                            Cancel Interview
+                        </button>
+                    </div>
+                <% } else { %>
+                    <div class="text-center py-4">
+                        <p class="text-xs text-slate-500 mb-3">
+                            <%= application.interview && application.interview.status === 'Cancelled' ? 'The previous interview was cancelled.' : 'No interview has been scheduled yet.' %>
+                        </p>
+                        <% if (application.status !== 'Rejected' && application.status !== 'rejected') { %>
+                            <button type="button" onclick="openScheduleModal(false)" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors w-full shadow-sm">
+                                Schedule Interview
+                            </button>
+                        <% } else { %>
+                            <p class="text-xs text-rose-500 italic">Cannot schedule interview for a rejected application.</p>
+                        <% } %>
+                    </div>
+                <% } %>
+            </div>
+
+        </div>
+
+        <!-- Main Content -->
+        <div class="lg:col-span-2 space-y-6">
+
+            <!-- Candidate Details Card -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <h2
+                    class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <i class="ph-bold ph-user text-indigo-600 text-lg"></i>
+                    Candidate Details
+                </h2>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                    <div>
+                        <span class="text-slate-400 font-medium block">Age</span>
+                        <span class="font-bold text-slate-700 text-sm">
+                            <%= candidate.age ? candidate.age : 'N/A' %>
+                        </span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-medium block">Qualification</span>
+                        <span class="font-bold text-slate-700 text-sm">
+                            <%= (candidate.education && candidate.education.qualification) ? candidate.education.qualification : 'N/A' %>
+                        </span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-medium block">Institution</span>
+                        <span class="font-bold text-slate-700 text-sm">
+                            <%= candidate.institution || candidate.education?.institutionName || candidate.institutionName || 'N/A' %>
+                        </span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-medium block">Family Income</span>
+                        <span class="font-bold text-slate-700 text-sm">
+                            <%= candidate.familyIncome ? '₹' + Number(candidate.familyIncome).toLocaleString('en-IN') + '/yr' : 'N/A' %>
+                        </span>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex items-center gap-2">
+                    <i class="ph-bold ph-warning text-amber-600 text-sm shrink-0"></i>
+                    Review PMIS Criteria (Age: 21–24, Family Income &lt; ₹8 Lakhs/year)
+                </div>
+            </div>
+
+            <!-- Skills Card -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <h2
+                    class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <i class="ph-bold ph-gear text-indigo-600 text-lg"></i>
+                    Skills
+                </h2>
+
+                <% if (candidate.skills && candidate.skills.length > 0) { %>
+                    <div class="flex flex-wrap gap-2">
+                        <% candidate.skills.forEach(skill => { %>
+                            <span
+                                class="bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm">
+                                <%= skill %>
+                            </span>
+                        <% }) %>
+                    </div>
+                <% } else { %>
+                    <p class="text-xs text-slate-400 italic">No skills added yet.</p>
+                <% } %>
+            </div>
+
+            <!-- Projects Card (future-ready) -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <h2
+                    class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <i class="ph-bold ph-code text-indigo-600 text-lg"></i>
+                    Projects
+                </h2>
+
+                <% if (candidate.projects && candidate.projects.length > 0) { %>
+                    <div class="space-y-3">
+                        <% candidate.projects.forEach(project => { %>
+                            <div class="border border-slate-100 rounded-lg p-3">
+                                <h4 class="text-sm font-bold text-slate-800"><%= project.title || project.name || 'Untitled' %></h4>
+                                <% if (project.description) { %>
+                                    <p class="text-xs text-slate-500 mt-1"><%= project.description %></p>
+                                <% } %>
+                                <% if (project.techStack && project.techStack.length > 0) { %>
+                                    <div class="flex flex-wrap gap-1.5 mt-2">
+                                        <% project.techStack.forEach(tech => { %>
+                                            <span class="bg-slate-100 border border-slate-200 text-slate-600 text-[11px] font-semibold px-2 py-0.5 rounded"><%= tech %></span>
+                                        <% }) %>
+                                    </div>
+                                <% } %>
+                                <div class="flex flex-wrap items-center gap-3 mt-1.5">
+                                    <% if (project.link) { %>
+                                        <a href="<%= project.link %>" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 hover:underline inline-block">View Project</a>
+                                    <% } %>
+                                    <% if (project.fileUrl) { %>
+                                        <a href="<%= project.fileUrl %>" target="_blank" rel="noopener noreferrer" class="text-xs text-emerald-700 hover:underline font-semibold inline-block">
+                                            <i class="ph-bold ph-paperclip"></i> <%= project.fileName || 'View Attachment' %>
+                                        </a>
+                                    <% } %>
+                                </div>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } else { %>
+                    <p class="text-xs text-slate-400 italic">No projects added yet.</p>
+                <% } %>
+            </div>
+
+            <!-- Certifications Card (future-ready) -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <h2
+                    class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <i class="ph-bold ph-certificate text-indigo-600 text-lg"></i>
+                    Certifications
+                </h2>
+
+                <% if (candidate.certifications && candidate.certifications.length > 0) { %>
+                    <div class="space-y-3">
+                        <% candidate.certifications.forEach(cert => { %>
+                            <div class="border border-slate-100 rounded-lg p-3">
+                                <h4 class="text-sm font-bold text-slate-800"><%= cert.name || cert.title || 'Untitled' %></h4>
+                                <% if (cert.issuer) { %>
+                                    <p class="text-xs text-slate-500 mt-0.5">Issued by: <%= cert.issuer %></p>
+                                <% } %>
+                                <% if (cert.issueDate) { %>
+                                    <p class="text-xs text-slate-400 mt-0.5"><%= new Date(cert.issueDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) %></p>
+                                <% } %>
+                                <div class="flex flex-wrap items-center gap-3 mt-1.5">
+                                    <% if (cert.link) { %>
+                                        <a href="<%= cert.link %>" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 hover:underline inline-block">Credential Link</a>
+                                    <% } %>
+                                    <% if (cert.fileUrl) { %>
+                                        <a href="<%= cert.fileUrl %>" target="_blank" rel="noopener noreferrer" class="text-xs text-emerald-700 hover:underline font-semibold inline-block">
+                                            <i class="ph-bold ph-paperclip"></i> <%= cert.fileName || 'View Certificate' %>
+                                        </a>
+                                    <% } %>
+                                </div>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } else { %>
+                    <p class="text-xs text-slate-400 italic">No certifications added yet.</p>
+                <% } %>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- Interview Modals -->
+<div id="scheduleInterviewModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-slate-900" id="scheduleModalTitle">Schedule Interview</h3>
+            <button type="button" onclick="document.getElementById('scheduleInterviewModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+                <i class="ph-bold ph-x text-xl"></i>
+            </button>
+        </div>
+        <form id="scheduleInterviewForm" method="POST" action="/company/applications/<%= application._id %>/interview/schedule" class="p-6 space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Date & Time (IST) *</label>
+                <%
+                    let dtLocal = '';
+                    if (application.interview && application.interview.scheduledAt) {
+                        const d = new Date(application.interview.scheduledAt);
+                        const istOffset = 5.5 * 60 * 60 * 1000;
+                        const istDate = new Date(d.getTime() + istOffset);
+                        dtLocal = istDate.toISOString().slice(0, 16);
+                    }
+                %>
+                <input type="datetime-local" name="scheduledAt" required value="<%= dtLocal %>" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Duration *</label>
+                    <select name="duration" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none">
+                        <option value="15" <%= application.interview?.duration === 15 ? 'selected' : '' %>>15 mins</option>
+                        <option value="30" <%= !application.interview || application.interview.duration === 30 ? 'selected' : '' %>>30 mins</option>
+                        <option value="45" <%= application.interview?.duration === 45 ? 'selected' : '' %>>45 mins</option>
+                        <option value="60" <%= application.interview?.duration === 60 ? 'selected' : '' %>>60 mins</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Mode *</label>
+                    <select name="mode" id="interviewModeSelect" required onchange="toggleInterviewModeFields()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none">
+                        <option value="Online" <%= application.interview?.mode === 'Online' ? 'selected' : '' %>>Online</option>
+                        <option value="Phone" <%= application.interview?.mode === 'Phone' ? 'selected' : '' %>>Phone</option>
+                        <option value="In-Person" <%= application.interview?.mode === 'In-Person' ? 'selected' : '' %>>In-Person</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="onlineModeField" class="<%= application.interview?.mode && application.interview.mode !== 'Online' ? 'hidden' : '' %>">
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Meeting Link *</label>
+                <input type="url" name="meetingLink" id="meetingLinkInput" value="<%= application.interview?.meetingLink || '' %>" placeholder="e.g. https://meet.google.com/..." class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none">
+            </div>
+
+            <div id="inPersonModeField" class="<%= application.interview?.mode !== 'In-Person' ? 'hidden' : '' %>">
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Location *</label>
+                <input type="text" name="location" id="locationInput" value="<%= application.interview?.location || '' %>" placeholder="e.g. Office address, Room 302" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Instructions for Candidate (Optional)</label>
+                <textarea name="instructions" rows="2" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none"><%= application.interview?.instructions || '' %></textarea>
+            </div>
+
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="document.getElementById('scheduleInterviewModal').classList.add('hidden')" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-sm transition-colors">Cancel</button>
+                <button type="submit" id="scheduleSubmitBtn" class="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-sm transition-colors shadow-sm">Schedule</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="cancelInterviewModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-rose-600">Cancel Interview</h3>
+            <button type="button" onclick="document.getElementById('cancelInterviewModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+                <i class="ph-bold ph-x text-xl"></i>
+            </button>
+        </div>
+        <form method="POST" action="/company/applications/<%= application._id %>/interview/cancel" class="p-6 space-y-4">
+            <p class="text-sm text-slate-600">Are you sure you want to cancel the scheduled interview? The candidate will be notified via email.</p>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Reason for Cancellation (Optional, shared with candidate)</label>
+                <textarea name="cancelReason" rows="2" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none"></textarea>
+            </div>
+
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="document.getElementById('cancelInterviewModal').classList.add('hidden')" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-sm transition-colors">Keep Interview</button>
+                <button type="submit" class="flex-1 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-lg text-sm transition-colors shadow-sm">Cancel Interview</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleInterviewModeFields() {
+    const mode = document.getElementById('interviewModeSelect').value;
+    const onlineField = document.getElementById('onlineModeField');
+    const inPersonField = document.getElementById('inPersonModeField');
+    const meetingLink = document.getElementById('meetingLinkInput');
+    const location = document.getElementById('locationInput');
+
+    if (mode === 'Online') {
+        onlineField.classList.remove('hidden');
+        inPersonField.classList.add('hidden');
+        meetingLink.required = true;
+        location.required = false;
+    } else if (mode === 'In-Person') {
+        onlineField.classList.add('hidden');
+        inPersonField.classList.remove('hidden');
+        meetingLink.required = false;
+        location.required = true;
+    } else {
+        onlineField.classList.add('hidden');
+        inPersonField.classList.add('hidden');
+        meetingLink.required = false;
+        location.required = false;
+    }
+}
+
+function openScheduleModal(isReschedule) {
+    document.getElementById('scheduleInterviewModal').classList.remove('hidden');
+    document.getElementById('scheduleModalTitle').textContent = isReschedule ? 'Reschedule Interview' : 'Schedule Interview';
+    document.getElementById('scheduleSubmitBtn').textContent = isReschedule ? 'Save Changes' : 'Schedule';
+
+    const form = document.getElementById('scheduleInterviewForm');
+    const actionBase = "/company/applications/<%= application._id %>/interview";
+    form.action = actionBase + (isReschedule ? '/reschedule' : '/schedule');
+
+    toggleInterviewModeFields();
+}
+</script>

@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
+const Recommendation = require('../models/Recommendation');
 const { isAuthenticated, authorize } = require('../middleware/auth');
 
 function calculateSkillScore(userSkills = [], requiredSkills = []) {
@@ -17,7 +18,18 @@ function calculateSkillScore(userSkills = [], requiredSkills = []) {
 
 router.get('/', async (req, res) => {
     try {
-        const internships = await Internship.find({}).sort({ _id: -1 });
+        const sort = req.query.sort || 'newest';
+
+        const sortOptions = {
+            stipend_desc: { monthlyStipend: -1 },
+            stipend_asc: { monthlyStipend: 1 },
+            duration_desc: { duration: -1 },
+            duration_asc: { duration: 1 },
+            newest: { _id: -1 }
+        };
+
+        const internships = await Internship.find({}).sort(sortOptions[sort] || sortOptions.newest);
+
         const candidate = req.user || await User.findOne();
 
         let appliedIds = [];
@@ -143,6 +155,12 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
             internship: internship._id,
             candidate: candidate._id,
             matchScore: score
+        });
+
+        // Delete from recommendations cache if it exists
+        await Recommendation.findOneAndDelete({
+            internship: internship._id,
+            candidate: candidate._id
         });
 
         req.flash('success_msg', 'Application submitted successfully!');
