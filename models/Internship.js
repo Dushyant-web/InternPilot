@@ -45,6 +45,7 @@ const internshipSchema = new mongoose.Schema({
     monthlyStipend: { type: Number, default: 5000 },
     duration: { type: String, default: "12 Months" },
     vacancies: { type: Number, default: 1 },
+    description: { type: String, default: '' },
     embedding: [Number],
     postedBy: {
         type: mongoose.Schema.Types.ObjectId,

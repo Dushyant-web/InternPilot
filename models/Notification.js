@@ -23,7 +23,10 @@ const notificationSchema = new mongoose.Schema({
             'candidate_withdrawal',
             'approaching_deadline',
             'high_application_volume',
-            'upcoming_interview'
+            'upcoming_interview',
+            'interview_scheduled', 
+            'interview_rescheduled', 
+            'interview_cancelled'
         ],
         required: true
     },
