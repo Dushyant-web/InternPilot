@@ -336,7 +336,8 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
 
 router.post('/company/internships/create', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
-        const { title, sector, requiredSkills, minQualifications, monthlyStipend, stipend, vacancies, duration, district, state, location, deadline, action, description } = req.body;
+        const { title, sector, requiredSkills, minQualifications, monthlyStipend, stipend, vacancies, duration, district, state, location, deadline, action, description, responsibilities: responsibilitiesRaw, eligibilityCriteria: eligibilityRaw } = req.body;
+
 
         const isDraft = action === 'draft';
         const status = isDraft ? 'draft' : 'published';
@@ -378,6 +379,8 @@ router.post('/company/internships/create', isAuthenticated, requireCompanyRole([
         const rawStipend = monthlyStipend !== undefined ? monthlyStipend : stipend;
         const stipendNumber = rawStipend ? parseInt(rawStipend.toString().replace(/[^0-9]/g, '')) : (isDraft ? 0 : 5000);
 
+        const parseLines = (raw) => (raw ? raw.split('\n').map(s => s.trim()).filter(Boolean) : []);
+
         const internship = await Internship.create({
             companyId: req.user.companyId,
             postedBy: req.user._id,
@@ -391,6 +394,8 @@ router.post('/company/internships/create', isAuthenticated, requireCompanyRole([
             vacancies: vacancies ? Number(vacancies) : 1,
             duration: duration || (isDraft ? '' : '12 Months'),
             description: description || '',
+            responsibilities: parseLines(responsibilitiesRaw),
+            eligibilityCriteria: parseLines(eligibilityRaw),
 
             location: {
                 district: resolvedDistrict,
@@ -398,6 +403,7 @@ router.post('/company/internships/create', isAuthenticated, requireCompanyRole([
             },
             applicationDeadline
         });
+
 
         logRecruiterActivity(req, {
             action: 'CREATE_LISTING',
@@ -716,7 +722,7 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
         const internship = await Internship.findOne({ _id: req.params.id, companyId: req.user.companyId });
         if (!internship) return res.status(404).send('Internship not found or unauthorized.');
 
-        const { title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state, deadline, action, description } = req.body;
+        const { title, sector, requiredSkills, minQualifications, monthlyStipend, vacancies, duration, district, state, deadline, action, description, responsibilities: responsibilitiesRaw, eligibilityCriteria: eligibilityRaw } = req.body;
 
         const isDraft = action === 'draft';
         const isPublish = action === 'publish' || action === 'resume';
@@ -733,6 +739,8 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
             }
         }
 
+        const parseLines = (raw) => (raw ? raw.split('\n').map(s => s.trim()).filter(Boolean) : []);
+
         const skillsArray = requiredSkills
             ? requiredSkills.split(',').map(s => s.trim()).filter(Boolean)
             : [];
@@ -745,10 +753,13 @@ router.post('/company/internships/edit/:id', isAuthenticated, requireCompanyRole
         internship.vacancies = isNaN(parsedVacancies) ? 1 : parsedVacancies;
         internship.duration = duration || '12 Months';
         internship.description = description || '';
+        internship.responsibilities = parseLines(responsibilitiesRaw);
+        internship.eligibilityCriteria = parseLines(eligibilityRaw);
         internship.location = {
             district: district || '',
             state: state || ''
         };
+
 
 
         const prevStatus = internship.status;
