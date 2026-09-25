@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
 const { isAuthenticated, requireCompanyRole } = require('../middleware/auth');
+const { logoUpload, uploadBufferToCloudinary } = require('../middleware/upload');
 const { sendStatusUpdateEmail, sendInterviewScheduledEmail, sendInterviewRescheduledEmail, sendInterviewCancelledEmail } = require('../utils/sendEmail');
 const { parseISTEndOfDay, parseISTDatetime } = require('../utils/dateUtils');
 const {
@@ -17,6 +18,54 @@ const {
 const chatRouter = require('./chat');
 const { logRecruiterActivity } = require('../utils/activityLogger');
 
+function handleLogoUpload(fieldName) {
+    return (req, res, next) => {
+        logoUpload.single(fieldName)(req, res, (err) => {
+            if (err) {
+                const message = err.code === 'LIMIT_FILE_SIZE'
+                    ? 'Logo image is too large. Maximum allowed size is 3MB.'
+                    : (err.message || 'Logo upload failed.');
+                if (req.flash) req.flash('error_msg', message);
+                return res.redirect('/company/profile');
+            }
+            next();
+        });
+    };
+}
+
+function sanitizeWebsiteUrl(val) {
+    const raw = (val || '').trim();
+    if (!raw) return { url: '' };
+
+    let urlToTest = raw;
+    if (!/^https?:\/\//i.test(urlToTest)) {
+        urlToTest = 'https://' + urlToTest;
+    }
+
+    try {
+        const parsed = new URL(urlToTest);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+            return { error: 'Website URL must use http:// or https://' };
+        }
+        if (!parsed.hostname || !parsed.hostname.includes('.')) {
+            return { error: 'Please enter a valid website address (e.g. https://example.com).' };
+        }
+        return { url: parsed.toString() };
+    } catch {
+        return { error: 'Please enter a valid website URL.' };
+    }
+}
+
+function sanitizeContactEmail(val) {
+    const raw = (val || '').trim();
+    if (!raw) return { email: '' };
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(raw)) {
+        return { error: 'Please enter a valid contact email address.' };
+    }
+    return { email: raw.toLowerCase() };
+}
+
 const notifyPublishedInternship = (internship) => {
     if (typeof notifyRelevantCandidates === 'function') {
         notifyRelevantCandidates(internship).catch(err => {
@@ -24,6 +73,177 @@ const notifyPublishedInternship = (internship) => {
         });
     }
 };
+
+// Company Profile Management (GET: view/edit form)
+router.get('/company/profile', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
+    try {
+        const companyId = req.user.companyId || (req.user.role === 'company' ? req.user._id : null);
+        const company = await User.findById(companyId);
+        if (!company) {
+            if (req.flash) req.flash('error_msg', 'Company account not found.');
+            return res.redirect('/company/dashboard');
+        }
+
+        const companyInternshipsCount = await Internship.countDocuments({ companyId: company._id });
+
+        res.render('company/company-profile', {
+            user: req.user,
+            company,
+            companyDetails: company.companyDetails || {},
+            companyInternshipsCount
+        });
+    } catch (error) {
+        console.error('Error loading company profile page:', error);
+        res.status(500).send('Database Error');
+    }
+});
+
+// Company Profile Management (POST: update company details & logo)
+router.post('/company/profile', isAuthenticated, requireCompanyRole(['company', 'recruiter']), handleLogoUpload('logo'), async (req, res) => {
+    try {
+        const {
+            companyName,
+            industry,
+            description,
+            website,
+            location,
+            contactEmail,
+            contactPhone,
+            contactInformation,
+            companySize,
+            cin,
+            removeLogo
+        } = req.body;
+
+        const trimmedName = (companyName || '').trim();
+        if (!trimmedName) {
+            if (req.flash) req.flash('error_msg', 'Company name is required.');
+            return res.redirect('/company/profile');
+        }
+
+        const sanitizedWeb = sanitizeWebsiteUrl(website);
+        if (sanitizedWeb.error) {
+            if (req.flash) req.flash('error_msg', sanitizedWeb.error);
+            return res.redirect('/company/profile');
+        }
+
+        const sanitizedEmail = sanitizeContactEmail(contactEmail);
+        if (sanitizedEmail.error) {
+            if (req.flash) req.flash('error_msg', sanitizedEmail.error);
+            return res.redirect('/company/profile');
+        }
+
+        const companyId = req.user.companyId || (req.user.role === 'company' ? req.user._id : null);
+        const company = await User.findById(companyId);
+        if (!company) {
+            if (req.flash) req.flash('error_msg', 'Company account not found.');
+            return res.redirect('/company/dashboard');
+        }
+
+        if (!company.companyDetails) {
+            company.companyDetails = {};
+        }
+
+        if (req.file) {
+            try {
+                const result = await uploadBufferToCloudinary(req.file, 'internpilot/company_logos');
+                company.companyDetails.logo = result.secure_url;
+            } catch (uploadErr) {
+                console.error('Error uploading logo to Cloudinary:', uploadErr);
+                if (req.file.buffer) {
+                    company.companyDetails.logo = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+                }
+            }
+        } else if (removeLogo === 'true') {
+            company.companyDetails.logo = '';
+        }
+
+        const oldCompanyName = company.companyDetails.companyName || company.name;
+
+        company.companyDetails.companyName = trimmedName;
+        company.companyDetails.industry = (industry || '').trim();
+        company.companyDetails.description = (description || '').trim();
+        company.companyDetails.website = sanitizedWeb.url;
+        company.companyDetails.location = (location || '').trim();
+        company.companyDetails.contactEmail = sanitizedEmail.email;
+        company.companyDetails.contactPhone = (contactPhone || '').trim();
+        company.companyDetails.contactInformation = (contactInformation || '').trim();
+        company.companyDetails.companySize = (companySize || '').trim();
+
+        if (cin && (req.user.role === 'company' || req.user.role === 'admin')) {
+            company.companyDetails.cin = cin.trim();
+        }
+
+        await company.save();
+
+        // Synchronize updated company name on all internships posted by this company
+        if (trimmedName && trimmedName !== oldCompanyName) {
+            await Internship.updateMany(
+                { companyId: company._id },
+                { $set: { companyName: trimmedName } }
+            );
+        }
+
+        if (req.flash) req.flash('success_msg', 'Company profile updated successfully!');
+        res.redirect('/company/profile');
+    } catch (error) {
+        console.error('Error updating company profile:', error);
+        if (req.flash) req.flash('error_msg', 'Failed to update company profile. Please try again.');
+        res.redirect('/company/profile');
+    }
+});
+
+// Public Company Profile View (Accessible to all students/visitors)
+router.get(['/company/:id/profile', '/company/profile/:id'], async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id || id === 'edit') {
+            return res.redirect('/company/dashboard');
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            if (req.flash) req.flash('error_msg', 'Invalid company ID.');
+            return res.redirect('/internships');
+        }
+
+        let company = await User.findById(id);
+        if (!company) {
+            if (req.flash) req.flash('error_msg', 'Company profile not found.');
+            return res.redirect('/internships');
+        }
+
+        // If ID belongs to a recruiter account, resolve to their parent company
+        if (company.role === 'recruiter' && company.companyId) {
+            const parentCompany = await User.findById(company.companyId);
+            if (parentCompany) {
+                company = parentCompany;
+            }
+        }
+
+        // Fetch all active/published internships by this company
+        const internships = await Internship.find({
+            companyId: company._id,
+            status: 'published'
+        }).sort({ _id: -1 });
+
+        const isCompanyOwnerOrRecruiter = req.user && (
+            req.user.role === 'admin' ||
+            ((req.user.role === 'company' || req.user.role === 'recruiter') &&
+             req.user.companyId && req.user.companyId.toString() === company._id.toString())
+        );
+
+        res.render('company/public-profile', {
+            company,
+            companyDetails: company.companyDetails || {},
+            internships,
+            currentUser: req.user,
+            isCompanyOwnerOrRecruiter
+        });
+    } catch (error) {
+        console.error('Error loading public company profile:', error);
+        res.status(500).send('Database Error');
+    }
+});
 
 router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {

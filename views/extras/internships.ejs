@@ -185,7 +185,13 @@
                     </a>
                     <p class="text-xs font-semibold text-slate-600 mt-0.5 flex items-center gap-1">
                         <i class="ph-bold ph-buildings text-slate-400"></i>
-                        <%= item.companyName || item.company %>
+                        <% if (item.companyId) { %>
+                            <a href="/company/<%= item.companyId %>/profile" class="hover:text-indigo-600 hover:underline">
+                                <%= item.companyName || item.company %>
+                            </a>
+                        <% } else { %>
+                            <span><%= item.companyName || item.company %></span>
+                        <% } %>
                     </p>
 
                     <div
