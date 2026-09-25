@@ -77,6 +77,9 @@
                     const canWithdraw = !isWithdrawn && !isRejected && !isHired;
                     const internshipTitle = (app.internship && app.internship.title) ? app.internship.title : 'Internship Posting';
                     const companyName = (app.internship && (app.internship.companyName || app.internship.company)) ? (app.internship.companyName || app.internship.company) : 'Company';
+                    const statusUpdatedAt = app.statusUpdatedAt || app.appliedAt;
+                    const relativeStatusUpdatedAt = formatRelativeTime(statusUpdatedAt);
+                    const localizedStatusUpdatedAt = formatLocalizedDateTime(statusUpdatedAt);
                 %>
 
                 <div class="bg-white border <%= isWithdrawn ? 'border-slate-200 bg-slate-50/60 opacity-90' : 'border-slate-200 hover:border-indigo-200' %> rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-sm transition-all flex flex-col md:flex-row md:items-center justify-between gap-6"
@@ -172,6 +175,16 @@
                                 <span class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg">
                                     <%= app.status %>
                                 </span>
+                            <% } %>
+
+                            <% if (relativeStatusUpdatedAt && localizedStatusUpdatedAt) { %>
+                                <time datetime="<%= new Date(statusUpdatedAt).toISOString() %>"
+                                    title="Last status update: <%= localizedStatusUpdatedAt %>"
+                                    aria-label="Last status update: <%= localizedStatusUpdatedAt %>"
+                                    class="mt-2 flex items-center sm:justify-end gap-1 text-[11px] font-medium text-slate-500">
+                                    <i class="ph-bold ph-clock text-slate-400"></i>
+                                    Updated <%= relativeStatusUpdatedAt %>
+                                </time>
                             <% } %>
                         </div>
 
