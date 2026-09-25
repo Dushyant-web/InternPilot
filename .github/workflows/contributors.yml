@@ -1,0 +1,20 @@
+name: Update Contributors README
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  contrib-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Update Contributors in README
+        uses: contributor-assistant/github-action@v2.5.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          path: "README.md"

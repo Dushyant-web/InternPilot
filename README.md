@@ -460,6 +460,11 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
 
 ---
 
+## Contributors
+
+<!-- readme: contributors -start -->
+<!-- readme: contributors -end -->
+
 ## ⭐ Acknowledgement
 
 This project represents our effort towards building a practical full-stack solution that improves internship discovery, application management, and communication between students and organizations.
