@@ -98,10 +98,21 @@ router.get('/:id', async (req, res) => {
             hasApplied = !!existingApp;
         }
 
+        let company = null;
+        if (internship.companyId) {
+            company = await User.findById(internship.companyId);
+        } else if (internship.companyName) {
+            company = await User.findOne({
+                role: 'company',
+                'companyDetails.companyName': internship.companyName
+            });
+        }
+
         const isPaused = internship.status === 'paused' || internship.isPaused === true;
 
         res.render('extras/internship-detail', {
             internship,
+            company,
             candidate,
             currentUser: req.user,
             hasApplied,
@@ -115,7 +126,6 @@ router.get('/:id', async (req, res) => {
 
 router.post('/new', isAuthenticated, async (req, res) => {
     try {
-        const { title, company: companyName, location, sector, stipend, duration, vacancies, requiredSkills } = req.body;
         const isAdmin = req.user.role === 'admin';
         const isCompanyUser = ['company', 'recruiter'].includes(req.user.role);
 
