@@ -1,5 +1,7 @@
 <% layout('layouts/boilerplate') %>
 
+    <% if (typeof overview !== 'undefined' && overview) { %><%- include('../partials/recruiter-overview') %><% } %>
+
     <div class="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
 
         <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-fit">

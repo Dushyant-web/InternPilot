@@ -17,6 +17,7 @@ const {
 } = require('../utils/notifications');
 const chatRouter = require('./chat');
 const { logRecruiterActivity } = require('../utils/activityLogger');
+const { buildRecruiterOverview } = require('../utils/dashboardStats');
 
 function handleLogoUpload(fieldName) {
     return (req, res, next) => {
@@ -312,6 +313,8 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
             });
         }
 
+        const overview = await buildRecruiterOverview(req.user.companyId);
+
         res.render('company/company-dashboard', {
             user: req.user,
             internships: filteredInternships,
@@ -322,7 +325,8 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
             totalCount,
             currentFilter,
             currentSort,
-            appCountMap
+            appCountMap,
+            overview
         });
     } catch (error) {
         console.error('Error loading company dashboard:', error);
@@ -1344,6 +1348,18 @@ router.post('/company/applications/:id/interview/cancel', isAuthenticated, requi
     } catch (error) {
         console.error('Error cancelling interview:', error);
         res.redirect('/company/dashboard');
+    }
+});
+
+// JSON feed the dashboard overview polls so its numbers stay current without
+// a page reload.
+router.get('/company/dashboard/overview', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
+    try {
+        res.set('Cache-Control', 'no-store');
+        res.json(await buildRecruiterOverview(req.user.companyId));
+    } catch (error) {
+        console.error('Error building recruiter overview:', error);
+        res.status(500).json({ error: 'Could not load the overview.' });
     }
 });
 
