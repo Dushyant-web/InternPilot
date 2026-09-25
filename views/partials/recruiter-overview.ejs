@@ -1,0 +1,202 @@
+<% if (typeof overview !== 'undefined' && overview) { %>
+<%
+    const m = overview.metrics;
+    const stageColors = {
+        'Submitted': '#94a3b8',
+        'Under Review': '#0ea5e9',
+        'Shortlisted': '#6366f1',
+        'Interview': '#8b5cf6',
+        'Hired': '#10b981',
+        'Rejected': '#fb7185',
+        'Withdrawn': '#cbd5e1'
+    };
+    const cards = [
+        { key: 'activeInternships', label: 'Active Internships', icon: 'ph-briefcase', tint: 'text-indigo-600 bg-indigo-50', hint: 'Open to applicants' },
+        { key: 'totalApplications', label: 'Applications', icon: 'ph-users-three', tint: 'text-sky-600 bg-sky-50', hint: 'Across all listings' },
+        { key: 'shortlisted', label: 'Shortlisted', icon: 'ph-star', tint: 'text-amber-600 bg-amber-50', hint: 'Awaiting next step' },
+        { key: 'scheduledInterviews', label: 'Interviews', icon: 'ph-calendar-check', tint: 'text-violet-600 bg-violet-50', hint: 'Upcoming' },
+        { key: 'selected', label: 'Selected', icon: 'ph-seal-check', tint: 'text-emerald-600 bg-emerald-50', hint: 'Marked as hired' },
+        { key: 'closingSoon', label: 'Closing Soon', icon: 'ph-hourglass-medium', tint: 'text-rose-600 bg-rose-50', hint: 'Deadline in ' + overview.deadlineWindowDays + ' days' }
+    ];
+%>
+<section id="recruiterOverview" class="max-w-7xl mx-auto px-4 pt-8" aria-labelledby="recruiterOverviewTitle">
+    <div class="flex flex-wrap items-end justify-between gap-2 mb-4">
+        <div>
+            <h2 id="recruiterOverviewTitle" class="text-lg font-bold text-slate-900">Recruiting Overview</h2>
+            <p class="text-xs text-slate-500">Where every listing and applicant stands right now.</p>
+        </div>
+        <p class="text-[11px] text-slate-400 flex items-center gap-1.5">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
+            <span data-overview-updated>Updated just now</span>
+        </p>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <% cards.forEach(card => { %>
+            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider"><%= card.label %></span>
+                    <span class="w-7 h-7 rounded-lg flex items-center justify-center <%= card.tint %>">
+                        <i class="ph-bold <%= card.icon %> text-sm" aria-hidden="true"></i>
+                    </span>
+                </div>
+                <p class="text-2xl font-extrabold text-slate-900 mt-2 tabular-nums" data-metric="<%= card.key %>"><%= m[card.key] %></p>
+                <p class="text-[11px] text-slate-400 mt-0.5"><%= card.hint %></p>
+            </div>
+        <% }) %>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-3">
+        <div class="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-800">Application Pipeline</h3>
+            <p class="text-[11px] text-slate-400 mb-3">Share of all applications at each stage.</p>
+
+            <div data-pipeline-bar class="flex h-3 w-full rounded-full overflow-hidden bg-slate-100" role="img"
+                aria-label="Application pipeline by status">
+                <% overview.pipeline.forEach(seg => { %>
+                    <span style="width: <%= seg.percent %>%; background: <%= stageColors[seg.stage] || '#94a3b8' %>" title="<%= seg.stage %>: <%= seg.count %>"></span>
+                <% }) %>
+            </div>
+
+            <ul data-pipeline-legend class="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 text-xs text-slate-600">
+                <% overview.pipeline.forEach(seg => { %>
+                    <li class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-sm" style="background: <%= stageColors[seg.stage] || '#94a3b8' %>" aria-hidden="true"></span>
+                        <%= seg.stage %> <span class="font-semibold text-slate-800 tabular-nums"><%= seg.count %></span>
+                    </li>
+                <% }) %>
+            </ul>
+
+            <p data-pipeline-empty class="text-xs text-slate-400 italic mt-1 <%= overview.pipeline.length ? 'hidden' : '' %>">
+                No applications yet. They will show up here as candidates apply.
+            </p>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-800">Closing Soon</h3>
+            <p class="text-[11px] text-slate-400 mb-3">
+                <span data-open-seats><%= overview.openSeatsClosingSoon %></span> open seats with a deadline in the next <%= overview.deadlineWindowDays %> days.
+            </p>
+
+            <ul data-closing-list class="space-y-2">
+                <% overview.closingSoon.forEach(item => { %>
+                    <li class="flex items-center justify-between gap-2 text-xs">
+                        <span class="truncate font-semibold text-slate-700"><%= item.title %></span>
+                        <span class="shrink-0 px-2 py-0.5 rounded-md font-semibold <%= item.daysLeft <= 2 ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700' %>">
+                            <%= item.daysLeft === 0 ? 'Today' : item.daysLeft + (item.daysLeft === 1 ? ' day' : ' days') %>
+                        </span>
+                    </li>
+                <% }) %>
+            </ul>
+
+            <p data-closing-empty class="text-xs text-slate-400 italic <%= overview.closingSoon.length ? 'hidden' : '' %>">
+                Nothing closes in the next <%= overview.deadlineWindowDays %> days.
+            </p>
+        </div>
+    </div>
+</section>
+
+<script>
+    (function () {
+        // Keeps the numbers current without a full reload. Polls only while the
+        // tab is visible, and silently keeps the last good values on failure.
+        const ENDPOINT = '/company/dashboard/overview';
+        const INTERVAL_MS = 60 * 1000;
+        const STAGE_COLORS = <%- JSON.stringify(stageColors) %>;
+        const root = document.getElementById('recruiterOverview');
+        if (!root) return;
+
+        let lastUpdated = Date.now();
+
+        const setUpdatedLabel = () => {
+            const el = root.querySelector('[data-overview-updated]');
+            if (!el) return;
+            const mins = Math.floor((Date.now() - lastUpdated) / 60000);
+            el.textContent = mins < 1 ? 'Updated just now' : 'Updated ' + mins + ' min ago';
+        };
+
+        const renderPipeline = (pipeline) => {
+            const bar = root.querySelector('[data-pipeline-bar]');
+            const legend = root.querySelector('[data-pipeline-legend]');
+            const empty = root.querySelector('[data-pipeline-empty]');
+            bar.replaceChildren();
+            legend.replaceChildren();
+
+            pipeline.forEach(seg => {
+                const colour = STAGE_COLORS[seg.stage] || '#94a3b8';
+
+                const part = document.createElement('span');
+                part.style.width = seg.percent + '%';
+                part.style.background = colour;
+                part.title = seg.stage + ': ' + seg.count;
+                bar.appendChild(part);
+
+                const item = document.createElement('li');
+                item.className = 'flex items-center gap-1.5';
+                const swatch = document.createElement('span');
+                swatch.className = 'w-2.5 h-2.5 rounded-sm';
+                swatch.style.background = colour;
+                const count = document.createElement('span');
+                count.className = 'font-semibold text-slate-800 tabular-nums';
+                count.textContent = seg.count;
+                item.append(swatch, document.createTextNode(seg.stage + ' '), count);
+                legend.appendChild(item);
+            });
+
+            empty.classList.toggle('hidden', pipeline.length > 0);
+        };
+
+        const renderClosingSoon = (items, openSeats) => {
+            const list = root.querySelector('[data-closing-list]');
+            const empty = root.querySelector('[data-closing-empty]');
+            const seats = root.querySelector('[data-open-seats]');
+            list.replaceChildren();
+
+            items.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between gap-2 text-xs';
+                const title = document.createElement('span');
+                title.className = 'truncate font-semibold text-slate-700';
+                title.textContent = item.title;
+                const badge = document.createElement('span');
+                badge.className = 'shrink-0 px-2 py-0.5 rounded-md font-semibold ' +
+                    (item.daysLeft <= 2 ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700');
+                badge.textContent = item.daysLeft === 0 ? 'Today' : item.daysLeft + (item.daysLeft === 1 ? ' day' : ' days');
+                li.append(title, badge);
+                list.appendChild(li);
+            });
+
+            if (seats) seats.textContent = openSeats;
+            empty.classList.toggle('hidden', items.length > 0);
+        };
+
+        const refresh = async () => {
+            if (document.visibilityState !== 'visible') return;
+            try {
+                const res = await fetch(ENDPOINT, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+                const type = res.headers.get('content-type') || '';
+                if (!res.ok || !type.includes('application/json')) return;
+                const data = await res.json();
+
+                Object.entries(data.metrics || {}).forEach(([key, value]) => {
+                    const el = root.querySelector('[data-metric="' + key + '"]');
+                    if (el) el.textContent = value;
+                });
+                renderPipeline(data.pipeline || []);
+                renderClosingSoon(data.closingSoon || [], data.openSeatsClosingSoon || 0);
+
+                lastUpdated = Date.now();
+                setUpdatedLabel();
+            } catch (err) {
+                // Network hiccup: keep showing the last values.
+            }
+        };
+
+        setInterval(refresh, INTERVAL_MS);
+        setInterval(setUpdatedLabel, 30 * 1000);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') refresh();
+        });
+    })();
+</script>
+<% } %>

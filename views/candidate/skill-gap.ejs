@@ -1,0 +1,211 @@
+<% layout('layouts/boilerplate') %>
+
+    <div class="max-w-4xl mx-auto space-y-6">
+
+        <div class="flex items-center justify-between gap-4">
+            <a href="/internships"
+                class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors">
+                <i class="ph-bold ph-arrow-left"></i> Back to Listings
+            </a>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-5">
+
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div class="space-y-1.5">
+                    <p class="text-[11px] font-semibold text-indigo-600 uppercase tracking-wider">Skill Gap Analysis</p>
+                    <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">
+                        <%= internship.title || 'Untitled Role' %>
+                    </h1>
+                    <div class="flex flex-wrap items-center gap-y-1 gap-x-4 text-sm text-slate-600">
+                        <span class="flex items-center gap-1.5">
+                            <i class="ph-bold ph-buildings text-indigo-500"></i>
+                            <%= internship.companyName || 'Unknown Company' %>
+                        </span>
+                        <% const place=[internship.location?.district, internship.location?.state].filter(Boolean).join(', ' ); %>
+                            <% if (place) { %>
+                                <span class="flex items-center gap-1.5">
+                                    <i class="ph-bold ph-map-pin text-rose-500"></i>
+                                    <%= place %>
+                                </span>
+                                <% } %>
+                    </div>
+                </div>
+
+                <% if (analysis.hasRequiredSkills && analysis.hasProfileSkills) { %>
+                    <div class="shrink-0 text-center bg-slate-50 border border-slate-200 rounded-xl px-5 py-3">
+                        <p class="text-3xl font-extrabold text-slate-900 leading-none">
+                            <%= analysis.score %>%
+                        </p>
+                        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mt-1">Match</p>
+                    </div>
+                    <% } %>
+            </div>
+
+            <% if (analysis.hasRequiredSkills && analysis.hasProfileSkills) { %>
+                <div>
+                    <div class="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all <%= analysis.score >= 70 ? 'bg-emerald-500' : (analysis.score >= 40 ? 'bg-amber-500' : 'bg-rose-500') %>"
+                            style="width: <%= analysis.score %>%"></div>
+                    </div>
+                </div>
+                <% } %>
+
+                    <div class="rounded-xl border p-4 flex items-start gap-3 <%= analysis.hasProfileSkills ? 'bg-indigo-50/60 border-indigo-100' : 'bg-amber-50 border-amber-200' %>">
+                        <i class="ph-bold shrink-0 text-lg <%= analysis.hasProfileSkills ? 'ph-lightbulb text-indigo-600' : 'ph-warning text-amber-600' %>"></i>
+                        <div class="space-y-2">
+                            <p class="text-sm font-semibold <%= analysis.hasProfileSkills ? 'text-slate-800' : 'text-amber-900' %>">
+                                <%= analysis.summary %>
+                            </p>
+                            <% if (!analysis.hasProfileSkills) { %>
+                                <a href="/candidate/profile"
+                                    class="inline-flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                                    <i class="ph-bold ph-plus"></i> Add Skills to Profile
+                                </a>
+                                <% } %>
+                        </div>
+                    </div>
+        </div>
+
+        <% if (analysis.hasRequiredSkills) { %>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+                    <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                        <i class="ph-bold ph-check-circle text-emerald-600 text-lg"></i>
+                        Skills You Have
+                        <span class="ml-auto text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">
+                            <%= analysis.matched.length %>
+                        </span>
+                    </h2>
+
+                    <% if (analysis.matched.length> 0) { %>
+                        <div class="flex flex-wrap gap-2">
+                            <% analysis.matched.forEach(skill=> { %>
+                                <span
+                                    class="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold px-2.5 py-1.5 rounded-lg">
+                                    <i class="ph-bold ph-check"></i>
+                                    <%= skill %>
+                                </span>
+                                <% }) %>
+                        </div>
+                        <% } else { %>
+                            <p class="text-xs text-slate-400 italic">None of the required skills are on your profile yet.
+                            </p>
+                            <% } %>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+                    <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                        <i class="ph-bold ph-x-circle text-rose-600 text-lg"></i>
+                        Skills to Learn
+                        <span class="ml-auto text-xs font-bold text-rose-700 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-md">
+                            <%= analysis.missing.length %>
+                        </span>
+                    </h2>
+
+                    <% if (analysis.missing.length> 0) { %>
+                        <div class="flex flex-wrap gap-2">
+                            <% analysis.missing.forEach(skill=> { %>
+                                <span
+                                    class="inline-flex items-center gap-1.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold px-2.5 py-1.5 rounded-lg">
+                                    <i class="ph-bold ph-plus-circle"></i>
+                                    <%= skill %>
+                                </span>
+                                <% }) %>
+                        </div>
+                        <% } else if (analysis.partial.length> 0) { %>
+                            <p class="text-xs text-amber-700">Nothing is outright missing, but some requirements only
+                                matched loosely. Check the close matches below before assuming you are covered.</p>
+                            <% } else { %>
+                                <p class="text-xs text-slate-400 italic">Nothing missing. You cover every required
+                                    skill.</p>
+                                <% } %>
+                </div>
+
+            </div>
+
+            <% if (analysis.partial.length> 0) { %>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+                    <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                        <i class="ph-bold ph-approximate-equals text-amber-600 text-lg"></i>
+                        Close Matches
+                        <span class="ml-auto text-xs font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md">
+                            <%= analysis.partial.length %>
+                        </span>
+                    </h2>
+
+                    <p class="text-xs text-slate-500">These look related to something already on your profile, but the
+                        wording does not line up. Rename them on your profile if they are the same thing.</p>
+
+                    <div class="space-y-2">
+                        <% analysis.partial.forEach(item=> { %>
+                            <div
+                                class="flex flex-wrap items-center gap-2 text-xs bg-amber-50/60 border border-amber-100 rounded-lg px-3 py-2">
+                                <span class="font-semibold text-slate-700">
+                                    <%= item.profileSkill %>
+                                </span>
+                                <i class="ph-bold ph-arrows-left-right text-amber-600"></i>
+                                <span class="font-semibold text-amber-800">
+                                    <%= item.required %>
+                                </span>
+                                <span class="text-slate-400">(role asks for this)</span>
+                            </div>
+                            <% }) %>
+                    </div>
+                </div>
+                <% } %>
+
+                    <% } %>
+
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                            <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+                                <p class="text-xs text-slate-500">
+                                    <% if (alreadyApplied) { %>
+                                        You have already applied to this internship.
+                                        <% } else if (isPaused) { %>
+                                            The recruiter has temporarily paused new applications for this position.
+                                            <% } else if (deadlinePassed) { %>
+                                                Applications for this internship are closed.
+                                                <% } else { %>
+                                                A gap does not block you from applying. Recruiters can still see the
+                                                rest of your profile.
+                                                <% } %>
+                                </p>
+
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <a href="/candidate/profile"
+                                        class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                                        <i class="ph-bold ph-pencil-simple"></i> Update Skills
+                                    </a>
+
+                                    <% if (alreadyApplied) { %>
+                                        <button disabled
+                                            class="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-4 py-2 rounded-lg cursor-not-allowed">
+                                            <i class="ph-bold ph-check-circle"></i> Applied
+                                        </button>
+                                        <% } else if (isPaused) { %>
+                                            <button disabled
+                                                class="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold px-4 py-2 rounded-lg cursor-not-allowed"
+                                                title="The recruiter has temporarily paused new applications for this position.">
+                                                <i class="ph-bold ph-pause-circle"></i> Applications Paused
+                                            </button>
+                                            <% } else if (deadlinePassed) { %>
+                                            <button disabled
+                                                class="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-semibold px-4 py-2 rounded-lg cursor-not-allowed">
+                                                <i class="ph-bold ph-x-circle"></i> Applications Closed
+                                            </button>
+                                            <% } else { %>
+                                                <form action="/internships/<%= internship._id %>/apply" method="POST">
+                                                    <button type="submit"
+                                                        class="inline-flex items-center gap-1.5 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                                                        <i class="ph-bold ph-paper-plane-tilt"></i> Apply Now
+                                                    </button>
+                                                </form>
+                                                <% } %>
+                                </div>
+                            </div>
+                        </div>
+
+    </div>

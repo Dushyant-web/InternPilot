@@ -52,6 +52,32 @@ const documentUpload = multer({
 });
 
 
+const LOGO_MAX_BYTES = 3 * 1024 * 1024;
+
+const LOGO_MIME_TYPES = [
+    'image/png',
+    'image/jpeg',
+    'image/jpg',
+    'image/webp',
+    'image/svg+xml'
+];
+
+const LOGO_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.svg'];
+
+const logoUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: LOGO_MAX_BYTES },
+    fileFilter: (req, file, cb) => {
+        const name = (file.originalname || '').toLowerCase();
+        const hasAllowedExtension = LOGO_EXTENSIONS.some(ext => name.endsWith(ext));
+
+        if (LOGO_MIME_TYPES.includes(file.mimetype) && hasAllowedExtension) {
+            return cb(null, true);
+        }
+        cb(new Error('Only PNG, JPG, JPEG, WEBP, or SVG images under 3MB are allowed for logo.'));
+    }
+});
+
 const uploadBufferToCloudinary = (file, folder) => {
     return new Promise((resolve, reject) => {
         const safeName = (file.originalname || 'document').replace(/[^a-zA-Z0-9_.-]/g, '_');
@@ -75,7 +101,10 @@ module.exports = {
     upload,
     cloudinary,
     documentUpload,
+    logoUpload,
     uploadBufferToCloudinary,
     DOCUMENT_MAX_BYTES,
-    DOCUMENT_EXTENSIONS
+    DOCUMENT_EXTENSIONS,
+    LOGO_MAX_BYTES,
+    LOGO_EXTENSIONS
 };

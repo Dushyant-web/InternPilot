@@ -7,6 +7,7 @@ const Application = require('../models/Application');
 const Recommendation = require('../models/Recommendation');
 const { isAuthenticated, authorize, requireCompanyRole } = require('../middleware/auth');
 const { parseISTEndOfDay } = require('../utils/dateUtils');
+const { calculateSkillScore, analyzeSkillGap } = require('../utils/skillMatch');
 const { notifyRelevantCandidates } = require('../utils/notifications');
 const chatRouter = require('./chat');
 const { parseInternshipQuery, buildPaginationData, buildQueryString } = require('../utils/queryHelper');
@@ -88,10 +89,21 @@ router.get('/:id', async (req, res) => {
             hasApplied = !!existingApp;
         }
 
+        let company = null;
+        if (internship.companyId) {
+            company = await User.findById(internship.companyId);
+        } else if (internship.companyName) {
+            company = await User.findOne({
+                role: 'company',
+                'companyDetails.companyName': internship.companyName
+            });
+        }
+
         const isPaused = internship.status === 'paused' || internship.isPaused === true;
 
         res.render('extras/internship-detail', {
             internship,
+            company,
             candidate,
             currentUser: req.user,
             hasApplied,
@@ -160,6 +172,7 @@ router.post('/new', isAuthenticated, async (req, res) => {
             description: description || '',
             location: { district, state },
             monthlyStipend: stipendNumber,
+            duration: duration || '12 Months',
             vacancies: vacancies ? parseInt(vacancies) : 1,
             requiredSkills: requiredSkills ? requiredSkills.split(',').map(s => s.trim()).filter(Boolean) : [],
             postedBy: req.user._id,
@@ -546,6 +559,50 @@ router.get('/:id/applicants', isAuthenticated, requireCompanyRole(['company', 'r
     } catch (error) {
         console.error('Error fetching applicants:', error);
         res.status(500).send('Database Error');
+    }
+});
+
+/**
+ * GET /internships/:id/skill-gap
+ *
+ * Renders how the logged-in candidate's skills line up against one
+ * internship's requirements. Drafts are excluded and the candidate is always
+ * taken from the session, never from the URL.
+ */
+router.get('/:id/skill-gap', isAuthenticated, authorize('candidate'), async (req, res) => {
+    try {
+        const internship = await Internship.findOne({ _id: req.params.id, status: { $ne: 'draft' } });
+        if (!internship) {
+            if (req.flash) req.flash('error_msg', 'That internship is no longer available.');
+            return res.redirect('/internships');
+        }
+
+        const candidate = await User.findById(req.user._id || req.user.id);
+        if (!candidate) {
+            if (req.flash) req.flash('error_msg', 'Could not load your profile. Please log in again.');
+            return res.redirect('/internships');
+        }
+
+        const analysis = analyzeSkillGap(candidate.skills || [], internship.requiredSkills || []);
+
+        const existingApp = await Application.findOne({
+            internship: internship._id,
+            candidate: candidate._id
+        }).select('_id');
+
+        res.render('candidate/skill-gap', {
+            internship,
+            candidate,
+            user: candidate,
+            analysis,
+            alreadyApplied: Boolean(existingApp),
+            isPaused: internship.status === 'paused' || internship.isPaused === true,
+            deadlinePassed: Boolean(internship.applicationDeadline && new Date() > internship.applicationDeadline)
+        });
+    } catch (error) {
+        console.error('Error building skill gap analysis:', error);
+        if (req.flash) req.flash('error_msg', 'Could not load the skill gap analysis. Please try again.');
+        res.redirect('/internships');
     }
 });
 

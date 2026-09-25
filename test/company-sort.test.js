@@ -9,14 +9,20 @@ const mongoose = require('mongoose');
 function sortInternshipsList(internships, sort, appCountMap = {}) {
     const list = [...internships];
     if (sort === 'oldest') {
-        return list.sort((a, b) => a._id.getTimestamp().getTime() - b._id.getTimestamp().getTime());
+        return list.sort((a, b) => {
+            const timeDiff = a._id.getTimestamp().getTime() - b._id.getTimestamp().getTime();
+            if (timeDiff !== 0) return timeDiff;
+            return a._id.toString().localeCompare(b._id.toString());
+        });
     }
     if (sort === 'most_applications' || sort === 'applications' || sort === 'applications_desc') {
         return list.sort((a, b) => {
             const countA = appCountMap[a._id.toString()] || 0;
             const countB = appCountMap[b._id.toString()] || 0;
             if (countB !== countA) return countB - countA;
-            return b._id.getTimestamp().getTime() - a._id.getTimestamp().getTime();
+            const timeDiff = b._id.getTimestamp().getTime() - a._id.getTimestamp().getTime();
+            if (timeDiff !== 0) return timeDiff;
+            return b._id.toString().localeCompare(a._id.toString());
         });
     }
     if (sort === 'deadline' || sort === 'deadline_soonest' || sort === 'deadline_asc') {
@@ -24,11 +30,17 @@ function sortInternshipsList(internships, sort, appCountMap = {}) {
             const deadlineA = a.applicationDeadline ? new Date(a.applicationDeadline).getTime() : Infinity;
             const deadlineB = b.applicationDeadline ? new Date(b.applicationDeadline).getTime() : Infinity;
             if (deadlineA !== deadlineB) return deadlineA - deadlineB;
-            return b._id.getTimestamp().getTime() - a._id.getTimestamp().getTime();
+            const timeDiff = b._id.getTimestamp().getTime() - a._id.getTimestamp().getTime();
+            if (timeDiff !== 0) return timeDiff;
+            return b._id.toString().localeCompare(a._id.toString());
         });
     }
     // Default: newest
-    return list.sort((a, b) => b._id.getTimestamp().getTime() - a._id.getTimestamp().getTime());
+    return list.sort((a, b) => {
+        const timeDiff = b._id.getTimestamp().getTime() - a._id.getTimestamp().getTime();
+        if (timeDiff !== 0) return timeDiff;
+        return b._id.toString().localeCompare(a._id.toString());
+    });
 }
 
 test('company-dashboard.ejs renders sort control and matching options', () => {
@@ -88,13 +100,14 @@ test('company-dashboard.ejs renders sort control and matching options', () => {
     assert(html.includes('value="oldest"'), 'Must have Oldest sort option');
     assert(html.includes('value="most_applications"'), 'Must have Most Applications sort option');
     assert(html.includes('value="deadline"'), 'Must have Application Deadline sort option');
+    assert(html.includes('data-id='), 'Internship cards must have data-id attribute');
     assert(html.includes('data-posted='), 'Internship cards must have data-posted attribute');
     assert(html.includes('data-applications="10"'), 'Internship cards must have data-applications attribute');
     assert(html.includes('data-deadline='), 'Internship cards must have data-deadline attribute');
     assert(html.includes('&amp;sort=most_applications') || html.includes('&sort=most_applications'), 'Filter tabs must preserve current sort parameter');
 });
 
-test('sort algorithm orders properly by newest and oldest', () => {
+test('sort algorithm orders properly by newest and oldest with _id tie-breaker', () => {
     // Generate IDs with different creation timestamps
     const oldId = new mongoose.Types.ObjectId(Math.floor(Date.now() / 1000 - 1000).toString(16) + '0000000000000000');
     const newId = new mongoose.Types.ObjectId(Math.floor(Date.now() / 1000).toString(16) + '0000000000000000');
@@ -109,6 +122,22 @@ test('sort algorithm orders properly by newest and oldest', () => {
     const sortedOldest = sortInternshipsList([itemOld, itemNew], 'oldest');
     assert.equal(sortedOldest[0]._id, oldId);
     assert.equal(sortedOldest[1]._id, newId);
+
+    // Test tie-breaking when timestamps are identical (same second)
+    const fixedTime = Math.floor(Date.now() / 1000).toString(16);
+    const tieId1 = new mongoose.Types.ObjectId(fixedTime + '0000000000000001');
+    const tieId2 = new mongoose.Types.ObjectId(fixedTime + '0000000000000002');
+
+    const itemTie1 = { _id: tieId1, title: 'Tie Role 1' };
+    const itemTie2 = { _id: tieId2, title: 'Tie Role 2' };
+
+    const sortedTieOldest = sortInternshipsList([itemTie2, itemTie1], 'oldest');
+    assert.equal(sortedTieOldest[0]._id, tieId1);
+    assert.equal(sortedTieOldest[1]._id, tieId2);
+
+    const sortedTieNewest = sortInternshipsList([itemTie1, itemTie2], 'newest');
+    assert.equal(sortedTieNewest[0]._id, tieId2);
+    assert.equal(sortedTieNewest[1]._id, tieId1);
 });
 
 test('sort algorithm orders properly by most applications', () => {
