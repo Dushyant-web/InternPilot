@@ -687,7 +687,8 @@ router.get('/candidate/applications', isAuthenticated, authorize('candidate'), a
         const userId = req.user._id || req.user.id;
         const candidate = await User.findById(userId);
         const applications = await Application.find({ candidate: userId })
-            .populate('internship');
+            .populate('internship')
+            .sort({ statusUpdatedAt: -1, appliedAt: -1 });
 
         res.render('candidate/candidate-tracker', {
             candidate,
