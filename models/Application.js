@@ -14,10 +14,30 @@ const applicationSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: [
-            'Submitted', 'Under Review', 'Shortlisted', 'Rejected', 'Withdrawn', 'Hired',
-            'submitted', 'pending', 'under_review', 'shortlisted', 'hired', 'rejected', 'withdrawn'
+            'Submitted', 'Under Review', 'Shortlisted', 'Interview',
+            'Rejected', 'Hired', 'Withdrawn', 'pending'
         ],
         default: 'Submitted'
+    },
+    interview: {
+        status: {
+            type: String,
+            enum: ['Scheduled', 'Rescheduled', 'Cancelled']
+        },
+        scheduledAt: { type: Date },
+        duration: { type: Number, default: 30 }, // in minutes
+        mode: {
+            type: String,
+            enum: ['Online', 'Phone', 'In-Person']
+        },
+        meetingLink: { type: String },
+        location: { type: String },
+        instructions: { type: String },
+        scheduledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        createdAt: { type: Date },
+        updatedAt: { type: Date },
+        cancelledAt: { type: Date },
+        cancelReason: { type: String }
     },
     matchScore: { type: Number, default: 0 },
     appliedAt: { type: Date, default: Date.now },
@@ -40,21 +60,22 @@ const applicationSchema = new mongoose.Schema({
 
 // Statuses from which an application can be transitioned to 'Withdrawn'
 const WITHDRAWABLE_STATUSES = [
-    'Submitted', 'submitted', 'pending',
-    'Under Review', 'under_review',
-    'Shortlisted', 'shortlisted'
+    'Submitted', 'pending',
+    'Under Review',
+    'Shortlisted',
+    'Interview'
 ];
 
 // Terminal statuses that forbid withdrawal
 const TERMINAL_STATUSES = [
-    'Rejected', 'rejected',
-    'Hired', 'hired',
-    'Withdrawn', 'withdrawn'
+    'Rejected',
+    'Hired',
+    'Withdrawn'
 ];
 
 /**
  * Checks whether this application can currently be withdrawn by the student.
- * Permitted when submitted/pending, under review, or shortlisted.
+ * Permitted when submitted/pending, under review, shortlisted, or interview stage.
  * Blocked if already rejected, hired, or withdrawn.
  * @returns {boolean}
  */
@@ -67,6 +88,7 @@ applicationSchema.methods.canWithdraw = function () {
 
 /**
  * Transitions the application to Withdrawn, recording audit metadata.
+ * Also cancels any pending interview so the two fields don't disagree.
  * @param {string} [reason] - Optional reason (e.g. accepted another offer)
  * @returns {this}
  */
@@ -84,6 +106,13 @@ applicationSchema.methods.withdraw = function (reason) {
     } else {
         this.withdrawalReason = null;
     }
+
+    if (this.interview && ['Scheduled', 'Rescheduled'].includes(this.interview.status)) {
+        this.interview.status = 'Cancelled';
+        this.interview.cancelledAt = new Date();
+        this.interview.cancelReason = this.interview.cancelReason || 'Application withdrawn by candidate';
+    }
+
     return this;
 };
 

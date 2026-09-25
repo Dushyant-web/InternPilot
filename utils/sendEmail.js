@@ -172,7 +172,128 @@ const sendStatusUpdateEmail = async (email, candidateName, internshipTitle, stat
     return await sendWithRetry(mailOptions);
 };
 
+/**
+ * Sends an interview scheduled email to the candidate.
+ */
+const sendInterviewScheduledEmail = async (email, candidateName, internshipTitle, interviewDetails) => {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail || !isValidEmail(cleanEmail)) throw new Error('Invalid email address.');
+
+    const senderEmail = process.env.EMAIL_USER || process.env.SMTP_USER || 'no-reply@internpilot.com';
+    const formattedDate = new Date(interviewDetails.scheduledAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'full', timeStyle: 'short' });
+
+    let modeDetails = '';
+    if (interviewDetails.mode === 'Online') {
+        modeDetails = `<p><strong>Meeting Link:</strong> <a href="${interviewDetails.meetingLink}">${interviewDetails.meetingLink}</a></p>`;
+    } else if (interviewDetails.mode === 'In-Person') {
+        modeDetails = `<p><strong>Location:</strong> ${interviewDetails.location}</p>`;
+    }
+
+    const instructions = interviewDetails.instructions ? `<p><strong>Instructions:</strong><br/>${interviewDetails.instructions}</p>` : '';
+
+    const mailOptions = {
+        from: `"InternPilot Support" <${senderEmail}>`,
+        to: cleanEmail,
+        subject: `Interview Scheduled - ${internshipTitle}`,
+        html: `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <h2 style="color: #4f46e5; text-align: center;">InternPilot</h2>
+                <p>Hi <strong>${candidateName}</strong>,</p>
+                <p>An interview has been scheduled for your application to <strong>${internshipTitle}</strong>.</p>
+                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
+                    <p><strong>Date & Time:</strong> ${formattedDate} (IST)</p>
+                    <p><strong>Duration:</strong> ${interviewDetails.duration} minutes</p>
+                    <p><strong>Mode:</strong> ${interviewDetails.mode}</p>
+                    ${modeDetails}
+                    ${instructions}
+                </div>
+                <p>Log in to your InternPilot account to view further details.</p>
+                <p style="font-size: 12px; color: #64748b; margin-top: 30px; text-align: center;">Thank you for using InternPilot!</p>
+            </div>
+        `
+    };
+
+    return await sendWithRetry(mailOptions);
+};
+
+/**
+ * Sends an interview rescheduled email to the candidate.
+ */
+const sendInterviewRescheduledEmail = async (email, candidateName, internshipTitle, interviewDetails) => {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail || !isValidEmail(cleanEmail)) throw new Error('Invalid email address.');
+
+    const senderEmail = process.env.EMAIL_USER || process.env.SMTP_USER || 'no-reply@internpilot.com';
+    const formattedDate = new Date(interviewDetails.scheduledAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'full', timeStyle: 'short' });
+
+    let modeDetails = '';
+    if (interviewDetails.mode === 'Online') {
+        modeDetails = `<p><strong>Meeting Link:</strong> <a href="${interviewDetails.meetingLink}">${interviewDetails.meetingLink}</a></p>`;
+    } else if (interviewDetails.mode === 'In-Person') {
+        modeDetails = `<p><strong>Location:</strong> ${interviewDetails.location}</p>`;
+    }
+
+    const instructions = interviewDetails.instructions ? `<p><strong>Instructions:</strong><br/>${interviewDetails.instructions}</p>` : '';
+
+    const mailOptions = {
+        from: `"InternPilot Support" <${senderEmail}>`,
+        to: cleanEmail,
+        subject: `Interview Rescheduled - ${internshipTitle}`,
+        html: `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <h2 style="color: #4f46e5; text-align: center;">InternPilot</h2>
+                <p>Hi <strong>${candidateName}</strong>,</p>
+                <p>Your interview for <strong>${internshipTitle}</strong> has been rescheduled.</p>
+                <div style="background: #fdf6e3; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #fce8b2;">
+                    <p><strong>New Date & Time:</strong> ${formattedDate} (IST)</p>
+                    <p><strong>Duration:</strong> ${interviewDetails.duration} minutes</p>
+                    <p><strong>Mode:</strong> ${interviewDetails.mode}</p>
+                    ${modeDetails}
+                    ${instructions}
+                </div>
+                <p>Log in to your InternPilot account to view further details.</p>
+                <p style="font-size: 12px; color: #64748b; margin-top: 30px; text-align: center;">Thank you for using InternPilot!</p>
+            </div>
+        `
+    };
+
+    return await sendWithRetry(mailOptions);
+};
+
+/**
+ * Sends an interview cancelled email to the candidate.
+ */
+const sendInterviewCancelledEmail = async (email, candidateName, internshipTitle, cancelReason) => {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail || !isValidEmail(cleanEmail)) throw new Error('Invalid email address.');
+
+    const senderEmail = process.env.EMAIL_USER || process.env.SMTP_USER || 'no-reply@internpilot.com';
+
+    const reasonHTML = cancelReason ? `<p><strong>Reason:</strong> ${cancelReason}</p>` : '';
+
+    const mailOptions = {
+        from: `"InternPilot Support" <${senderEmail}>`,
+        to: cleanEmail,
+        subject: `Interview Cancelled - ${internshipTitle}`,
+        html: `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <h2 style="color: #dc2626; text-align: center;">InternPilot</h2>
+                <p>Hi <strong>${candidateName}</strong>,</p>
+                <p>Your scheduled interview for <strong>${internshipTitle}</strong> has been cancelled.</p>
+                ${reasonHTML ? `<div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #fecaca;">${reasonHTML}</div>` : ''}
+                <p>Log in to your InternPilot account to view further details or check the status of your application.</p>
+                <p style="font-size: 12px; color: #64748b; margin-top: 30px; text-align: center;">Thank you for using InternPilot!</p>
+            </div>
+        `
+    };
+
+    return await sendWithRetry(mailOptions);
+};
+
 module.exports = {
     sendOTPEmail,
-    sendStatusUpdateEmail
+    sendStatusUpdateEmail,
+    sendInterviewScheduledEmail,
+    sendInterviewRescheduledEmail,
+    sendInterviewCancelledEmail
 };

@@ -86,6 +86,11 @@
                     </div>
                     <div>
                         <span class="text-slate-400 font-medium block mb-1">Application Status</span>
+                        <% if (application.status === 'Interview') { %>
+                            <span class="inline-block px-3 py-1.5 text-xs font-semibold rounded-lg border shadow-sm bg-indigo-50 text-indigo-700 border-indigo-200">
+                                Interview
+                            </span>
+                        <% } else { %>
                         <form action="/company/applications/<%= application._id %>/status"
                             method="POST" class="inline-block">
                             <select name="status" onchange="this.form.submit()" class="px-3 py-1.5 text-xs font-semibold rounded-lg border shadow-sm cursor-pointer outline-none transition-colors <%=
@@ -100,6 +105,7 @@
                                 <option value="Rejected" <%=application.status==='Rejected' ? 'selected' : '' %>>Rejected</option>
                             </select>
                         </form>
+                        <% } %>
                     </div>
                     <div>
                         <span class="text-slate-400 font-medium block">Match Score</span>
@@ -118,6 +124,86 @@
                         </span>
                     </div>
                 </div>
+            </div>
+
+            <!-- Interview Card -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <h2 class="text-sm font-bold text-slate-800 flex items-center justify-between border-b border-slate-100 pb-3">
+                    <span class="flex items-center gap-2">
+                        <i class="ph-bold ph-calendar text-indigo-600 text-lg"></i>
+                        Interview
+                    </span>
+                    <% if (application.interview && application.interview.status && application.interview.status !== 'Cancelled') { %>
+                        <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full
+                            <%= application.interview.status === 'Scheduled' ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700' %>">
+                            <%= application.interview.status %>
+                        </span>
+                    <% } else if (application.interview && application.interview.status === 'Cancelled') { %>
+                        <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700">
+                            Cancelled
+                        </span>
+                    <% } %>
+                </h2>
+
+                <% if (application.interview && application.interview.status && application.interview.status !== 'Cancelled') { %>
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <span class="text-slate-400 font-medium block">Date & Time (IST)</span>
+                            <span class="font-bold text-slate-700 text-sm">
+                                <%= application.interview.scheduledAt ? new Date(application.interview.scheduledAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) : 'N/A' %>
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div>
+                                <span class="text-slate-400 font-medium block">Duration</span>
+                                <span class="font-bold text-slate-700 text-sm"><%= application.interview.duration %> mins</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 font-medium block">Mode</span>
+                                <span class="font-bold text-slate-700 text-sm"><%= application.interview.mode %></span>
+                            </div>
+                        </div>
+                        <% if (application.interview.mode === 'Online' && application.interview.meetingLink) { %>
+                            <div>
+                                <span class="text-slate-400 font-medium block">Meeting Link</span>
+                                <a href="<%= application.interview.meetingLink %>" target="_blank" class="font-bold text-indigo-600 hover:underline break-all"><%= application.interview.meetingLink %></a>
+                            </div>
+                        <% } else if (application.interview.mode === 'In-Person' && application.interview.location) { %>
+                            <div>
+                                <span class="text-slate-400 font-medium block">Location</span>
+                                <span class="font-bold text-slate-700"><%= application.interview.location %></span>
+                            </div>
+                        <% } %>
+                        <% if (application.interview.instructions) { %>
+                            <div>
+                                <span class="text-slate-400 font-medium block">Instructions</span>
+                                <p class="text-slate-700 mt-0.5 p-2 bg-slate-50 rounded border border-slate-100 whitespace-pre-line"><%= application.interview.instructions %></p>
+                            </div>
+                        <% } %>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-100 flex flex-col gap-2">
+                        <button type="button" onclick="openScheduleModal(true)" class="w-full px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg transition-colors border border-indigo-200">
+                            Reschedule Interview
+                        </button>
+                        <button type="button" onclick="document.getElementById('cancelInterviewModal').classList.remove('hidden')" class="w-full px-4 py-2 bg-white hover:bg-rose-50 text-rose-600 text-xs font-semibold rounded-lg transition-colors border border-rose-200">
+                            Cancel Interview
+                        </button>
+                    </div>
+                <% } else { %>
+                    <div class="text-center py-4">
+                        <p class="text-xs text-slate-500 mb-3">
+                            <%= application.interview && application.interview.status === 'Cancelled' ? 'The previous interview was cancelled.' : 'No interview has been scheduled yet.' %>
+                        </p>
+                        <% if (application.status !== 'Rejected' && application.status !== 'rejected') { %>
+                            <button type="button" onclick="openScheduleModal(false)" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors w-full shadow-sm">
+                                Schedule Interview
+                            </button>
+                        <% } else { %>
+                            <p class="text-xs text-rose-500 italic">Cannot schedule interview for a rejected application.</p>
+                        <% } %>
+                    </div>
+                <% } %>
             </div>
 
         </div>
@@ -271,3 +357,131 @@
     </div>
 
 </div>
+
+<!-- Interview Modals -->
+<div id="scheduleInterviewModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-slate-900" id="scheduleModalTitle">Schedule Interview</h3>
+            <button type="button" onclick="document.getElementById('scheduleInterviewModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+                <i class="ph-bold ph-x text-xl"></i>
+            </button>
+        </div>
+        <form id="scheduleInterviewForm" method="POST" action="/company/applications/<%= application._id %>/interview/schedule" class="p-6 space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Date & Time (IST) *</label>
+                <%
+                    let dtLocal = '';
+                    if (application.interview && application.interview.scheduledAt) {
+                        const d = new Date(application.interview.scheduledAt);
+                        const istOffset = 5.5 * 60 * 60 * 1000;
+                        const istDate = new Date(d.getTime() + istOffset);
+                        dtLocal = istDate.toISOString().slice(0, 16);
+                    }
+                %>
+                <input type="datetime-local" name="scheduledAt" required value="<%= dtLocal %>" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Duration *</label>
+                    <select name="duration" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none">
+                        <option value="15" <%= application.interview?.duration === 15 ? 'selected' : '' %>>15 mins</option>
+                        <option value="30" <%= !application.interview || application.interview.duration === 30 ? 'selected' : '' %>>30 mins</option>
+                        <option value="45" <%= application.interview?.duration === 45 ? 'selected' : '' %>>45 mins</option>
+                        <option value="60" <%= application.interview?.duration === 60 ? 'selected' : '' %>>60 mins</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Mode *</label>
+                    <select name="mode" id="interviewModeSelect" required onchange="toggleInterviewModeFields()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none">
+                        <option value="Online" <%= application.interview?.mode === 'Online' ? 'selected' : '' %>>Online</option>
+                        <option value="Phone" <%= application.interview?.mode === 'Phone' ? 'selected' : '' %>>Phone</option>
+                        <option value="In-Person" <%= application.interview?.mode === 'In-Person' ? 'selected' : '' %>>In-Person</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="onlineModeField" class="<%= application.interview?.mode && application.interview.mode !== 'Online' ? 'hidden' : '' %>">
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Meeting Link *</label>
+                <input type="url" name="meetingLink" id="meetingLinkInput" value="<%= application.interview?.meetingLink || '' %>" placeholder="e.g. https://meet.google.com/..." class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none">
+            </div>
+
+            <div id="inPersonModeField" class="<%= application.interview?.mode !== 'In-Person' ? 'hidden' : '' %>">
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Location *</label>
+                <input type="text" name="location" id="locationInput" value="<%= application.interview?.location || '' %>" placeholder="e.g. Office address, Room 302" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Instructions for Candidate (Optional)</label>
+                <textarea name="instructions" rows="2" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none"><%= application.interview?.instructions || '' %></textarea>
+            </div>
+
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="document.getElementById('scheduleInterviewModal').classList.add('hidden')" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-sm transition-colors">Cancel</button>
+                <button type="submit" id="scheduleSubmitBtn" class="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-sm transition-colors shadow-sm">Schedule</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="cancelInterviewModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-rose-600">Cancel Interview</h3>
+            <button type="button" onclick="document.getElementById('cancelInterviewModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+                <i class="ph-bold ph-x text-xl"></i>
+            </button>
+        </div>
+        <form method="POST" action="/company/applications/<%= application._id %>/interview/cancel" class="p-6 space-y-4">
+            <p class="text-sm text-slate-600">Are you sure you want to cancel the scheduled interview? The candidate will be notified via email.</p>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Reason for Cancellation (Optional, shared with candidate)</label>
+                <textarea name="cancelReason" rows="2" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none"></textarea>
+            </div>
+
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="document.getElementById('cancelInterviewModal').classList.add('hidden')" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-sm transition-colors">Keep Interview</button>
+                <button type="submit" class="flex-1 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-lg text-sm transition-colors shadow-sm">Cancel Interview</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleInterviewModeFields() {
+    const mode = document.getElementById('interviewModeSelect').value;
+    const onlineField = document.getElementById('onlineModeField');
+    const inPersonField = document.getElementById('inPersonModeField');
+    const meetingLink = document.getElementById('meetingLinkInput');
+    const location = document.getElementById('locationInput');
+
+    if (mode === 'Online') {
+        onlineField.classList.remove('hidden');
+        inPersonField.classList.add('hidden');
+        meetingLink.required = true;
+        location.required = false;
+    } else if (mode === 'In-Person') {
+        onlineField.classList.add('hidden');
+        inPersonField.classList.remove('hidden');
+        meetingLink.required = false;
+        location.required = true;
+    } else {
+        onlineField.classList.add('hidden');
+        inPersonField.classList.add('hidden');
+        meetingLink.required = false;
+        location.required = false;
+    }
+}
+
+function openScheduleModal(isReschedule) {
+    document.getElementById('scheduleInterviewModal').classList.remove('hidden');
+    document.getElementById('scheduleModalTitle').textContent = isReschedule ? 'Reschedule Interview' : 'Schedule Interview';
+    document.getElementById('scheduleSubmitBtn').textContent = isReschedule ? 'Save Changes' : 'Schedule';
+
+    const form = document.getElementById('scheduleInterviewForm');
+    const actionBase = "/company/applications/<%= application._id %>/interview";
+    form.action = actionBase + (isReschedule ? '/reschedule' : '/schedule');
+
+    toggleInterviewModeFields();
+}
+</script>
