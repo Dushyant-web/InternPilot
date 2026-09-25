@@ -8,6 +8,7 @@ const router = express.Router();
 
 const Application = require('../models/Application');
 const User = require('../models/User');
+const { notifyCandidateWithdrawal } = require('../utils/recruiterNotifications');
 const { isAuthenticated, authorize } = require('../middleware/auth');
 
 /**
@@ -124,6 +125,11 @@ async function handleApplicationWithdrawal(req, res) {
         }
 
         await application.save();
+
+        // Trigger recruiter notification (non-blocking)
+        if (application.internship) {
+            notifyCandidateWithdrawal(application, application.internship);
+        }
 
         const successMessage = 'Application withdrawn successfully.';
 

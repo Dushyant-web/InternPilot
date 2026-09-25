@@ -57,8 +57,9 @@
 
                     <div class="grid grid-cols-1 gap-4">
                         <% applications.forEach((app, index)=> { %>
+                            <% const isTopRecommendation = index < 3 && !['Withdrawn', 'withdrawn'].includes(app.status) && (app.matchScore || 0) >= 60; %>
                             <div
-                                class="applicant-card bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4"
+                                class="applicant-card <%= isTopRecommendation ? 'border-emerald-300 bg-emerald-50/20' : 'border-slate-200 bg-white' %> rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4"
                                 data-search-text="<%= ((app.candidate && app.candidate.name) ? app.candidate.name : '') + ' ' + ((app.candidate && app.candidate.education) ? (app.candidate.education.qualification || '') : '') + ' ' + ((app.candidate && app.candidate.location) ? ((app.candidate.location.district ? app.candidate.location.district + ' ' : '') + (app.candidate.location.state || '')) : '') + ' ' + ((app.candidate && Array.isArray(app.candidate.skills)) ? app.candidate.skills.join(' ') : '') %>">
 
                                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -95,6 +96,11 @@
                                                     <span
                                                         class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
                                                         PMIS Eligible
+                                                    </span>
+                                                <% } %>
+                                                <% if (isTopRecommendation) { %>
+                                                    <span class="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                                        <i class="ph-fill ph-star"></i> Top Match #<%= index + 1 %>
                                                     </span>
                                                 <% } %>
                                             </div>
@@ -145,6 +151,11 @@
                                                 class="px-3 py-1 rounded-lg border text-xs font-bold <%= (app.matchScore || 0) >= 75 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : ((app.matchScore || 0) >= 40 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-rose-50 border-rose-200 text-rose-700') %>">
                                                 <%= app.matchScore || 0 %>%
                                             </span>
+                                            <% if (app.matchRationale) { %>
+                                                <p class="mt-2 max-w-[14rem] text-[11px] leading-snug text-slate-500" title="How this score was calculated">
+                                                    <i class="ph-bold ph-sparkle text-amber-500"></i> <%= app.matchRationale %>
+                                                </p>
+                                            <% } %>
                                         </div>
 
                                         <!-- View Profile Button -->

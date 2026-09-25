@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
+const { notifyNewApplication, checkAndNotifyHighVolume } = require('../utils/recruiterNotifications');
 const Recommendation = require('../models/Recommendation');
 const { isAuthenticated, authorize, requireCompanyRole } = require('../middleware/auth');
 const { parseISTEndOfDay } = require('../utils/dateUtils');
@@ -11,6 +12,7 @@ const { calculateSkillScore, analyzeSkillGap } = require('../utils/skillMatch');
 const { notifyRelevantCandidates } = require('../utils/notifications');
 const chatRouter = require('./chat');
 const { parseInternshipQuery, buildPaginationData, buildQueryString } = require('../utils/queryHelper');
+const { calculateCandidateMatch } = require('../utils/candidateMatcher');
 
 router.get('/', async (req, res) => {
     try {
@@ -116,6 +118,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/new', isAuthenticated, async (req, res) => {
     try {
+        const { title, company: companyName, location, sector, stipend, monthlyStipend, vacancies, duration, requiredSkills, minQualifications, deadline, action, description } = req.body;
         const isAdmin = req.user.role === 'admin';
         const isCompanyUser = ['company', 'recruiter'].includes(req.user.role);
 
@@ -123,9 +126,6 @@ router.post('/new', isAuthenticated, async (req, res) => {
             if (req.flash) req.flash('error_msg', 'Unauthorized to post internships.');
             return res.redirect('/internships');
         }
-
-        const { title, company: companyName, location, sector, stipend, monthlyStipend, vacancies, duration, requiredSkills, minQualifications, deadline, action, description } = req.body;
-
         const isDraft = action === 'draft';
         const status = isDraft ? 'draft' : 'published';
         const trimmedTitle = title && typeof title === 'string' ? title.trim() : '';
@@ -345,13 +345,17 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
             return res.redirect('/candidate/applications');
         }
 
-        const score = calculateSkillScore(candidate.skills || [], internship.requiredSkills || []);
+        const score = calculateCandidateMatch(candidate, internship).score;
 
-        await Application.create({
+        const newApp = await Application.create({
             internship: internship._id,
             candidate: candidate._id,
             matchScore: score
         });
+
+        // Trigger recruiter notifications (non-blocking)
+        notifyNewApplication(newApp, internship);
+        checkAndNotifyHighVolume(internship._id);
 
         // Delete from recommendations cache if it exists
         await Recommendation.findOneAndDelete({
@@ -544,7 +548,15 @@ router.get('/:id/applicants', isAuthenticated, requireCompanyRole(['company', 'r
         const applications = await Application.find({ internship: req.params.id })
             .populate('candidate')
             .populate('notes.createdBy')
-            .sort({ matchScore: -1 });
+            .sort({ _id: -1 });
+
+        applications.forEach(application => {
+            const match = calculateCandidateMatch(application.candidate, internship);
+            application.matchScore = match.score;
+            application.matchRationale = match.rationale;
+            application.matchingSkills = match.matchingSkills;
+        });
+        applications.sort((a, b) => b.matchScore - a.matchScore || b._id.getTimestamp() - a._id.getTimestamp());
 
         res.render('company/company-applicants', { internship, applications, user: req.user });
     } catch (error) {
