@@ -14,8 +14,8 @@ const applicationSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: [
-            'Submitted', 'Under Review', 'Shortlisted', 'Interview', 'Rejected', 'Withdrawn',
-            'submitted', 'pending', 'under_review', 'shortlisted', 'hired', 'rejected', 'withdrawn'
+            'Submitted', 'Under Review', 'Shortlisted', 'Interview',
+            'Rejected', 'Hired', 'Withdrawn', 'pending'
         ],
         default: 'Submitted'
     },
@@ -41,8 +41,15 @@ const applicationSchema = new mongoose.Schema({
     },
     matchScore: { type: Number, default: 0 },
     appliedAt: { type: Date, default: Date.now },
+
+    // Tracks the most recent status transition independently from application
+    // creation, notes, and other edits.
+    statusUpdatedAt: { type: Date, default: Date.now },
+
+    // Withdrawal audit metadata
     withdrawnAt: { type: Date },
     withdrawalReason: { type: String, trim: true, default: null },
+
     notes: [{
         text: { type: String, required: true },
         createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -51,15 +58,25 @@ const applicationSchema = new mongoose.Schema({
     }]
 }, { timestamps: true });
 
-// Allowed statuses from which an application can be transitioned to 'Withdrawn'
-const WITHDRAWABLE_STATUSES = ['Submitted', 'Under Review', 'pending', 'under_review', 'Shortlisted', 'submitted', 'Interview'];
+// Statuses from which an application can be transitioned to 'Withdrawn'
+const WITHDRAWABLE_STATUSES = [
+    'Submitted', 'pending',
+    'Under Review',
+    'Shortlisted',
+    'Interview'
+];
+
 // Terminal statuses that forbid withdrawal
-const TERMINAL_STATUSES = ['Rejected', 'rejected', 'Hired', 'hired', 'Withdrawn', 'withdrawn'];
+const TERMINAL_STATUSES = [
+    'Rejected',
+    'Hired',
+    'Withdrawn'
+];
 
 /**
  * Checks whether this application can currently be withdrawn by the student.
- * Permitted when pending/submitted or under review (and shortlisted).
- * Blocked if already rejected, hired, or already withdrawn.
+ * Permitted when submitted/pending, under review, shortlisted, or interview stage.
+ * Blocked if already rejected, hired, or withdrawn.
  * @returns {boolean}
  */
 applicationSchema.methods.canWithdraw = function () {
@@ -70,8 +87,9 @@ applicationSchema.methods.canWithdraw = function () {
 };
 
 /**
- * Performs soft-delete / status transition to Withdrawn, recording audit metadata.
- * @param {string} [reason] - Optional reason for withdrawal (e.g. accepted another offer)
+ * Transitions the application to Withdrawn, recording audit metadata.
+ * Also cancels any pending interview so the two fields don't disagree.
+ * @param {string} [reason] - Optional reason (e.g. accepted another offer)
  * @returns {this}
  */
 applicationSchema.methods.withdraw = function (reason) {
@@ -83,14 +101,33 @@ applicationSchema.methods.withdraw = function (reason) {
     }
     this.status = 'Withdrawn';
     this.withdrawnAt = new Date();
-    if (reason && typeof reason === 'string') {
+    if (typeof reason === 'string' && reason.trim()) {
         this.withdrawalReason = reason.trim();
+    } else {
+        this.withdrawalReason = null;
     }
+
+    if (this.interview && ['Scheduled', 'Rescheduled'].includes(this.interview.status)) {
+        this.interview.status = 'Cancelled';
+        this.interview.cancelledAt = new Date();
+        this.interview.cancelReason = this.interview.cancelReason || 'Application withdrawn by candidate';
+    }
+
     return this;
 };
 
-// Static helper to expose allowed and terminal status lists
+// Expose status lists as statics
 applicationSchema.statics.WITHDRAWABLE_STATUSES = WITHDRAWABLE_STATUSES;
 applicationSchema.statics.TERMINAL_STATUSES = TERMINAL_STATUSES;
+
+// Keep statusUpdatedAt correct regardless of which route changes the status.
+// Legacy records without the field are backfilled from appliedAt.
+applicationSchema.pre('save', function () {
+    if (this.isNew || this.isModified('status')) {
+        this.statusUpdatedAt = new Date();
+    } else if (!this.statusUpdatedAt) {
+        this.statusUpdatedAt = this.appliedAt || new Date();
+    }
+});
 
 module.exports = mongoose.model("Application", applicationSchema);
