@@ -100,14 +100,8 @@
                         <td class="p-4 font-semibold text-slate-700 border-r border-slate-200 bg-slate-50/30">Minimum Qualifications</td>
                         <% internships.forEach(item => { %>
                             <td class="p-4 border-r border-slate-200 last:border-0 text-slate-600 align-top">
-                                <% if (item.minQualifications && item.minQualifications.length > 0) { %>
-                                    <ul class="list-disc pl-4 space-y-1 text-sm text-slate-600">
-                                        <% item.minQualifications.forEach(q => { %>
-                                            <% if (q.trim()) { %>
-                                                <li><%= q.trim() %></li>
-                                            <% } %>
-                                        <% }) %>
-                                    </ul>
+                                <% if (item.minQualifications) { %>
+                                    <div class="text-sm text-slate-600 whitespace-pre-wrap"><%= item.minQualifications %></div>
                                 <% } else { %>
                                     <span class="text-slate-400 italic">Not specified</span>
                                 <% } %>
