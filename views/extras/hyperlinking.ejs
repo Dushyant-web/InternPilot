@@ -1,0 +1,76 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="max-w-5xl mx-auto px-4 py-8 space-y-8">
+
+    <!-- Top Breadcrumb -->
+    <nav class="flex items-center gap-2 text-xs text-slate-500">
+        <a href="/" class="hover:text-indigo-600 transition-colors">Home</a>
+        <i class="ph ph-caret-right text-[10px]"></i>
+        <span class="text-slate-800 font-semibold">Hyperlinking Policy</span>
+    </nav>
+
+    <!-- Header Section -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 shadow-sm relative overflow-hidden">
+        <div class="max-w-3xl space-y-3">
+            <div class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-full text-xs font-semibold">
+                <i class="ph-bold ph-link text-indigo-600"></i>
+                <span>Guidelines for Indian Government Websites (GIGW) Standard</span>
+            </div>
+
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">
+                Hyperlinking Policy
+            </h1>
+
+            <p class="text-sm text-slate-600 leading-relaxed">
+                Rules governing external hyperlinks from InternPilot and guidelines for educational, governmental, and private institutions linking back to this portal.
+            </p>
+        </div>
+    </div>
+
+    <!-- Content Sections -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-8 text-xs text-slate-600 leading-relaxed">
+
+        <!-- 1. Links to External Sites -->
+        <section class="space-y-3">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs">1</span>
+                Links to External Websites & Portals
+            </h2>
+            <p>
+                At many places in this website, you may find links to other websites or portals created and maintained by other government departments, educational bodies, or partner organizations (such as the Ministry of Corporate Affairs, CPGRAMS, DigiLocker, or National Career Service).
+            </p>
+            <p>
+                These links are placed for your convenience. InternPilot is not responsible for the contents and reliability of the linked websites and does not necessarily endorse the views expressed in them. We cannot guarantee that these links will work continuously and have no control over the availability of linked pages.
+            </p>
+        </section>
+
+        <!-- 2. Linking to InternPilot from Other Sites -->
+        <section class="space-y-3">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs">2</span>
+                Linking to InternPilot by Other Websites
+            </h2>
+            <p>
+                We do not object to you linking directly to the information that is hosted on this website and no prior permission is required for the same. However, we request you to adhere to the following conditions:
+            </p>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li>We do not permit our pages to be loaded into frames on your site. The pages belonging to this website must load into an entire newly opened window of the user.</li>
+                <li>Hyperlinks must not be presented in any manner that falsely suggests sponsorship, endorsement, or approval by the Ministry of Corporate Affairs or InternPilot without prior formal authorization.</li>
+                <li>The State Emblem of India and PMIS branding assets may not be used on external websites without explicit statutory permission.</li>
+            </ul>
+        </section>
+
+        <!-- 3. Link Maintenance & Regression Audits -->
+        <section class="space-y-3">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs">3</span>
+                Broken Link Governance
+            </h2>
+            <p>
+                Our engineering team maintains automated link integrity tests within the project test suite to ensure that all internal platform routes, legal notices, and navigation anchors function reliably without regressions. If you encounter any broken link or redirection error, please report it via <a href="/contact" class="text-indigo-600 font-semibold hover:underline">Contact & Helpdesk</a>.
+            </p>
+        </section>
+
+    </div>
+
+</div>
