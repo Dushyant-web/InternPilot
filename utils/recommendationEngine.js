@@ -2,41 +2,10 @@ const { GoogleGenAI } = require('@google/genai');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
 const Recommendation = require('../models/Recommendation');
+const { calculatePreFilterScore } = require('./candidateMatcher');
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const POOL_SIZE = parseInt(process.env.RECOMMENDATION_AI_POOL_SIZE, 10) || 25;
-
-function calculatePreFilterScore(candidate, internship) {
-    let score = 0;
-    
-    // 1. Skill intersection score (max 100 roughly, scaled down)
-    const requiredSkills = internship.requiredSkills || [];
-    const candidateSkillsLower = (candidate.skills || []).map(s => String(s).trim().toLowerCase());
-    
-    if (requiredSkills.length > 0) {
-        let matchCount = 0;
-        requiredSkills.forEach(skill => {
-            if (candidateSkillsLower.includes(String(skill).trim().toLowerCase())) matchCount++;
-        });
-        score += (matchCount / requiredSkills.length) * 70; // Skills worth up to 70 points
-    } else {
-        score += 35; // Default middle score if no skills required
-    }
-    
-    // 2. Location matching (up to 30 points)
-    const candidateDistrict = (candidate.location?.district || '').trim().toLowerCase();
-    const candidateState = (candidate.location?.state || '').trim().toLowerCase();
-    const internshipDistrict = (internship.location?.district || '').trim().toLowerCase();
-    const internshipState = (internship.location?.state || '').trim().toLowerCase();
-    
-    if (candidateDistrict && internshipDistrict && candidateDistrict === internshipDistrict) {
-        score += 30;
-    } else if (candidateState && internshipState && candidateState === internshipState) {
-        score += 15;
-    }
-
-    return Math.min(Math.round(score), 100);
-}
 
 /**
  * Executes the multi-stage recommendation funnel for a candidate.

@@ -11,6 +11,7 @@ const { calculateSkillScore, analyzeSkillGap } = require('../utils/skillMatch');
 const { notifyRelevantCandidates } = require('../utils/notifications');
 const chatRouter = require('./chat');
 const { parseInternshipQuery, buildPaginationData, buildQueryString } = require('../utils/queryHelper');
+const { calculateCandidateMatch } = require('../utils/candidateMatcher');
 
 router.get('/', async (req, res) => {
     try {
@@ -345,7 +346,7 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
             return res.redirect('/candidate/applications');
         }
 
-        const score = calculateSkillScore(candidate.skills || [], internship.requiredSkills || []);
+        const score = calculateCandidateMatch(candidate, internship).score;
 
         await Application.create({
             internship: internship._id,
@@ -544,7 +545,15 @@ router.get('/:id/applicants', isAuthenticated, requireCompanyRole(['company', 'r
         const applications = await Application.find({ internship: req.params.id })
             .populate('candidate')
             .populate('notes.createdBy')
-            .sort({ matchScore: -1 });
+            .sort({ _id: -1 });
+
+        applications.forEach(application => {
+            const match = calculateCandidateMatch(application.candidate, internship);
+            application.matchScore = match.score;
+            application.matchRationale = match.rationale;
+            application.matchingSkills = match.matchingSkills;
+        });
+        applications.sort((a, b) => b.matchScore - a.matchScore || b._id.getTimestamp() - a._id.getTimestamp());
 
         res.render('company/company-applicants', { internship, applications, user: req.user });
     } catch (error) {
