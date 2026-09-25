@@ -42,6 +42,12 @@ router.get('/', async (req, res) => {
         // location filters build.
         filterObj.$and = (filterObj.$and || []).concat([statusCondition]);
 
+        // parseInternshipQuery does not know about the status tabs, so carry
+        // the active one in the state. Without it every pagination link would
+        // drop back to "All Listings". 'all' stays empty so buildQueryString
+        // leaves it out of the URL.
+        state.status = filter === 'all' ? '' : filter;
+
         const totalItems = await Internship.countDocuments(filterObj);
         const pagination = buildPaginationData(totalItems, page, limit);
 
