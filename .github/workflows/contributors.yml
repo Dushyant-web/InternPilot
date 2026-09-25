@@ -7,14 +7,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  contrib-readme:
+  contrib-readme-job:
     runs-on: ubuntu-latest
+    name: A job to automate contrib in readme
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Update README Contributors
-        uses: github-readme-contributors/github-readme-contributors@v1.3.0
-        with:
-          repo: ${{ github.repository }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Contribute List
+        uses: akhilmhdh/contributors-readme-action@v2.3.11
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
