@@ -4,6 +4,15 @@
  */
 
 /**
+ * Escapes regex special characters to prevent regex injection and syntax errors.
+ * @param {string} text
+ * @returns {string}
+ */
+function escapeRegex(text = '') {
+    return text.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&');
+}
+
+/**
  * Parses URL query parameters and constructs Mongoose query, sort options, and clean state object.
  * @param {Object} query - req.query object from Express
  * @returns {Object} { filterObj, sortObj, state, page, limit }
@@ -12,38 +21,60 @@ function parseInternshipQuery(query = {}) {
     const search = (query.search || query.q || '').trim();
     const sector = (query.sector || '').trim();
     const location = (query.location || '').trim();
+    const status = (query.status || query.filter || 'all').trim(); // 'all', 'active', 'paused'
     const sort = (query.sort || 'latest').trim();
     const page = Math.max(1, parseInt(query.page, 10) || 1);
     const limit = Math.max(1, parseInt(query.limit, 10) || 6);
 
-    const filterObj = {};
+    const conditions = [];
 
-    // Text search matching title, companyName, sector, or requiredSkills
+    // 1. Status / Active / Paused filter (Draft listings are NEVER public)
+    if (status === 'active') {
+        conditions.push({
+            status: { $nin: ['draft', 'paused'] },
+            isPaused: { $ne: true }
+        });
+    } else if (status === 'paused') {
+        conditions.push({
+            $or: [{ status: 'paused' }, { isPaused: true }]
+        });
+    } else {
+        // 'all' or default: omit drafts
+        conditions.push({ status: { $ne: 'draft' } });
+    }
+
+    // 2. Text search matching title, companyName, sector, or requiredSkills
     if (search) {
-        const searchRegex = new RegExp(search, 'i');
-        filterObj.$or = [
-            { title: searchRegex },
-            { companyName: searchRegex },
-            { sector: searchRegex },
-            { requiredSkills: searchRegex }
-        ];
+        const searchRegex = new RegExp(escapeRegex(search), 'i');
+        conditions.push({
+            $or: [
+                { title: searchRegex },
+                { companyName: searchRegex },
+                { sector: searchRegex },
+                { requiredSkills: searchRegex }
+            ]
+        });
     }
 
-    // Sector filter
+    // 3. Sector filter
     if (sector && sector !== 'all') {
-        filterObj.sector = new RegExp(`^${sector}$`, 'i');
+        conditions.push({ sector: new RegExp(`^${escapeRegex(sector)}$`, 'i') });
     }
 
-    // Location filter (district or state)
+    // 4. Location filter (district or state)
     if (location) {
-        const locRegex = new RegExp(location, 'i');
-        filterObj.$or = filterObj.$or || [];
-        filterObj.$or.push(
-            { 'location.district': locRegex },
-            { 'location.state': locRegex },
-            { location: locRegex }
-        );
+        const locRegex = new RegExp(escapeRegex(location), 'i');
+        conditions.push({
+            $or: [
+                { 'location.district': locRegex },
+                { 'location.state': locRegex },
+                { location: locRegex }
+            ]
+        });
     }
+
+    // Conjunction of all criteria: guarantees search AND location AND sector AND status work correctly together
+    const filterObj = conditions.length === 1 ? conditions[0] : { $and: conditions };
 
     // Sort order
     let sortObj = { _id: -1 };
@@ -57,7 +88,7 @@ function parseInternshipQuery(query = {}) {
         sortObj = { createdAt: -1, _id: -1 };
     }
 
-    const state = { search, sector, location, sort, page, limit };
+    const state = { search, sector, location, status, sort, page, limit };
 
     return { filterObj, sortObj, state, page, limit };
 }
@@ -99,8 +130,16 @@ function buildQueryString(currentParams = {}, overrides = {}) {
 
     Object.keys(merged).forEach(key => {
         const val = merged[key];
-        if (val !== undefined && val !== null && val !== '' && val !== 1 && !(key === 'sort' && val === 'latest') && !(key === 'sector' && val === 'all')) {
-            // Keep page if > 1, search if non-empty, etc.
+        if (
+            val !== undefined &&
+            val !== null &&
+            val !== '' &&
+            val !== 1 &&
+            !(key === 'sort' && val === 'latest') &&
+            !(key === 'sector' && val === 'all') &&
+            !(key === 'status' && val === 'all')
+        ) {
+            // Omit page if 1
             if (key === 'page' && Number(val) <= 1) return;
             params.set(key, val);
         }
@@ -111,6 +150,7 @@ function buildQueryString(currentParams = {}, overrides = {}) {
 }
 
 module.exports = {
+    escapeRegex,
     parseInternshipQuery,
     buildPaginationData,
     buildQueryString
