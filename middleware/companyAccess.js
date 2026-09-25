@@ -52,10 +52,14 @@ function deny(req, res, status, message) {
 function requireCompanyPermission(...permissions) {
     return async (req, res, next) => {
         if (!req.user) return deny(req, res, 401, 'Please log in to access this resource.');
+        if (!COMPANY_ROLES.includes(req.user.role)) {
+            return deny(req, res, 403, 'This area is only available to company team members.');
+        }
+
         // Older company-owner accounts were created before `companyId` became
         // mandatory. The owner is still the company record in that case.
         const companyId = req.user.companyId || (req.user.role === 'company' ? req.user._id : null);
-        if (!COMPANY_ROLES.includes(req.user.role) || !companyId) {
+        if (!companyId) {
             return deny(req, res, 403, 'This area is only available to company team members.');
         }
 
@@ -83,14 +87,23 @@ function companyName(company) {
 }
 
 function companyInternshipQuery(company) {
-    return { companyId: company._id };
+    return {
+        $or: [
+            { companyId: company._id },
+            // Older listings were owned through postedBy before companyId was
+            // introduced. Keep them available to the same company and its team.
+            { companyId: null, postedBy: company._id }
+        ]
+    };
 }
 
 function belongsToCompany(internship, company) {
     return Boolean(
-        internship?.companyId &&
         company?._id &&
-        internship.companyId.toString() === company._id.toString()
+        (
+            (internship.companyId && internship.companyId.toString() === company._id.toString()) ||
+            (!internship.companyId && internship.postedBy && internship.postedBy.toString() === company._id.toString())
+        )
     );
 }
 
