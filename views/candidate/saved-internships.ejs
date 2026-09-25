@@ -1,0 +1,161 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mb-12 mt-16">
+    <!-- Header Section -->
+    <div class="mb-8">
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+            <i class="ph-bold ph-heart text-rose-500"></i> Saved Internships
+        </h1>
+        <p class="text-slate-500 text-sm mt-1">Keep track of the opportunities you're interested in applying to later.</p>
+    </div>
+
+    <% if (!internships || internships.length === 0) { %>
+        <div class="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-sm">
+            <i class="ph-bold ph-bookmark-simple text-4xl text-slate-300 mb-2"></i>
+            <h3 class="text-base font-bold text-slate-800">No Saved Internships</h3>
+            <p class="text-xs text-slate-500 mt-1 mb-4">You haven't bookmarked any internships yet.</p>
+            <a href="/internships" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm">
+                Browse Opportunities
+            </a>
+        </div>
+    <% } else { %>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="saved-grid">
+            <% internships.forEach(item => { %>
+                <% const isItemPaused = item.status === 'paused' || item.isPaused; %>
+                <div class="internship-card bg-white border <%= isItemPaused ? 'border-amber-300' : 'border-slate-200' %> rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between relative group" id="card-<%= item._id %>">
+                    
+                    <button class="bookmark-btn absolute top-5 right-5 text-slate-300 hover:text-indigo-600 transition-all z-10 active:scale-90" data-id="<%= item._id %>" title="Remove Bookmark">
+                        <i class="ph-fill text-indigo-600 ph-heart text-xl"></i>
+                    </button>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
+                                    <%= item.sector || "General" %>
+                                </span>
+                                <% if (isItemPaused) { %>
+                                    <span class="text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                        <i class="ph-bold ph-pause-circle"></i> Paused
+                                    </span>
+                                <% } %>
+                            </div>
+                        </div>
+
+                        <h3 class="text-[17px] font-bold text-slate-900 leading-tight mb-1 truncate pr-8" title="<%= item.title %>">
+                            <a href="/internships/<%= item._id %>" class="hover:text-indigo-600 transition-colors">
+                                <%= item.title %>
+                            </a>
+                        </h3>
+                        <p class="text-[13px] font-medium text-indigo-600 mb-3 flex items-center gap-1">
+                            <i class="ph-bold ph-buildings"></i>
+                            <% if (item.companyId) { %>
+                                <a href="/company/<%= item.companyId._id || item.companyId %>/profile" class="hover:underline hover:text-indigo-800">
+                                    <%= item.companyId.companyName || item.companyName || item.company %>
+                                </a>
+                            <% } else { %>
+                                <%= item.companyName || item.company %>
+                            <% } %>
+                        </p>
+
+                        <div class="flex items-center gap-x-4 gap-y-2 mb-4 text-xs font-medium text-slate-600 flex-wrap">
+                            <span class="flex items-center gap-1">
+                                <i class="ph-bold ph-map-pin text-slate-400"></i>
+                                <%= typeof item.location === 'object' && item.location !== null
+                                    ? ((item.location.district ? item.location.district + ', ' : '') + (item.location.state || 'Remote'))
+                                    : (item.location || 'Remote') %>
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <i class="ph-bold ph-money text-slate-400"></i>
+                                <% if (item.monthlyStipend === 0 || item.monthlyStipend === 'Unpaid') { %>
+                                    Unpaid
+                                <% } else if (item.monthlyStipend === 'Performance Based') { %>
+                                    Performance Based
+                                <% } else { %>
+                                    ₹<%= item.monthlyStipend ? item.monthlyStipend.toLocaleString() : 'Not specified' %> /mo
+                                <% } %>
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <i class="ph-bold ph-clock text-slate-400"></i>
+                                <%= item.duration ? item.duration : 'Not specified' %>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 mt-auto border-t border-slate-100 flex items-center justify-between">
+                        <div class="text-[10px] text-slate-400 font-medium">
+                            <% 
+                                let timeAgo = 'Just now';
+                                if (item.createdAt || item._id.getTimestamp) {
+                                    const created = item.createdAt || item._id.getTimestamp();
+                                    const diff = Math.floor((new Date() - created) / 86400000);
+                                    if (diff > 0) timeAgo = `${diff}d ago`;
+                                }
+                            %>
+                            Posted <%= timeAgo %>
+                        </div>
+                        <a href="/internships/<%= item._id %>" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 group/btn transition-colors">
+                            View Details
+                            <i class="ph-bold ph-arrow-right group-hover/btn:translate-x-0.5 transition-transform"></i>
+                        </a>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+    <% } %>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const bookmarkBtns = document.querySelectorAll('.bookmark-btn');
+        bookmarkBtns.forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const icon = btn.querySelector('i');
+                const internshipId = btn.getAttribute('data-id');
+                const card = document.getElementById(`card-${internshipId}`);
+                
+                // Optimistically hide the card with animation
+                card.style.transition = 'all 0.3s ease';
+                card.style.transform = 'scale(0.95)';
+                card.style.opacity = '0';
+                
+                setTimeout(async () => {
+                    card.style.display = 'none';
+                    
+                    try {
+                        const response = await fetch(`/candidate/saved-internships/${internshipId}/toggle`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        const data = await response.json();
+                        if (!data.success) {
+                            // Revert on failure
+                            card.style.display = 'flex';
+                            setTimeout(() => {
+                                card.style.transform = 'scale(1)';
+                                card.style.opacity = '1';
+                            }, 10);
+                            alert('Failed to remove bookmark. Please try again.');
+                        } else {
+                            // If grid is empty now, we might want to refresh to show empty state, or just leave it blank
+                            const visibleCards = document.querySelectorAll('.internship-card[style*="display: flex"], .internship-card:not([style*="display: none"])');
+                            if (visibleCards.length === 0) {
+                                window.location.reload();
+                            }
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        // Revert on error
+                        card.style.display = 'flex';
+                        setTimeout(() => {
+                            card.style.transform = 'scale(1)';
+                            card.style.opacity = '1';
+                        }, 10);
+                    }
+                }, 300);
+            });
+        });
+    });
+</script>

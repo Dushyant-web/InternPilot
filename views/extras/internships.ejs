@@ -135,6 +135,13 @@
                 data-duration="<%= parseInt(item.duration) || 12 %>"
                 data-posted="<%= item._id.getTimestamp ? item._id.getTimestamp().getTime() : Date.now() %>">
 
+                <% if (typeof currentUser !== 'undefined' && currentUser && currentUser.role === 'candidate') { %>
+                    <% const isSaved = currentUser.savedInternships && currentUser.savedInternships.includes(item._id.toString()); %>
+                    <button class="bookmark-btn absolute top-5 right-5 text-slate-300 hover:text-indigo-600 transition-all z-10 active:scale-90" data-id="<%= item._id %>" title="Save Internship">
+                        <i class="<%= isSaved ? 'ph-fill text-indigo-600' : 'ph-bold' %> ph-heart text-xl"></i>
+                    </button>
+                <% } %>
+
                 <div>
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-1.5 flex-wrap">
@@ -554,4 +561,56 @@
         function closeEditModal() {
             document.getElementById('editModal').classList.add('hidden');
         }
+
+        // Bookmark Toggle Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const bookmarkBtns = document.querySelectorAll('.bookmark-btn');
+            bookmarkBtns.forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const icon = btn.querySelector('i');
+                    const internshipId = btn.getAttribute('data-id');
+                    
+                    // Optimistic UI update for sleek feel
+                    const isCurrentlySaved = icon.classList.contains('ph-fill');
+                    if (isCurrentlySaved) {
+                        icon.classList.remove('ph-fill', 'text-indigo-600');
+                        icon.classList.add('ph-bold');
+                    } else {
+                        icon.classList.remove('ph-bold');
+                        icon.classList.add('ph-fill', 'text-indigo-600');
+                    }
+                    
+                    try {
+                        const response = await fetch(`/candidate/saved-internships/${internshipId}/toggle`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        const data = await response.json();
+                        if (!data.success) {
+                            // Revert on failure
+                            if (isCurrentlySaved) {
+                                icon.classList.remove('ph-bold');
+                                icon.classList.add('ph-fill', 'text-indigo-600');
+                            } else {
+                                icon.classList.remove('ph-fill', 'text-indigo-600');
+                                icon.classList.add('ph-bold');
+                            }
+                            alert('Failed to save internship. Please try again.');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        // Revert on error
+                        if (isCurrentlySaved) {
+                            icon.classList.remove('ph-bold');
+                            icon.classList.add('ph-fill', 'text-indigo-600');
+                        } else {
+                            icon.classList.remove('ph-fill', 'text-indigo-600');
+                            icon.classList.add('ph-bold');
+                        }
+                    }
+                });
+            });
+        });
     </script>
