@@ -126,7 +126,6 @@ router.get('/:id', async (req, res) => {
 
 router.post('/new', isAuthenticated, async (req, res) => {
     try {
-        const { title, company: companyName, location, sector, stipend, duration, vacancies, requiredSkills } = req.body;
         const isAdmin = req.user.role === 'admin';
         const isCompanyUser = ['company', 'recruiter'].includes(req.user.role);
 
