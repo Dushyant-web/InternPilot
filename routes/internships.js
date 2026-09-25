@@ -10,17 +10,7 @@ const { parseISTEndOfDay } = require('../utils/dateUtils');
 const { notifyRelevantCandidates } = require('../utils/notifications');
 const chatRouter = require('./chat');
 const { parseInternshipQuery, buildPaginationData, buildQueryString } = require('../utils/queryHelper');
-
-function calculateSkillScore(userSkills = [], requiredSkills = []) {
-    if (!requiredSkills || !requiredSkills.length) return 100;
-    if (!userSkills || !userSkills.length) return 0;
-    const userSkillsLower = userSkills.filter(Boolean).map(s => String(s).trim().toLowerCase());
-    let matchCount = 0;
-    requiredSkills.filter(Boolean).forEach(skill => {
-        if (userSkillsLower.includes(String(skill).trim().toLowerCase())) matchCount++;
-    });
-    return Math.round((matchCount / requiredSkills.length) * 100);
-}
+const { calculateCandidateMatch } = require('../utils/candidateMatcher');
 
 router.get('/', async (req, res) => {
     try {
@@ -343,7 +333,7 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
             return res.redirect('/candidate/applications');
         }
 
-        const score = calculateSkillScore(candidate.skills || [], internship.requiredSkills || []);
+        const score = calculateCandidateMatch(candidate, internship).score;
 
         await Application.create({
             internship: internship._id,
@@ -542,7 +532,15 @@ router.get('/:id/applicants', isAuthenticated, requireCompanyRole(['company', 'r
         const applications = await Application.find({ internship: req.params.id })
             .populate('candidate')
             .populate('notes.createdBy')
-            .sort({ matchScore: -1 });
+            .sort({ _id: -1 });
+
+        applications.forEach(application => {
+            const match = calculateCandidateMatch(application.candidate, internship);
+            application.matchScore = match.score;
+            application.matchRationale = match.rationale;
+            application.matchingSkills = match.matchingSkills;
+        });
+        applications.sort((a, b) => b.matchScore - a.matchScore || b._id.getTimestamp() - a._id.getTimestamp());
 
         res.render('company/company-applicants', { internship, applications, user: req.user });
     } catch (error) {
