@@ -55,6 +55,28 @@ router.get('/', async (req, res) => {
     }
 });
 
+router.get('/compare', async (req, res) => {
+    try {
+        const ids = req.query.ids ? req.query.ids.split(',') : [];
+        if (ids.length < 2 || ids.length > 3) {
+            if (req.flash) req.flash('error_msg', 'Please select 2 to 3 internships to compare.');
+            return res.redirect('/internships');
+        }
+
+        const internships = await Internship.find({ _id: { $in: ids } })
+            .populate('companyId', 'companyName')
+            .lean();
+
+        res.render('extras/internship-compare', { 
+            internships, 
+            currentUser: req.user 
+        });
+    } catch (error) {
+        console.error('Error fetching internships for comparison:', error);
+        res.status(500).send('Database Error');
+    }
+});
+
 router.get('/:id', async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
