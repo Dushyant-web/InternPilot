@@ -110,8 +110,47 @@ async function notifyApplicationStatusChange(application, internship, status) {
     });
 }
 
+async function notifyInterviewScheduled(application, internship, dateString) {
+    await Notification.create({
+        recipient: application.candidate._id || application.candidate,
+        type: 'interview_scheduled',
+        title: 'Interview Scheduled',
+        message: `An interview for ${internship.title} at ${internship.companyName} has been scheduled for ${dateString}.`,
+        link: '/candidate/applications',
+        internship: internship._id,
+        application: application._id
+    });
+}
+
+async function notifyInterviewRescheduled(application, internship, dateString) {
+    await Notification.create({
+        recipient: application.candidate._id || application.candidate,
+        type: 'interview_rescheduled',
+        title: 'Interview Rescheduled',
+        message: `Your interview for ${internship.title} at ${internship.companyName} has been rescheduled to ${dateString}.`,
+        link: '/candidate/applications',
+        internship: internship._id,
+        application: application._id
+    });
+}
+
+async function notifyInterviewCancelled(application, internship) {
+    await Notification.create({
+        recipient: application.candidate._id || application.candidate,
+        type: 'interview_cancelled',
+        title: 'Interview Cancelled',
+        message: `Your interview for ${internship.title} at ${internship.companyName} has been cancelled.`,
+        link: '/candidate/applications',
+        internship: internship._id,
+        application: application._id
+    });
+}
+
 module.exports = {
     isRelevantInternship,
     notifyRelevantCandidates,
-    notifyApplicationStatusChange
+    notifyApplicationStatusChange,
+    notifyInterviewScheduled,
+    notifyInterviewRescheduled,
+    notifyInterviewCancelled
 };

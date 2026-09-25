@@ -49,6 +49,7 @@
                             <a href="/company/dashboard" class="hover:text-indigo-700 transition-colors">Company Dashboard</a>
                             <% if (currentUser.role === 'company') { %>
                                 <a href="/company/team" class="hover:text-indigo-700 transition-colors">Manage Team</a>
+                                <a href="/company/activity" class="hover:text-indigo-700 transition-colors">Activity History</a>
                             <% } %>
                         <% } else if (currentUser.role === 'admin') { %>
                             <a href="/admin/dashboard" class="hover:text-indigo-700 transition-colors">Admin Dashboard</a>

@@ -1,0 +1,225 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="max-w-6xl mx-auto space-y-6 pb-12">
+
+    <!-- Top Navigation / Breadcrumb -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+        <div>
+            <div class="flex items-center gap-2 mb-1.5">
+                <a href="/company/dashboard" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1">
+                    <i class="ph-bold ph-arrow-left"></i> Dashboard
+                </a>
+                <span class="text-slate-300">&bull;</span>
+                <span class="text-xs font-medium text-slate-500">Applicant Tracking</span>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                <%= (typeof internship !== 'undefined' && internship) ? internship.title : 'Internship Applicants' %>
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">
+                Candidate pipeline, AI qualification fit scores, and application status management.
+            </p>
+        </div>
+
+        <!-- Summary Metric Cards -->
+        <% 
+            const appsList = Array.isArray(applications) ? applications : [];
+            const totalApplicants = appsList.length;
+            const withdrawnCount = appsList.filter(a => ['Withdrawn', 'withdrawn'].includes(a.status)).length;
+            const activeCount = totalApplicants - withdrawnCount;
+        %>
+        <div class="flex items-center gap-3">
+            <div class="bg-indigo-50/70 border border-indigo-100 px-4 py-2 rounded-xl text-center">
+                <span class="block text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Active</span>
+                <span class="text-lg font-extrabold text-indigo-800"><%= activeCount %></span>
+            </div>
+            <div class="bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl text-center">
+                <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Withdrawn</span>
+                <span class="text-lg font-extrabold text-slate-700"><%= withdrawnCount %></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter and Search Toolbar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <!-- Status Filter Tabs -->
+        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold text-slate-600">
+            <button type="button" onclick="filterApplicants('all')" id="filter-tab-all"
+                class="filter-tab px-3 py-1.5 rounded-lg transition-all bg-white text-slate-900 shadow-2xs">
+                All Candidates (<%= totalApplicants %>)
+            </button>
+            <button type="button" onclick="filterApplicants('active')" id="filter-tab-active"
+                class="filter-tab px-3 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900">
+                Active (<%= activeCount %>)
+            </button>
+            <button type="button" onclick="filterApplicants('withdrawn')" id="filter-tab-withdrawn"
+                class="filter-tab px-3 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900">
+                Withdrawn (<%= withdrawnCount %>)
+            </button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="relative max-w-xs w-full">
+            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="recruiterSearchInput" placeholder="Filter candidates by name or skill..."
+                class="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-white"
+                onkeyup="searchCandidates()">
+        </div>
+    </div>
+
+    <!-- Applicants List -->
+    <% if (appsList.length === 0) { %>
+        <div class="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-xs">
+            <div class="w-16 h-16 mx-auto mb-3 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center">
+                <i class="ph-bold ph-users-three text-3xl"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-800">No applicants yet</h3>
+            <p class="text-xs text-slate-500 mt-1">Applications will appear here once candidates apply for this position.</p>
+        </div>
+    <% } else { %>
+        <div class="space-y-3" id="applicantsContainer">
+            <% appsList.forEach((app, index) => { %>
+                <% 
+                    const isWithdrawn = ['Withdrawn', 'withdrawn'].includes(app.status);
+                    const candidateName = (app.candidate && app.candidate.name) ? app.candidate.name : 'Candidate';
+                    const qualification = (app.candidate && app.candidate.education && app.candidate.education.qualification) ? app.candidate.education.qualification : 'N/A';
+                    const locationStr = typeof app.candidate?.location === 'object' && app.candidate?.location !== null
+                        ? ((app.candidate.location.district ? app.candidate.location.district + ', ' : '') + (app.candidate.location.state || ''))
+                        : (app.candidate?.location || 'N/A');
+                %>
+
+                <div class="applicant-row bg-white border <%= isWithdrawn ? 'border-slate-200 bg-slate-50/70' : 'border-slate-200 hover:border-slate-300' %> rounded-2xl p-5 shadow-xs transition-all flex flex-col md:flex-row md:items-center justify-between gap-5"
+                    data-status="<%= isWithdrawn ? 'withdrawn' : 'active' %>"
+                    data-name="<%= candidateName.toLowerCase() %>"
+                    data-skills="<%= (app.candidate && Array.isArray(app.candidate.skills)) ? app.candidate.skills.join(' ').toLowerCase() : '' %>">
+
+                    <!-- Candidate Details -->
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl <%= isWithdrawn ? 'bg-slate-200 text-slate-500' : 'bg-indigo-50 border border-indigo-100 text-indigo-700' %> font-bold text-xs flex items-center justify-center shrink-0">
+                            #<%= index + 1 %>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <div class="flex items-center gap-2.5 flex-wrap">
+                                <h3 class="text-base font-bold text-slate-900 <%= isWithdrawn ? 'text-slate-600 line-through' : '' %>">
+                                    <%= candidateName %>
+                                </h3>
+
+                                <!-- BADGE FOR WITHDRAWN APPLICANTS -->
+                                <% if (isWithdrawn) { %>
+                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300">
+                                        <i class="ph-bold ph-arrow-u-up-left text-slate-500"></i> Withdrawn by Candidate
+                                    </span>
+                                <% } else { %>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded border <%= 
+                                        app.status === 'Shortlisted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                        (app.status === 'Under Review' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                        (app.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-slate-100 text-slate-700 border-slate-200')) %>">
+                                        <%= app.status %>
+                                    </span>
+                                <% } %>
+
+                                <% if (app.matchScore) { %>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                        <%= app.matchScore %>% Match Fit
+                                    </span>
+                                <% } %>
+                            </div>
+
+                            <div class="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+                                <span class="flex items-center gap-1">
+                                    <i class="ph-bold ph-graduation-cap text-indigo-500"></i> <%= qualification %>
+                                </span>
+                                <span>&bull;</span>
+                                <span class="flex items-center gap-1">
+                                    <i class="ph-bold ph-map-pin text-rose-500"></i> <%= locationStr %>
+                                </span>
+                                <span>&bull;</span>
+                                <span>Applied <%= new Date(app.appliedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) %></span>
+                            </div>
+
+                            <!-- Audit info if withdrawn -->
+                            <% if (isWithdrawn) { %>
+                                <div class="text-xs text-slate-500 mt-1 flex items-center gap-2">
+                                    <i class="ph-bold ph-info text-slate-400"></i>
+                                    <span>
+                                        Withdrawn <%= app.withdrawnAt ? 'on ' + new Date(app.withdrawnAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '' %>
+                                        <%= app.withdrawalReason ? '— Reason: "' + app.withdrawalReason + '"' : '' %>
+                                    </span>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+
+                    <!-- Right Controls / Status Handling -->
+                    <div class="flex items-center justify-between md:justify-end gap-3 pt-3 md:pt-0 border-t md:border-0 border-slate-100 shrink-0">
+                        <% if (app.candidate && (app.candidate.resume || app.candidate.resumeUrl)) { %>
+                            <a href="<%= app.candidate.resume || app.candidate.resumeUrl %>" target="_blank"
+                                class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1">
+                                <i class="ph-bold ph-file-pdf"></i> Resume
+                            </a>
+                        <% } %>
+
+                        <% if (isWithdrawn) { %>
+                            <!-- Disabled control for withdrawn application -->
+                            <div class="px-3 py-1.5 bg-slate-100 text-slate-400 border border-slate-200 rounded-lg text-xs font-medium cursor-not-allowed"
+                                title="This candidate has withdrawn their application.">
+                                Inactive (Withdrawn)
+                            </div>
+                        <% } else { %>
+                            <!-- Status update form for active applications -->
+                            <form action="/company/applications/<%= app._id %>/status" method="POST" class="inline">
+                                <select name="status" onchange="this.form.submit()"
+                                    class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 shadow-2xs focus:ring-2 focus:ring-indigo-500 cursor-pointer bg-white text-slate-700">
+                                    <option value="Submitted" <%= app.status === 'Submitted' ? 'selected' : '' %>>Submitted</option>
+                                    <option value="Under Review" <%= app.status === 'Under Review' ? 'selected' : '' %>>Under Review</option>
+                                    <option value="Shortlisted" <%= app.status === 'Shortlisted' ? 'selected' : '' %>>Shortlisted</option>
+                                    <option value="Rejected" <%= app.status === 'Rejected' ? 'selected' : '' %>>Rejected</option>
+                                </select>
+                            </form>
+                        <% } %>
+                    </div>
+
+                </div>
+            <% }) %>
+        </div>
+    <% } %>
+
+</div>
+
+<script>
+    function filterApplicants(type) {
+        document.querySelectorAll('.filter-tab').forEach(tab => {
+            tab.classList.remove('bg-white', 'text-slate-900', 'shadow-2xs');
+            tab.classList.add('text-slate-600');
+        });
+        const activeTab = document.getElementById(`filter-tab-${type}`);
+        if (activeTab) {
+            activeTab.classList.add('bg-white', 'text-slate-900', 'shadow-2xs');
+            activeTab.classList.remove('text-slate-600');
+        }
+
+        const rows = document.querySelectorAll('.applicant-row');
+        rows.forEach(row => {
+            const status = row.getAttribute('data-status');
+            if (type === 'all' || status === type) {
+                row.classList.remove('hidden');
+            } else {
+                row.classList.add('hidden');
+            }
+        });
+    }
+
+    function searchCandidates() {
+        const query = document.getElementById('recruiterSearchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('.applicant-row');
+        rows.forEach(row => {
+            const name = row.getAttribute('data-name') || '';
+            const skills = row.getAttribute('data-skills') || '';
+            if (name.includes(query) || skills.includes(query)) {
+                row.classList.remove('hidden');
+            } else {
+                row.classList.add('hidden');
+            }
+        });
+    }
+</script>

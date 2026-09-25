@@ -4,24 +4,31 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
+const Recommendation = require('../models/Recommendation');
 const { isAuthenticated, authorize, requireCompanyRole } = require('../middleware/auth');
 const { parseISTEndOfDay } = require('../utils/dateUtils');
 const { calculateSkillScore, analyzeSkillGap } = require('../utils/skillMatch');
+const { notifyRelevantCandidates } = require('../utils/notifications');
 const chatRouter = require('./chat');
+const { parseInternshipQuery, buildPaginationData, buildQueryString } = require('../utils/queryHelper');
 
 router.get('/', async (req, res) => {
     try {
-        const filter = req.query.status || req.query.filter || 'all'; // 'all', 'active', 'paused'
-        let query = { status: { $ne: 'draft' } };
+        const { filterObj, sortObj, state, page, limit } = parseInternshipQuery(req.query);
 
-        if (filter === 'active') {
-            query = { status: { $nin: ['draft', 'paused'] }, isPaused: { $ne: true } };
-        } else if (filter === 'paused') {
-            query = { $or: [{ status: 'paused' }, { isPaused: true }] };
-        }
+        const totalItems = await Internship.countDocuments(filterObj);
+        const pagination = buildPaginationData(totalItems, page, limit);
 
-        const internships = await Internship.find(query).sort({ _id: -1 });
+        const internships = await Internship.find(filterObj)
+            .sort(sortObj)
+            .skip(pagination.skip)
+            .limit(pagination.limit);
+
+        const availableSectors = await Internship.distinct('sector');
+        const sectors = availableSectors.filter(Boolean).sort();
+
         const candidate = req.user;
+        const currentUser = req.user;
 
         let appliedIds = [];
         if (candidate) {
@@ -29,7 +36,17 @@ router.get('/', async (req, res) => {
             appliedIds = apps.map(appDoc => appDoc.internship ? appDoc.internship.toString() : null).filter(Boolean);
         }
 
-        res.render('extras/internships', { internships, candidate, appliedIds, currentFilter: filter });
+        res.render('extras/internships', {
+            internships,
+            candidate,
+            currentUser,
+            appliedIds,
+            queryState: state,
+            currentFilter: state.status,
+            pagination,
+            sectors,
+            buildQueryString
+        });
     } catch (error) {
         console.error('Error fetching internships:', error);
         res.status(500).send('Database Error');
@@ -76,6 +93,7 @@ router.get('/:id', async (req, res) => {
         res.render('extras/internship-detail', {
             internship,
             candidate,
+            currentUser: req.user,
             hasApplied,
             isPaused
         });
@@ -85,9 +103,18 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-router.post('/new', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
+router.post('/new', isAuthenticated, async (req, res) => {
     try {
-        const { title, company: companyName, location, sector, stipend, monthlyStipend, vacancies, duration, requiredSkills, minQualifications, deadline, action } = req.body;
+        const { title, company: companyName, location, sector, stipend, duration, vacancies, requiredSkills } = req.body;
+        const isAdmin = req.user.role === 'admin';
+        const isCompanyUser = ['company', 'recruiter'].includes(req.user.role);
+
+        if (!isAdmin && !isCompanyUser) {
+            if (req.flash) req.flash('error_msg', 'Unauthorized to post internships.');
+            return res.redirect('/internships');
+        }
+
+        const { title, company: companyName, location, sector, stipend, monthlyStipend, vacancies, duration, requiredSkills, minQualifications, deadline, action, description } = req.body;
 
         const isDraft = action === 'draft';
         const status = isDraft ? 'draft' : 'published';
@@ -101,11 +128,13 @@ router.post('/new', isAuthenticated, requireCompanyRole(['company', 'recruiter']
         const resolvedTitle = trimmedTitle || (isDraft ? 'Untitled Draft' : 'Internship Opportunity');
 
         let applicationDeadline;
-        try {
-            applicationDeadline = parseISTEndOfDay(deadline);
-        } catch (err) {
-            if (req.flash) req.flash('error_msg', err.message || 'Invalid deadline date provided.');
-            return res.redirect('/internships');
+        if (deadline) {
+            try {
+                applicationDeadline = typeof parseISTEndOfDay === 'function' ? parseISTEndOfDay(deadline) : new Date(deadline);
+            } catch (err) {
+                if (req.flash) req.flash('error_msg', err.message || 'Invalid deadline date provided.');
+                return res.redirect('/internships');
+            }
         }
 
         const locationParts = location ? location.split(',') : [];
@@ -125,12 +154,14 @@ router.post('/new', isAuthenticated, requireCompanyRole(['company', 'recruiter']
             title: resolvedTitle,
             status,
             companyName: resolvedCompanyName,
-            companyId: req.user.companyId,
+            companyId: req.user.companyId || req.user._id,
             sector: sector || (isDraft ? 'Uncategorized' : 'General'),
             minQualifications: minQualifications || (isDraft ? '' : 'Any'),
             duration: duration || (isDraft ? '' : '12 Months'),
+            description: description || '',
             location: { district, state },
             monthlyStipend: stipendNumber,
+            duration: duration || '12 Months',
             vacancies: vacancies ? parseInt(vacancies) : 1,
             requiredSkills: requiredSkills ? requiredSkills.split(',').map(s => s.trim()).filter(Boolean) : [],
             postedBy: req.user._id,
@@ -138,9 +169,10 @@ router.post('/new', isAuthenticated, requireCompanyRole(['company', 'recruiter']
         });
 
         await newInternship.save();
-        if (status === 'published') {
-            notifyRelevantCandidates(newInternship).catch(notificationError => {
-                console.error('Failed to create internship match notifications:', notificationError);
+
+        if (status === 'published' && typeof notifyRelevantCandidates === 'function') {
+            notifyRelevantCandidates(newInternship).catch(err => {
+                console.error('Failed to create internship match notifications:', err);
             });
         }
 
@@ -169,47 +201,59 @@ router.post('/:id/edit', isAuthenticated, async (req, res) => {
             return res.redirect('/internships');
         }
 
-        const query = { _id: req.params.id };
+        const internship = await Internship.findById(req.params.id);
+        if (!internship) return res.status(404).send('Internship not found');
+
         if (!isAdmin) {
-            if (!req.user.companyId) {
-                if (req.flash) req.flash('error_msg', 'You do not belong to a valid company account.');
-                return res.redirect('/internships');
-            }
-            query.companyId = req.user.companyId;
-        }
-
-        const internship = await Internship.findOne(query);
-        if (!internship) {
-            if (req.flash) req.flash('error_msg', 'Unauthorized action or internship not found.');
-            return res.redirect('/internships');
-        }
-
-        const { title, company: companyName, location, sector, stipend, duration, vacancies, requiredSkills, minQualifications, deadline } = req.body;
-
-        if (deadline !== undefined) {
-            try {
-                internship.applicationDeadline = parseISTEndOfDay(deadline);
-            } catch (err) {
-                if (req.flash) req.flash('error_msg', err.message || 'Invalid deadline date provided.');
+            const isOwner = (internship.companyId && req.user.companyId && internship.companyId.toString() === req.user.companyId.toString()) ||
+                            (internship.postedBy && internship.postedBy.toString() === req.user._id.toString());
+            if (!isOwner) {
+                if (req.flash) req.flash('error_msg', 'Unauthorized action.');
                 return res.redirect('/internships');
             }
         }
+
+        const { title, company: companyName, location, sector, stipend, monthlyStipend, duration, vacancies, requiredSkills, minQualifications, deadline, description } = req.body;
 
         const locationParts = location ? location.split(',') : [];
         const district = locationParts[0] ? locationParts[0].trim() : '';
         const state = locationParts[1] ? locationParts[1].trim() : '';
-        const stipendNumber = stipend ? parseInt(stipend.toString().replace(/[^0-9]/g, '')) : 5000;
+        const rawStipend = stipend !== undefined ? stipend : monthlyStipend;
+        const stipendNumber = rawStipend ? parseInt(rawStipend.toString().replace(/[^0-9]/g, '')) : internship.monthlyStipend;
+
+        let applicationDeadline = internship.applicationDeadline;
+        if (deadline !== undefined) {
+            if (deadline) {
+                try {
+                    applicationDeadline = typeof parseISTEndOfDay === 'function' ? parseISTEndOfDay(deadline) : new Date(deadline);
+                } catch (err) {
+                    if (req.flash) req.flash('error_msg', err.message || 'Invalid deadline date provided.');
+                    return res.redirect('/internships');
+                }
+            } else {
+                applicationDeadline = null;
+            }
+        }
 
         internship.title = title || internship.title;
         if (companyName) internship.companyName = companyName;
-        internship.sector = sector || internship.sector;
+        if (sector) internship.sector = sector;
         internship.location = { district, state };
         internship.monthlyStipend = stipendNumber;
-        internship.duration = duration || internship.duration || '12 Months';
-        internship.vacancies = parseInt(vacancies) || internship.vacancies || 1;
-        if (minQualifications) internship.minQualifications = minQualifications;
-        if (requiredSkills) internship.requiredSkills = requiredSkills.split(',').map(s => s.trim()).filter(Boolean);
+        if (duration) internship.duration = duration;
+        if (vacancies) internship.vacancies = parseInt(vacancies) || 1;
+        if (minQualifications !== undefined) internship.minQualifications = minQualifications;
+        if (description !== undefined) internship.description = description;
+        if (requiredSkills !== undefined) {
+            internship.requiredSkills = Array.isArray(requiredSkills) ? requiredSkills : requiredSkills.split(',').map(s => s.trim()).filter(Boolean);
+        }
+        internship.applicationDeadline = applicationDeadline;
+
         await internship.save();
+
+        if (typeof chatRouter !== 'undefined' && typeof chatRouter.invalidateChatCache === 'function') {
+            chatRouter.invalidateChatCache();
+        }
 
         if (req.flash) req.flash('success_msg', 'Internship updated successfully.');
         res.redirect('/internships');
@@ -225,29 +269,27 @@ router.post('/:id/delete', isAuthenticated, async (req, res) => {
         const isCompanyUser = ['company', 'recruiter'].includes(req.user.role);
 
         if (!isAdmin && !isCompanyUser) {
-            if (req.flash) req.flash('error_msg', 'Unauthorized to delete internships.');
+            if (req.flash) req.flash('error_msg', 'Unauthorized action.');
             return res.redirect('/internships');
         }
 
-        const query = { _id: req.params.id };
+        const internship = await Internship.findById(req.params.id);
+        if (!internship) return res.status(404).send('Internship not found');
+
         if (!isAdmin) {
-            if (!req.user.companyId) {
-                if (req.flash) req.flash('error_msg', 'You do not belong to a valid company account.');
+            const isOwner = (internship.companyId && req.user.companyId && internship.companyId.toString() === req.user.companyId.toString()) ||
+                            (internship.postedBy && internship.postedBy.toString() === req.user._id.toString());
+            if (!isOwner) {
+                if (req.flash) req.flash('error_msg', 'Unauthorized action.');
                 return res.redirect('/internships');
             }
-            query.companyId = req.user.companyId;
         }
 
-        const internship = await Internship.findOneAndDelete(query);
-        if (!internship) {
-            if (req.flash) req.flash('error_msg', 'Unauthorized action or internship not found.');
-            return res.redirect('/internships');
+        await Internship.findByIdAndDelete(req.params.id);
+        if (typeof chatRouter !== 'undefined' && typeof chatRouter.invalidateChatCache === 'function') {
+            chatRouter.invalidateChatCache();
         }
-
-        // Clean up orphaned applications for this deleted internship
-        await Application.deleteMany({ internship: req.params.id });
-
-        if (req.flash) req.flash('success_msg', 'Internship removed successfully.');
+        if (req.flash) req.flash('success_msg', 'Internship removed.');
         res.redirect('/internships');
     } catch (error) {
         console.error('Error deleting internship:', error);
@@ -278,12 +320,9 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
             return res.redirect(referrer || `/internships/${internship._id}`);
         }
 
-        if (internship.applicationDeadline && new Date() > internship.applicationDeadline) {
-            if (req.xhr || req.headers.accept?.includes('application/json')) {
-                return res.status(400).json({ error: 'The application deadline for this internship has passed.' });
-            }
-            if (req.flash) req.flash('error_msg', 'The application deadline for this internship has passed.');
-            return res.redirect('/internships');
+        if (internship.applicationDeadline && new Date() > new Date(internship.applicationDeadline)) {
+            if (req.flash) req.flash('error_msg', 'The deadline to apply for this internship has passed.');
+            return res.redirect(`/internships/${internship._id}`);
         }
 
         const existingApp = await Application.findOne({
@@ -302,6 +341,12 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
             internship: internship._id,
             candidate: candidate._id,
             matchScore: score
+        });
+
+        // Delete from recommendations cache if it exists
+        await Recommendation.findOneAndDelete({
+            internship: internship._id,
+            candidate: candidate._id
         });
 
         if (req.flash) req.flash('success_msg', 'Application submitted successfully!');
@@ -365,7 +410,7 @@ router.post('/:id/pause', isAuthenticated, async (req, res) => {
         internship.isPaused = true;
         await internship.save();
 
-        if (typeof chatRouter.invalidateChatCache === 'function') {
+        if (typeof chatRouter !== 'undefined' && typeof chatRouter.invalidateChatCache === 'function') {
             chatRouter.invalidateChatCache();
         }
 
@@ -397,7 +442,7 @@ router.post('/:id/resume', isAuthenticated, async (req, res) => {
         internship.isPaused = false;
         await internship.save();
 
-        if (typeof chatRouter.invalidateChatCache === 'function') {
+        if (typeof chatRouter !== 'undefined' && typeof chatRouter.invalidateChatCache === 'function') {
             chatRouter.invalidateChatCache();
         }
 
@@ -444,7 +489,7 @@ router.post('/:id/toggle-pause', isAuthenticated, async (req, res) => {
         }
         await internship.save();
 
-        if (typeof chatRouter.invalidateChatCache === 'function') {
+        if (typeof chatRouter !== 'undefined' && typeof chatRouter.invalidateChatCache === 'function') {
             chatRouter.invalidateChatCache();
         }
 
@@ -466,9 +511,23 @@ router.post('/:id/toggle-pause', isAuthenticated, async (req, res) => {
 
 router.get('/:id/applicants', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
-        const internship = await Internship.findOne({ _id: req.params.id, companyId: req.user.companyId });
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            if (req.flash) req.flash('error_msg', 'Invalid internship ID.');
+            return res.redirect('/internships');
+        }
+
+        const internship = await Internship.findById(req.params.id);
         if (!internship) {
             if (req.flash) req.flash('error_msg', 'Unauthorized action or internship not found.');
+            return res.redirect('/internships');
+        }
+
+        const isAuthorized = req.user.role === 'admin' ||
+            (internship.companyId && req.user.companyId && internship.companyId.toString() === req.user.companyId.toString()) ||
+            (internship.postedBy && internship.postedBy.toString() === req.user._id.toString());
+
+        if (!isAuthorized) {
+            if (req.flash) req.flash('error_msg', 'Unauthorized to view applicants for this listing.');
             return res.redirect('/internships');
         }
 

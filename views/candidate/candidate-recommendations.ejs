@@ -160,6 +160,25 @@
                             </div>
                         </div>
 
+                        <% if (!rec.isFallback) { %>
+                            <div class="mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
+                                <h4 class="text-xs font-bold text-indigo-900 mb-1 flex items-center gap-1.5">
+                                    <i class="ph-bold ph-sparkle text-indigo-600"></i> AI Match Analysis
+                                </h4>
+                                <p class="text-xs text-indigo-800 leading-snug"><%= rec.matchReasoning %></p>
+                                
+                                <h4 class="text-xs font-bold text-rose-900 mt-2.5 mb-1 flex items-center gap-1.5">
+                                    <i class="ph-bold ph-warning-circle text-rose-600"></i> Skill Gap
+                                </h4>
+                                <p class="text-xs text-rose-800 leading-snug"><%= rec.skillGapAnalysis %></p>
+                            </div>
+                        <% } else { %>
+                            <div class="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500">
+                                <i class="ph-bold ph-info text-slate-400 mr-1"></i>
+                                <%= rec.matchReasoning %>
+                            </div>
+                        <% } %>
+
                         <div class="pt-5 mt-auto">
                             <% const isApplied = typeof appliedIds !== 'undefined' && appliedIds.includes(rec.role._id.toString()); %>
                             <% const isExpired = rec.role.applicationDeadline && new Date() > new Date(rec.role.applicationDeadline); %>
