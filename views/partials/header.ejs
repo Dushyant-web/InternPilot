@@ -85,7 +85,7 @@
                             <a href="/candidate/profile" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('candidateProfile') %>" class="<%= desktopLinkClass(isActive('candidateProfile')) %>" <%- ariaCurrent(isActive('candidateProfile')) %>>Candidate Profile</a>
                             <a href="/candidate/applications" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('applications') %>" class="<%= desktopLinkClass(isActive('applications')) %>" <%- ariaCurrent(isActive('applications')) %>>My Applications</a>
                             <a href="/candidate/saved-internships" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('savedInternships') %>" class="<%= desktopLinkClass(isActive('savedInternships')) %> flex items-center gap-1.5" <%- ariaCurrent(isActive('savedInternships')) %>>
-                                <i class="ph-bold ph-heart text-indigo-500"></i> Saved
+                                <i class="ph-bold ph-bookmark-simple text-indigo-500"></i> Saved
                             </a>
                             <a href="/recommendations/<%= currentUser._id %>" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('recommendations') %>" class="<%= desktopLinkClass(isActive('recommendations')) %>" <%- ariaCurrent(isActive('recommendations')) %>>Recommendations</a>
                         <% } else if (['company', 'recruiter'].includes(currentUser.role)) { %>
@@ -152,7 +152,7 @@
                         <a href="/candidate/profile" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('candidateProfile') %>" class="<%= mobileLinkClass(isActive('candidateProfile')) %>" <%- ariaCurrent(isActive('candidateProfile')) %>>Candidate Profile</a>
                         <a href="/candidate/applications" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('applications') %>" class="<%= mobileLinkClass(isActive('applications')) %>" <%- ariaCurrent(isActive('applications')) %>>My Applications</a>
                         <a href="/candidate/saved-internships" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('savedInternships') %>" class="<%= mobileLinkClass(isActive('savedInternships')) %> flex items-center gap-1.5" <%- ariaCurrent(isActive('savedInternships')) %>>
-                            <i class="ph-bold ph-heart text-indigo-500"></i> Saved Internships
+                            <i class="ph-bold ph-bookmark-simple text-indigo-500"></i> Saved Internships
                         </a>
                         <a href="/recommendations/<%= currentUser._id %>" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('recommendations') %>" class="<%= mobileLinkClass(isActive('recommendations')) %>" <%- ariaCurrent(isActive('recommendations')) %>>Recommendations</a>
                         <a href="/notifications" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('notifications') %>" class="<%= mobileLinkClass(isActive('notifications')) %>" <%- ariaCurrent(isActive('notifications')) %>>Notifications<% if (notificationUnreadCount > 0) { %> (<%= notificationUnreadCount > 99 ? '99+' : notificationUnreadCount %>)<% } %></a>

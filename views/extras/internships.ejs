@@ -135,13 +135,6 @@
                 data-duration="<%= parseInt(item.duration) || 12 %>"
                 data-posted="<%= item._id.getTimestamp ? item._id.getTimestamp().getTime() : Date.now() %>">
 
-                <% if (typeof currentUser !== 'undefined' && currentUser && currentUser.role === 'candidate') { %>
-                    <% const isSaved = currentUser.savedInternships && currentUser.savedInternships.includes(item._id.toString()); %>
-                    <button class="bookmark-btn absolute top-5 right-5 text-slate-300 hover:text-indigo-600 transition-all z-10 active:scale-90" data-id="<%= item._id %>" title="Save Internship">
-                        <i class="<%= isSaved ? 'ph-fill text-indigo-600' : 'ph-bold' %> ph-heart text-xl"></i>
-                    </button>
-                <% } %>
-
                 <div>
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-1.5 flex-wrap">
@@ -296,11 +289,17 @@
                         <% } %>
 
                         <% if (currentUser && currentUser.role === 'candidate') { %>
-                            <a href="/internships/<%= item._id %>/skill-gap"
-                                class="mt-2 w-full text-center py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5">
-                                <i class="ph-bold ph-chart-donut text-base text-indigo-600"></i>
-                                Skill Gap Analysis
-                            </a>
+                            <div class="flex items-center gap-2 mt-2 w-full">
+                                <a href="/internships/<%= item._id %>/skill-gap"
+                                    class="flex-1 text-center py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+                                    <i class="ph-bold ph-chart-donut text-base text-indigo-600"></i>
+                                    Skill Gap Analysis
+                                </a>
+                                <% const isSaved = currentUser.savedInternships && currentUser.savedInternships.includes(item._id.toString()); %>
+                                <button class="bookmark-btn flex-shrink-0 w-[34px] h-[34px] flex items-center justify-center bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-slate-400 hover:text-indigo-600 transition-all active:scale-95 shadow-sm" data-id="<%= item._id %>" title="Save Internship">
+                                    <i class="<%= isSaved ? 'ph-fill text-indigo-600' : 'ph-bold' %> ph-bookmark-simple text-base"></i>
+                                </button>
+                            </div>
                         <% } %>
                     </div>
                 <% } %>

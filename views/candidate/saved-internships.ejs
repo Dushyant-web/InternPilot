@@ -4,7 +4,7 @@
     <!-- Header Section -->
     <div class="mb-8">
         <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-            <i class="ph-bold ph-heart text-rose-500"></i> Saved Internships
+            <i class="ph-bold ph-bookmark-simple text-rose-500"></i> Saved Internships
         </h1>
         <p class="text-slate-500 text-sm mt-1">Keep track of the opportunities you're interested in applying to later.</p>
     </div>
@@ -24,9 +24,7 @@
                 <% const isItemPaused = item.status === 'paused' || item.isPaused; %>
                 <div class="internship-card bg-white border <%= isItemPaused ? 'border-amber-300' : 'border-slate-200' %> rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between relative group" id="card-<%= item._id %>">
                     
-                    <button class="bookmark-btn absolute top-5 right-5 text-slate-300 hover:text-indigo-600 transition-all z-10 active:scale-90" data-id="<%= item._id %>" title="Remove Bookmark">
-                        <i class="ph-fill text-indigo-600 ph-heart text-xl"></i>
-                    </button>
+                    
 
                     <div>
                         <div class="flex items-center justify-between mb-3">
@@ -94,10 +92,15 @@
                             %>
                             Posted <%= timeAgo %>
                         </div>
-                        <a href="/internships/<%= item._id %>" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 group/btn transition-colors">
-                            View Details
-                            <i class="ph-bold ph-arrow-right group-hover/btn:translate-x-0.5 transition-transform"></i>
-                        </a>
+                        <div class="flex items-center gap-3">
+                            <a href="/internships/<%= item._id %>" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 group/btn transition-colors">
+                                View Details
+                                <i class="ph-bold ph-arrow-right group-hover/btn:translate-x-0.5 transition-transform"></i>
+                            </a>
+                            <button class="bookmark-btn flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-indigo-600 transition-all active:scale-95 shadow-sm" data-id="<%= item._id %>" title="Remove Bookmark">
+                                <i class="ph-fill ph-bookmark-simple text-base"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             <% }) %>
