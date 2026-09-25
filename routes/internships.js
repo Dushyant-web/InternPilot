@@ -116,7 +116,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/new', isAuthenticated, async (req, res) => {
     try {
-        const { title, company: companyName, location, sector, stipend, duration, vacancies, requiredSkills } = req.body;
+        const { title, company: companyName, location, sector, stipend, monthlyStipend, vacancies, duration, requiredSkills, minQualifications, deadline, action, description } = req.body;
         const isAdmin = req.user.role === 'admin';
         const isCompanyUser = ['company', 'recruiter'].includes(req.user.role);
 
@@ -124,9 +124,6 @@ router.post('/new', isAuthenticated, async (req, res) => {
             if (req.flash) req.flash('error_msg', 'Unauthorized to post internships.');
             return res.redirect('/internships');
         }
-
-        const { title, company: companyName, location, sector, stipend, monthlyStipend, vacancies, duration, requiredSkills, minQualifications, deadline, action, description } = req.body;
-
         const isDraft = action === 'draft';
         const status = isDraft ? 'draft' : 'published';
         const trimmedTitle = title && typeof title === 'string' ? title.trim() : '';
