@@ -6,6 +6,7 @@ const Internship = require('../models/Internship');
 const Application = require('../models/Application');
 const { isAuthenticated, authorize, requireCompanyRole } = require('../middleware/auth');
 const { parseISTEndOfDay } = require('../utils/dateUtils');
+const { notifyRelevantCandidates } = require('../utils/notifications');
 const chatRouter = require('./chat');
 
 function calculateSkillScore(userSkills = [], requiredSkills = []) {
@@ -420,6 +421,15 @@ router.post('/:id/resume', isAuthenticated, async (req, res) => {
             }
             if (req.flash) req.flash('error_msg', error);
             return res.redirect('/internships');
+        }
+
+        if (internship.status === 'draft') {
+            const msg = 'Draft listings cannot be resumed. Publish the listing first.';
+            if (req.xhr || req.headers.accept?.includes('application/json')) {
+                return res.status(400).json({ error: msg });
+            }
+            if (req.flash) req.flash('error_msg', msg);
+            return res.redirect('/company/dashboard');
         }
 
         internship.status = 'published';
