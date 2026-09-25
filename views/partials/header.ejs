@@ -47,6 +47,7 @@
                             <a href="/recommendations/<%= currentUser._id %>" class="hover:text-indigo-700 transition-colors">Recommendations</a>
                         <% } else if (currentUser.role === 'company' || currentUser.role === 'recruiter') { %>
                             <a href="/company/dashboard" class="hover:text-indigo-700 transition-colors">Company Dashboard</a>
+                            <a href="/company/profile" class="hover:text-indigo-700 transition-colors">Company Profile</a>
                             <% if (currentUser.role === 'company') { %>
                                 <a href="/company/team" class="hover:text-indigo-700 transition-colors">Manage Team</a>
                                 <a href="/company/activity" class="hover:text-indigo-700 transition-colors">Activity History</a>

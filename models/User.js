@@ -73,9 +73,17 @@ const userSchema = new mongoose.Schema({
     }],
 
     companyDetails: {
-        companyName: { type: String },
-        cin: { type: String },
-        industry: { type: String },
+        companyName: { type: String, trim: true },
+        cin: { type: String, trim: true },
+        industry: { type: String, trim: true },
+        logo: { type: String, default: '' },
+        description: { type: String, default: '', trim: true },
+        website: { type: String, default: '', trim: true },
+        location: { type: String, default: '', trim: true },
+        contactEmail: { type: String, default: '', trim: true },
+        contactPhone: { type: String, default: '', trim: true },
+        contactInformation: { type: String, default: '', trim: true },
+        companySize: { type: String, default: '', trim: true },
         isVerified: { type: Boolean, default: false }
     },
 
