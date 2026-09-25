@@ -14,6 +14,7 @@ const Recommendation = require('../models/Recommendation');
 const { generateRecommendationsForUser } = require('../utils/recommendationEngine');
 const { isAuthenticated, authorize } = require('../middleware/auth');
 const { documentUpload, uploadBufferToCloudinary } = require('../middleware/upload');
+const { calculateSkillScore } = require('../utils/skillMatch');
 const { detectProfileConflicts } = require('../utils/conflictDetector');
 const { formatRelativeTime, formatLocalizedDateTime } = require('../utils/dateFormat');
 
@@ -128,17 +129,6 @@ ${text}
             overallFeedback: 'Resume uploaded successfully, but AI quality feedback could not be generated.'
         };
     }
-}
-
-function calculateSkillScore(userSkills = [], requiredSkills = []) {
-    if (!requiredSkills || !requiredSkills.length) return 100;
-    if (!userSkills || !userSkills.length) return 0;
-    const userSkillsLower = userSkills.filter(Boolean).map(s => String(s).trim().toLowerCase());
-    let matchCount = 0;
-    requiredSkills.filter(Boolean).forEach(skill => {
-        if (userSkillsLower.includes(String(skill).trim().toLowerCase())) matchCount++;
-    });
-    return Math.round((matchCount / requiredSkills.length) * 100);
 }
 
 router.get('/candidate/profile', isAuthenticated, authorize('candidate'), async (req, res) => {
