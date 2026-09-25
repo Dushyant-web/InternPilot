@@ -46,6 +46,9 @@ const internshipSchema = new mongoose.Schema({
     duration: { type: String, default: "12 Months" },
     vacancies: { type: Number, default: 1 },
     description: { type: String, default: '' },
+    responsibilities: { type: [String], default: [] },
+    eligibilityCriteria: { type: [String], default: [] },
+
     embedding: [Number],
     postedBy: {
         type: mongoose.Schema.Types.ObjectId,
