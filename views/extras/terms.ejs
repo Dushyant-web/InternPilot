@@ -1,0 +1,101 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="max-w-5xl mx-auto px-4 py-8 space-y-8">
+
+    <!-- Top Breadcrumb -->
+    <nav class="flex items-center gap-2 text-xs text-slate-500">
+        <a href="/" class="hover:text-indigo-600 transition-colors">Home</a>
+        <i class="ph ph-caret-right text-[10px]"></i>
+        <span class="text-slate-800 font-semibold">Terms & Conditions</span>
+    </nav>
+
+    <!-- Header Section -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 shadow-sm relative overflow-hidden">
+        <div class="max-w-3xl space-y-3">
+            <div class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-full text-xs font-semibold">
+                <i class="ph-bold ph-scales text-indigo-600"></i>
+                <span>Platform Governance & Terms of Use</span>
+            </div>
+
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">
+                Terms and Conditions of Use
+            </h1>
+
+            <p class="text-sm text-slate-600 leading-relaxed">
+                These terms govern your access to and use of InternPilot, the digital recruitment and matching portal for the Prime Minister's Internship Scheme (PMIS). By registering or using this platform, you agree to comply with these terms.
+            </p>
+
+            <p class="text-[11px] text-slate-400 font-medium">
+                Effective Date: <%= new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) %>
+            </p>
+        </div>
+    </div>
+
+    <!-- Terms Content Cards -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-8 text-xs text-slate-600 leading-relaxed">
+
+        <!-- 1. General Acceptance -->
+        <section class="space-y-3">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs">1</span>
+                Acceptance of Platform Terms
+            </h2>
+            <p>
+                By creating an account, browsing listings, or publishing internship postings on InternPilot, both student candidates and partner corporate entities agree to be legally bound by these Terms and the operational directives issued by the Ministry of Corporate Affairs (MCA).
+            </p>
+        </section>
+
+        <!-- 2. Candidate Commitments -->
+        <section class="space-y-3">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs">2</span>
+                Candidate Terms & Integrity Rules
+            </h2>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li><strong class="text-slate-800">Authentic Credentials:</strong> Candidates represent that all educational records, age certifications, skill proficiencies, and uploaded documents are genuine and accurate.</li>
+                <li><strong class="text-slate-800">Single Registration:</strong> A candidate may maintain only one active portal profile. Creation of duplicate accounts using alternate credentials is strictly prohibited.</li>
+                <li><strong class="text-slate-800">Application Commitments:</strong> Submitting an application signifies genuine intent to undertake the 12-month on-site internship if selected. Candidates may withdraw unreviewed applications anytime without penalty.</li>
+            </ul>
+        </section>
+
+        <!-- 3. Employer Obligations -->
+        <section class="space-y-3">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs">3</span>
+                Employer & Recruiter Obligations
+            </h2>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li><strong class="text-slate-800">Absolute Zero-Fee Mandate:</strong> Host companies must NEVER solicit, charge, or accept any fee, registration charge, test fee, or security deposit from candidates at any stage. Violation results in immediate blacklisting and statutory referral.</li>
+                <li><strong class="text-slate-800">Genuine Opportunities:</strong> All posted vacancies must represent genuine PMIS accredited industrial internships with assigned mentorship and safe workplace standards.</li>
+                <li><strong class="text-slate-800">Timely Status Updates:</strong> Recruiters must update candidate application statuses (Under Review, Shortlisted, Selected, Rejected) promptly to ensure transparency for applicants.</li>
+            </ul>
+        </section>
+
+        <!-- 4. Security & Prohibited Activities -->
+        <section class="space-y-3">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs">4</span>
+                Prohibited System Activities
+            </h2>
+            <p>Users may not:</p>
+            <ul class="list-disc pl-5 space-y-1.5">
+                <li>Use automated scripts, bots, or scrapers to extract candidate resumes or vacancy listings.</li>
+                <li>Attempt to bypass portal authentication, rate limiters, or role-based security boundaries.</li>
+                <li>Post defamatory, obscene, misleading, or discriminatory content in job descriptions or applicant notes.</li>
+            </ul>
+        </section>
+
+        <!-- 5. Jurisdiction -->
+        <section class="space-y-3">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs">5</span>
+                Governing Law & Jurisdiction
+            </h2>
+            <p>
+                These terms shall be governed by and construed in accordance with the laws of India. Any legal dispute arising under or in connection with InternPilot shall be subject to the exclusive jurisdiction of the competent courts of New Delhi, India.
+            </p>
+        </section>
+
+    </div>
+
+</div>

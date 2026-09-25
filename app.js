@@ -32,6 +32,7 @@ const adminRoutes = require('./routes/admin');
 const chatRoutes = require('./routes/chat');
 const notificationRoutes = require('./routes/notifications');
 const activityRoutes = require('./routes/activity');
+const pagesRoutes = require('./routes/pages');
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -111,6 +112,7 @@ app.get('/', async (req, res) => {
 });
 
 // Application Routes
+app.use('/', pagesRoutes);
 app.use('/auth', authRoutes);
 app.use('/internships', internshipRoutes);
 app.use('/', userRoutes);
