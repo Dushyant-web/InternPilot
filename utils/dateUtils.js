@@ -21,4 +21,26 @@ function parseISTEndOfDay(dateString) {
     return d;
 }
 
-module.exports = { parseISTEndOfDay };
+function parseISTDatetime(datetimeString) {
+    if (!datetimeString || datetimeString.trim() === '') {
+        throw new Error('Interview date and time are required.');
+    }
+    // datetime-local sends "YYYY-MM-DDTHH:MM"
+    const regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+    if (!regex.test(datetimeString)) {
+        throw new Error('Invalid datetime format. Expected YYYY-MM-DDTHH:MM');
+    }
+    // Interpret as IST (UTC+5:30) by subtracting 5:30 from the input
+    const [datePart, timePart] = datetimeString.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hours, minutes] = timePart.split(':').map(Number);
+
+    // Create a Date in UTC that represents this IST time
+    const d = new Date(Date.UTC(year, month - 1, day, hours - 5, minutes - 30));
+    if (isNaN(d.getTime())) {
+        throw new Error('Invalid date/time value');
+    }
+    return d;
+}
+
+module.exports = { parseISTEndOfDay, parseISTDatetime };
