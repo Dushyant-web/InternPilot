@@ -171,7 +171,6 @@ router.post('/new', isAuthenticated, async (req, res) => {
             description: description || '',
             location: { district, state },
             monthlyStipend: stipendNumber,
-            duration: duration || '12 Months',
             vacancies: vacancies ? parseInt(vacancies) : 1,
             requiredSkills: requiredSkills ? requiredSkills.split(',').map(s => s.trim()).filter(Boolean) : [],
             postedBy: req.user._id,

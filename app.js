@@ -22,6 +22,7 @@ require("./config/passport");
 const User = require("./models/User");
 const Internship = require("./models/Internship");
 const Notification = require('./models/Notification');
+const { buildNavigationState } = require('./utils/navigation');
 
 const authRoutes = require("./routes/auth");
 const internshipRoutes = require("./routes/internships");
@@ -67,6 +68,8 @@ app.use(flash());
 // Local variables middleware
 app.use(async (req, res, next) => {
     res.locals.currentUser = req.user;
+    res.locals.currentPath = req.path;
+    res.locals.navigation = buildNavigationState(req.path);
     res.locals.success_msg = req.flash("success_msg");
     res.locals.error_msg = req.flash("error_msg");
     res.locals.error = req.flash("error");
