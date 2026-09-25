@@ -231,6 +231,7 @@
                         <% const appCount = (typeof appCountMap !== 'undefined' && appCountMap[internship._id.toString()]) ? appCountMap[internship._id.toString()] : 0; %>
                         <% const deadlineTs = internship.applicationDeadline ? new Date(internship.applicationDeadline).getTime() : ''; %>
                         <div class="internship-card bg-white border <%= internship.status === 'draft' ? 'border-amber-200 bg-amber-50/20' : (isInternshipPaused ? 'border-amber-300 bg-amber-50/15' : 'border-slate-200') %> rounded-xl p-5 shadow-sm space-y-3"
+                            data-id="<%= internship._id.toString() %>"
                             data-posted="<%= internship._id.getTimestamp().getTime() %>"
                             data-applications="<%= appCount %>"
                             data-deadline="<%= deadlineTs %>">
@@ -487,24 +488,32 @@
 
             cards.sort((a, b) => {
                 if (sort === 'oldest') {
-                    return Number(a.dataset.posted) - Number(b.dataset.posted);
+                    const timeDiff = Number(a.dataset.posted) - Number(b.dataset.posted);
+                    if (timeDiff !== 0) return timeDiff;
+                    return (a.dataset.id || '').localeCompare(b.dataset.id || '');
                 }
 
                 if (sort === 'most_applications' || sort === 'applications' || sort === 'applications_desc') {
                     const countDiff = Number(b.dataset.applications || 0) - Number(a.dataset.applications || 0);
                     if (countDiff !== 0) return countDiff;
-                    return Number(b.dataset.posted) - Number(a.dataset.posted);
+                    const timeDiff = Number(b.dataset.posted) - Number(a.dataset.posted);
+                    if (timeDiff !== 0) return timeDiff;
+                    return (b.dataset.id || '').localeCompare(a.dataset.id || '');
                 }
 
                 if (sort === 'deadline' || sort === 'deadline_soonest' || sort === 'deadline_asc') {
                     const deadlineA = a.dataset.deadline ? Number(a.dataset.deadline) : Infinity;
                     const deadlineB = b.dataset.deadline ? Number(b.dataset.deadline) : Infinity;
                     if (deadlineA !== deadlineB) return deadlineA - deadlineB;
-                    return Number(b.dataset.posted) - Number(a.dataset.posted);
+                    const timeDiff = Number(b.dataset.posted) - Number(a.dataset.posted);
+                    if (timeDiff !== 0) return timeDiff;
+                    return (b.dataset.id || '').localeCompare(a.dataset.id || '');
                 }
 
                 // Default: newest
-                return Number(b.dataset.posted) - Number(a.dataset.posted);
+                const timeDiff = Number(b.dataset.posted) - Number(a.dataset.posted);
+                if (timeDiff !== 0) return timeDiff;
+                return (b.dataset.id || '').localeCompare(a.dataset.id || '');
             });
 
             cards.forEach(card => container.appendChild(card));
@@ -527,6 +536,21 @@
                 document.querySelectorAll('.status-filter-tab').forEach(tab => {
                     const tabUrl = new URL(tab.href, window.location.origin);
                     tabUrl.searchParams.set('sort', sort);
+                    tab.href = tabUrl.pathname + tabUrl.search;
+                });
+            });
+
+            window.addEventListener('popstate', () => {
+                const urlSort = new URLSearchParams(window.location.search).get('sort') || 'newest';
+                if (sortInternships) {
+                    sortInternships.value = urlSort;
+                }
+                sortCards(urlSort);
+                updateCustomDropdownUI(urlSort);
+
+                document.querySelectorAll('.status-filter-tab').forEach(tab => {
+                    const tabUrl = new URL(tab.href, window.location.origin);
+                    tabUrl.searchParams.set('sort', urlSort);
                     tab.href = tabUrl.pathname + tabUrl.search;
                 });
             });

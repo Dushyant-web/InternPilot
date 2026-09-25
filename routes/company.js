@@ -44,24 +44,36 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
         });
 
         if (currentSort === 'oldest') {
-            filteredInternships.sort((a, b) => a._id.getTimestamp() - b._id.getTimestamp());
+            filteredInternships.sort((a, b) => {
+                const timeDiff = a._id.getTimestamp() - b._id.getTimestamp();
+                if (timeDiff !== 0) return timeDiff;
+                return a._id.toString().localeCompare(b._id.toString());
+            });
         } else if (currentSort === 'most_applications' || currentSort === 'applications' || currentSort === 'applications_desc') {
             filteredInternships.sort((a, b) => {
                 const countA = appCountMap[a._id.toString()] || 0;
                 const countB = appCountMap[b._id.toString()] || 0;
                 if (countB !== countA) return countB - countA;
-                return b._id.getTimestamp() - a._id.getTimestamp();
+                const timeDiff = b._id.getTimestamp() - a._id.getTimestamp();
+                if (timeDiff !== 0) return timeDiff;
+                return b._id.toString().localeCompare(a._id.toString());
             });
         } else if (currentSort === 'deadline' || currentSort === 'deadline_soonest' || currentSort === 'deadline_asc') {
             filteredInternships.sort((a, b) => {
                 const deadlineA = a.applicationDeadline ? new Date(a.applicationDeadline).getTime() : Infinity;
                 const deadlineB = b.applicationDeadline ? new Date(b.applicationDeadline).getTime() : Infinity;
                 if (deadlineA !== deadlineB) return deadlineA - deadlineB;
-                return b._id.getTimestamp() - a._id.getTimestamp();
+                const timeDiff = b._id.getTimestamp() - a._id.getTimestamp();
+                if (timeDiff !== 0) return timeDiff;
+                return b._id.toString().localeCompare(a._id.toString());
             });
         } else {
             // Default: newest
-            filteredInternships.sort((a, b) => b._id.getTimestamp() - a._id.getTimestamp());
+            filteredInternships.sort((a, b) => {
+                const timeDiff = b._id.getTimestamp() - a._id.getTimestamp();
+                if (timeDiff !== 0) return timeDiff;
+                return b._id.toString().localeCompare(a._id.toString());
+            });
         }
 
         res.render('company/company-dashboard', {
