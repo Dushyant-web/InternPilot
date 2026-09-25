@@ -1,25 +1,90 @@
 <% layout('layouts/boilerplate') %>
 
-    <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <h2 class="text-2xl font-bold text-slate-900 tracking-tight">PMIS Internship Listings</h2>
             <p class="text-xs text-slate-500 mt-1">
                 Official opportunities posted by top partner organizations under the Prime Minister's Internship Scheme.
             </p>
         </div>
+
+        <% if (currentUser && (currentUser.role === 'company' || currentUser.role === 'admin')) { %>
+            <button onclick="openModal()" class="px-4 py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors flex items-center gap-1.5 self-start md:self-auto">
+                <i class="ph-bold ph-plus text-sm"></i> Post New Listing
+            </button>
+        <% } %>
     </div>
 
-    <div class="mb-5 flex justify-end">
-        <select id="sortInternships"
-            class="text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700">
-            <option value="newest">Posting Date — Newest First</option>
-            <option value="stipend_desc">Stipend — High to Low</option>
-            <option value="stipend_asc">Stipend — Low to High</option>
-            <option value="duration_desc">Duration — High to Low</option>
-            <option value="duration_asc">Duration — Low to High</option>
-        </select>
+    <!-- Search, Filter & Sort Bar -->
+    <div class="bg-white border border-slate-200 rounded-xl p-4 mb-6 shadow-sm">
+        <form action="/internships" method="GET" class="space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+                <!-- Search Input -->
+                <div class="lg:col-span-4 relative">
+                    <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"></i>
+                    <input type="text" name="search" value="<%= queryState ? (queryState.search || '') : '' %>" placeholder="Search title, company, skills..."
+                        class="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-slate-50 focus:bg-white transition-colors" />
+                </div>
+
+                <!-- Sector Filter -->
+                <div class="lg:col-span-3">
+                    <select name="sector" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-slate-50 focus:bg-white transition-colors cursor-pointer">
+                        <option value="">All Sectors</option>
+                        <% if (typeof sectors !== 'undefined' && Array.isArray(sectors)) { %>
+                            <% sectors.forEach(sec => { %>
+                                <option value="<%= sec %>" <%= (queryState && queryState.sector && queryState.sector.toLowerCase() === sec.toLowerCase()) ? 'selected' : '' %>><%= sec %></option>
+                            <% }) %>
+                        <% } %>
+                    </select>
+                </div>
+
+                <!-- Location Filter -->
+                <div class="lg:col-span-3 relative">
+                    <i class="ph-bold ph-map-pin absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"></i>
+                    <input type="text" name="location" value="<%= queryState ? (queryState.location || '') : '' %>" placeholder="District or State..."
+                        class="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-slate-50 focus:bg-white transition-colors" />
+                </div>
+
+                <!-- Sort Selection -->
+                <div class="lg:col-span-2">
+                    <select name="sort" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-slate-50 focus:bg-white transition-colors cursor-pointer">
+                        <option value="latest" <%= (queryState && queryState.sort === 'latest') ? 'selected' : '' %>>Sort: Latest</option>
+                        <option value="stipend_high" <%= (queryState && queryState.sort === 'stipend_high') ? 'selected' : '' %>>Stipend: High to Low</option>
+                        <option value="stipend_low" <%= (queryState && queryState.sort === 'stipend_low') ? 'selected' : '' %>>Stipend: Low to High</option>
+                        <option value="vacancies" <%= (queryState && queryState.sort === 'vacancies') ? 'selected' : '' %>>Most Vacancies</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer">
+                        <i class="ph-bold ph-funnel"></i> Apply Filters
+                    </button>
+                    <% if (queryState && (queryState.search || queryState.sector || queryState.location || (queryState.sort && queryState.sort !== 'latest') || (queryState.page && queryState.page > 1))) { %>
+                        <a href="/internships" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-lg transition-colors flex items-center gap-1">
+                            <i class="ph-bold ph-x text-xs"></i> Reset Filters
+                        </a>
+                    <% } %>
+                </div>
+                <span class="text-slate-500 font-medium">
+                    Showing <%= pagination ? pagination.totalItems : (internships ? internships.length : 0) %> <%= (pagination && pagination.totalItems === 1) ? 'Opportunity' : 'Opportunities' %>
+                </span>
+            </div>
+        </form>
     </div>
 
+    <% if (!internships || internships.length === 0) { %>
+        <div class="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-sm my-6">
+            <i class="ph-bold ph-magnifying-glass text-4xl text-slate-300 mb-2"></i>
+            <h3 class="text-base font-bold text-slate-800">No matching internships found</h3>
+            <p class="text-xs text-slate-500 mt-1 mb-4">Try relaxing your search terms or clearing filters.</p>
+            <a href="/internships" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors">
+                Reset All Filters
+            </a>
+        </div>
+    <% } else { %>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <% internships.forEach(item=> { %>
             <div
@@ -143,6 +208,44 @@
             </div>
             <% }) %>
     </div>
+
+    <!-- Pagination Controls Bar -->
+    <% if (pagination && pagination.totalPages > 1) { %>
+        <div class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-200 pt-4 text-xs">
+            <div class="text-slate-500 font-medium">
+                Showing Page <strong class="text-slate-800"><%= pagination.currentPage %></strong> of <strong class="text-slate-800"><%= pagination.totalPages %></strong>
+            </div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <% if (pagination.hasPrevPage) { %>
+                    <a href="<%= buildQueryString(queryState, { page: pagination.prevPage }) %>" class="px-3 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors flex items-center gap-1">
+                        &larr; Previous
+                    </a>
+                <% } else { %>
+                    <span class="px-3 py-1.5 border border-slate-100 rounded-lg text-slate-300 font-semibold cursor-not-allowed">&larr; Previous</span>
+                <% } %>
+
+                <% for (let p = 1; p <= pagination.totalPages; p++) { %>
+                    <% if (p === pagination.currentPage) { %>
+                        <span class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-bold"><%= p %></span>
+                    <% } else if (p === 1 || p === pagination.totalPages || Math.abs(p - pagination.currentPage) <= 1) { %>
+                        <a href="<%= buildQueryString(queryState, { page: p }) %>" class="px-3 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors"><%= p %></a>
+                    <% } else if (p === 2 || p === pagination.totalPages - 1) { %>
+                        <span class="px-1 text-slate-400">...</span>
+                    <% } %>
+                <% } %>
+
+                <% if (pagination.hasNextPage) { %>
+                    <a href="<%= buildQueryString(queryState, { page: pagination.nextPage }) %>" class="px-3 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors flex items-center gap-1">
+                        Next &rarr;
+                    </a>
+                <% } else { %>
+                    <span class="px-3 py-1.5 border border-slate-100 rounded-lg text-slate-300 font-semibold cursor-not-allowed">Next &rarr;</span>
+                <% } %>
+            </div>
+        </div>
+    <% } %>
+
+    <% } %>
 
     <!-- POST NEW MODAL -->
     <div id="postingModal"
@@ -330,41 +433,4 @@
         function closeEditModal() {
             document.getElementById('editModal').classList.add('hidden');
         }
-
-        const sortInternships = document.getElementById('sortInternships');
-
-        const currentSort = new URLSearchParams(window.location.search).get('sort') || 'newest';
-        sortInternships.value = currentSort;
-
-        sortInternships.addEventListener('change', () => {
-            const cards = Array.from(document.querySelectorAll('.internship-card'));
-            const sort = sortInternships.value;
-
-            cards.sort((a, b) => {
-                if (sort === 'stipend_desc') {
-                    return Number(b.dataset.stipend) - Number(a.dataset.stipend);
-                }
-
-                if (sort === 'stipend_asc') {
-                    return Number(a.dataset.stipend) - Number(b.dataset.stipend);
-                }
-
-                if (sort === 'duration_desc') {
-                    return Number(b.dataset.duration) - Number(a.dataset.duration);
-                }
-
-                if (sort === 'duration_asc') {
-                    return Number(a.dataset.duration) - Number(b.dataset.duration);
-                }
-
-                return Number(b.dataset.posted) - Number(a.dataset.posted);
-            });
-
-            const grid = document.querySelector('.grid.grid-cols-1');
-            cards.forEach(card => grid.appendChild(card));
-
-            const url = new URL(window.location.href);
-            url.searchParams.set('sort', sort);
-            window.history.pushState({}, '', url);
-        });
     </script>

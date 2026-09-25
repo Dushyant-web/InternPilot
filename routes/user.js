@@ -10,6 +10,8 @@ const mammoth = require('mammoth');
 const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
+const Recommendation = require('../models/Recommendation');
+const { generateRecommendationsForUser } = require('../utils/recommendationEngine');
 const { isAuthenticated, authorize } = require('../middleware/auth');
 const { documentUpload, uploadBufferToCloudinary } = require('../middleware/upload');
 const { detectProfileConflicts } = require('../utils/conflictDetector');
@@ -201,6 +203,9 @@ router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), 
             },
             { new: true, runValidators: false }
         );
+
+        // Wipe recommendations cache to force AI regeneration with new skills
+        await Recommendation.deleteMany({ candidate: userId });
 
         if (req.flash) req.flash('success_msg', 'Profile updated successfully!');
         res.redirect('/candidate/profile');
@@ -425,6 +430,7 @@ router.post('/candidate/profile/confirm-update', isAuthenticated, authorize('can
         }
 
         await User.findByIdAndUpdate(userId, updateDoc, { runValidators: false });
+        await Recommendation.deleteMany({ candidate: userId });
         if (req.flash) req.flash('success_msg', 'Profile updated with your selected changes!');
         res.redirect('/candidate/profile');
     } catch (error) {
@@ -691,8 +697,8 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
     try {
         const { userId } = req.params;
 
-        // IDOR Protection: Candidates can only access their own recommendations (Admins can view any)
-        if (req.user._id.toString() !== userId && req.user.role !== 'admin') {
+        // IDOR Protection: Candidates can only access their own recommendations
+        if (req.user._id.toString() !== userId) {
             if (req.flash) req.flash('error_msg', 'You are not authorized to view recommendations for other candidates.');
             return res.redirect(`/recommendations/${req.user._id}`);
         }
@@ -712,62 +718,77 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
 
         const eligibility = { isEligible, reasons };
 
-        const userDistrict = user.location?.district ? user.location.district.trim() : '';
-        const userQualification = user.education?.qualification ? user.education.qualification.trim() : '';
-
-        let internships = [];
-        const queryConditions = [];
-        if (userDistrict) {
-            queryConditions.push({ 'location.district': new RegExp(`^${escapeRegExp(userDistrict)}$`, 'i') });
-        }
-        if (userQualification) {
-            queryConditions.push({
-                $or: [
-                    { minQualifications: new RegExp(`^${escapeRegExp(userQualification)}$`, 'i') },
-                    { minQualification: new RegExp(`^${escapeRegExp(userQualification)}$`, 'i') }
-                ]
-            });
-        }
-
-        const activeDeadlineCondition = {
-            $or: [
-                { applicationDeadline: { $gte: new Date() } },
-                { applicationDeadline: null },
-                { applicationDeadline: { $exists: false } }
-            ]
-        };
-
-        if (queryConditions.length > 0) {
-            internships = await Internship.find({
-                status: { $nin: ['draft', 'paused'] },
-                isPaused: { $ne: true },
-                ...activeDeadlineCondition,
-                $or: queryConditions
-            });
-        }
-
-        // If no match by district/qualification or not set, fall back to open internships
-        if (!internships || internships.length === 0) {
-            internships = await Internship.find({
-                status: { $nin: ['draft', 'paused'] },
-                isPaused: { $ne: true },
-                ...activeDeadlineCondition
-            }).limit(20);
-        }
-
-        const recommendations = internships
-            .map((role) => ({
-                role,
-                matchScore: calculateSkillScore(user.skills, role.requiredSkills)
-            }))
-            .sort((a, b) => b.matchScore - a.matchScore)
-            .slice(0, 6);
-
-        // Fetch already applied IDs
+        // Fetch already applied IDs to exclude from read-time view
         const apps = await Application.find({ candidate: user._id }).select('internship');
         const appliedIds = apps.map(a => a.internship ? a.internship.toString() : null).filter(Boolean);
 
-        res.render('candidate/candidate-recommendations', { user, eligibility, recommendations, appliedIds });
+        // Fetch recommendations from DB
+        let recommendations = await Recommendation.find({ candidate: user._id })
+            .populate('internship')
+            .sort({ aiMatchScore: -1 });
+
+        let needsRegeneration = false;
+        
+        if (recommendations.length === 0) {
+            needsRegeneration = true;
+        } else {
+            const firstGenTime = recommendations[0].generatedAt;
+            const isFresh = firstGenTime && (new Date() - firstGenTime < 24 * 60 * 60 * 1000); // < 24h
+            
+            // Check if mixed generation or stale
+            const isMixed = recommendations.some(r => !r.generatedAt || r.generatedAt.getTime() !== firstGenTime.getTime());
+            
+            if (!isFresh || isMixed) {
+                needsRegeneration = true;
+            }
+        }
+
+        if (needsRegeneration) {
+            recommendations = await generateRecommendationsForUser(user);
+            // Need to populate the internship for the newly generated ones
+            recommendations = await Recommendation.populate(recommendations, { path: 'internship' });
+        }
+
+        // Filter out closed/paused/expired/applied at read-time
+        const now = new Date();
+        recommendations = recommendations.filter(rec => {
+            const internship = rec.internship;
+            if (!internship) return false; // Deleted internship
+            if (internship.status !== 'published') return false;
+            if (internship.isPaused) return false;
+            if (appliedIds.includes(internship._id.toString())) return false;
+            
+            if (internship.applicationDeadline && internship.applicationDeadline < now) {
+                return false;
+            }
+            return true;
+        });
+
+        // If after filtering we have nothing, and we didn't JUST regenerate, we could regenerate.
+        // But if we just regenerated and it's still empty, it means there's literally no eligible internships.
+        if (recommendations.length === 0 && !needsRegeneration) {
+            recommendations = await generateRecommendationsForUser(user);
+            recommendations = await Recommendation.populate(recommendations, { path: 'internship' });
+            
+            recommendations = recommendations.filter(rec => {
+                const internship = rec.internship;
+                if (!internship || internship.status !== 'published' || internship.isPaused) return false;
+                if (appliedIds.includes(internship._id.toString())) return false;
+                if (internship.applicationDeadline && internship.applicationDeadline < now) return false;
+                return true;
+            });
+        }
+
+        // Format for the EJS view (it expects { role: internship, matchScore: num, skillGapAnalysis, matchReasoning, isFallback })
+        const formattedRecommendations = recommendations.map(rec => ({
+            role: rec.internship,
+            matchScore: rec.aiMatchScore,
+            skillGapAnalysis: rec.skillGapAnalysis,
+            matchReasoning: rec.matchReasoning,
+            isFallback: rec.isFallback
+        }));
+
+        res.render('candidate/candidate-recommendations', { user, eligibility, recommendations: formattedRecommendations, appliedIds });
     } catch (error) {
         console.error('Error fetching recommendation dashboard:', error);
         res.status(500).send('Internal Server Error');
