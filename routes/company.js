@@ -13,6 +13,7 @@ const chatRouter = require('./chat');
 router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company', 'recruiter']), async (req, res) => {
     try {
         const currentFilter = req.query.status || 'all'; // 'all', 'published', 'paused', 'draft'
+        const currentSort = req.query.sort || 'newest';
         const allInternships = await Internship.find({ companyId: req.user.companyId }).sort({ _id: -1 });
 
         const publishedCount = allInternships.filter(i => (i.status === 'published' || (!i.status && !i.isPaused)) && !i.isPaused && i.status !== 'paused').length;
@@ -43,6 +44,27 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
             appCountMap[item._id.toString()] = item.count;
         });
 
+        if (currentSort === 'oldest') {
+            filteredInternships.sort((a, b) => a._id.getTimestamp() - b._id.getTimestamp());
+        } else if (currentSort === 'most_applications' || currentSort === 'applications' || currentSort === 'applications_desc') {
+            filteredInternships.sort((a, b) => {
+                const countA = appCountMap[a._id.toString()] || 0;
+                const countB = appCountMap[b._id.toString()] || 0;
+                if (countB !== countA) return countB - countA;
+                return b._id.getTimestamp() - a._id.getTimestamp();
+            });
+        } else if (currentSort === 'deadline' || currentSort === 'deadline_soonest' || currentSort === 'deadline_asc') {
+            filteredInternships.sort((a, b) => {
+                const deadlineA = a.applicationDeadline ? new Date(a.applicationDeadline).getTime() : Infinity;
+                const deadlineB = b.applicationDeadline ? new Date(b.applicationDeadline).getTime() : Infinity;
+                if (deadlineA !== deadlineB) return deadlineA - deadlineB;
+                return b._id.getTimestamp() - a._id.getTimestamp();
+            });
+        } else {
+            // Default: newest
+            filteredInternships.sort((a, b) => b._id.getTimestamp() - a._id.getTimestamp());
+        }
+
         res.render('company/company-dashboard', {
             user: req.user,
             internships: filteredInternships,
@@ -52,6 +74,7 @@ router.get('/company/dashboard', isAuthenticated, requireCompanyRole(['company',
             draftCount,
             totalCount,
             currentFilter,
+            currentSort,
             appCountMap
         });
     } catch (error) {
