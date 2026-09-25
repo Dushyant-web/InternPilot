@@ -128,7 +128,10 @@ function parseSkillProfiles(body = {}) {
             name,
             proficiency: levels[index] || DEFAULT_PROFICIENCY
         }));
-        return buildSkillProfiles(names, supplied);
+        // Treat repeated form fields as structured input, not as a legacy
+        // comma-separated text field. This preserves a literal comma in a
+        // submitted skill name and still deduplicates by highest proficiency.
+        return buildSkillProfiles(supplied, supplied);
     }
 
     return buildSkillProfiles(splitLegacySkills(body.skills));

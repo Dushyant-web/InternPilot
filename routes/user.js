@@ -309,6 +309,7 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
         }
 
         // ── No conflicts: apply auto-merged fields + resume data ──
+        const mergedSkillProfiles = mergeSkillProfiles(existingProfile, extractedSkills);
         const updateDoc = {
             $set: {
                 resume: resumeUrl,
@@ -316,8 +317,8 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
                 // Resume-extracted skills have no reliable proficiency
                 // signal, so new names default to Intermediate while an
                 // existing manual selection is preserved.
-                skillProfiles: mergeSkillProfiles(existingProfile, extractedSkills),
-                skills: skillNames(mergeSkillProfiles(existingProfile, extractedSkills))
+                skillProfiles: mergedSkillProfiles,
+                skills: skillNames(mergedSkillProfiles)
             }
         };
 
@@ -329,6 +330,7 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
         }
 
         await User.findByIdAndUpdate(userId, updateDoc);
+        await Recommendation.deleteMany({ candidate: userId });
         if (req.flash) req.flash('success_msg', 'Resume uploaded and profile updated automatically!');
 
         res.redirect('/candidate/profile');

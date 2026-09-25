@@ -38,6 +38,17 @@ test('profile form parsing deduplicates skills and keeps the highest submitted p
     ]);
 });
 
+test('structured skill form entries preserve literal commas in a skill name', () => {
+    const profiles = parseSkillProfiles({
+        skillName: ['React, Node', 'React, Node'],
+        skillProficiency: ['Beginner', 'Advanced']
+    });
+
+    assert.deepEqual(profiles, [
+        { name: 'React, Node', proficiency: 'Advanced' }
+    ]);
+});
+
 test('User schema permits only the three supported proficiency values', async () => {
     const valid = new User({
         name: 'Candidate',
@@ -123,4 +134,17 @@ test('migration comparison detects when a legacy profile still needs a backfill'
         ),
         true
     );
+});
+
+test('migration invalidates recommendations before writing a migrated profile', () => {
+    const migrationSource = fs.readFileSync(
+        path.join(__dirname, '..', 'migrate-skill-proficiencies.js'),
+        'utf8'
+    );
+    const invalidateIndex = migrationSource.indexOf('await Recommendation.deleteMany');
+    const updateIndex = migrationSource.indexOf('await User.updateOne');
+
+    assert.ok(invalidateIndex >= 0);
+    assert.ok(updateIndex >= 0);
+    assert.ok(invalidateIndex < updateIndex);
 });

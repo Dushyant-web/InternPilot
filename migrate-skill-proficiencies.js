@@ -46,11 +46,15 @@ async function runMigration() {
                 continue;
             }
 
+            // Invalidate first. If the process stops before the profile write,
+            // a rerun still sees an unmigrated candidate and repeats both
+            // operations; a completed profile update can never retain stale
+            // recommendations from before the proficiency-aware ranking.
+            await Recommendation.deleteMany({ candidate: candidate._id });
             await User.updateOne(
                 { _id: candidate._id },
                 { $set: { skillProfiles: canonicalProfiles, skills: canonicalNames } }
             );
-            await Recommendation.deleteMany({ candidate: candidate._id });
             updated += 1;
         }
 

@@ -67,4 +67,6 @@ test('company applicants view renders top match and rationale', () => {
     assert.match(html, /Matching skills: node\.js/);
     assert.match(html, /Advanced/);
     assert.match(html, /proficiencyFilter/);
+    assert.match(template, /const matchesSearch = !searchTerm \|\| cardData\.includes\(searchTerm\)/);
+    assert.doesNotMatch(template, /queryMatchesSkill/);
 });

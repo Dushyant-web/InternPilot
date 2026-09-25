@@ -338,13 +338,17 @@
                     skillProfiles = JSON.parse(card.getAttribute('data-skill-profiles') || '[]');
                 } catch (_) { /* ignore malformed legacy data */ }
 
-                const hasMinimumLevel = !minimumLevel || skillProfiles.some(profile => {
-                    const levelMatches = (proficiencyRank[profile.proficiency] ?? -1) >= proficiencyRank[minimumLevel];
-                    const queryMatchesSkill = !searchTerm || String(profile.name || '').toLowerCase().includes(searchTerm);
-                    return levelMatches && queryMatchesSkill;
-                });
+                // The text search can match a candidate name, qualification,
+                // location, or skill. Keep that generic search independent
+                // from the minimum-proficiency filter so, for example,
+                // searching "Alice" still finds Alice when she has any
+                // Advanced skill.
+                const hasMinimumLevel = !minimumLevel || skillProfiles.some(profile =>
+                    (proficiencyRank[profile.proficiency] ?? -1) >= proficiencyRank[minimumLevel]
+                );
 
-                if (cardData.includes(searchTerm) && hasMinimumLevel) {
+                const matchesSearch = !searchTerm || cardData.includes(searchTerm);
+                if (matchesSearch && hasMinimumLevel) {
                     card.style.display = 'flex';
                     visibleCount++;
                 } else {
