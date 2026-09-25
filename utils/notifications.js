@@ -1,5 +1,6 @@
 const Notification = require('../models/Notification');
 const User = require('../models/User');
+const { skillNames } = require('./skillProfiles');
 
 function normalise(value) {
     return (value || '').trim().toLowerCase();
@@ -36,7 +37,7 @@ function hasSkillMatch(candidate, internship) {
     const requiredSkills = (internship.requiredSkills || []).map(normalise).filter(Boolean);
     if (!requiredSkills.length) return true;
 
-    const candidateSkills = new Set((candidate.skills || []).map(normalise).filter(Boolean));
+    const candidateSkills = new Set(skillNames(candidate).map(normalise).filter(Boolean));
     return requiredSkills.some(skill => candidateSkills.has(skill));
 }
 
@@ -57,7 +58,7 @@ async function notifyRelevantCandidates(internship) {
         isEmailVerified: true,
         isActive: true
     })
-        .select('_id skills location education')
+        .select('_id skills skillProfiles location education')
         .lean();
 
     const matchingCandidates = candidates.filter(candidate => isRelevantInternship(candidate, internship));
