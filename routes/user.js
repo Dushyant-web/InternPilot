@@ -26,7 +26,7 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -74,7 +74,46 @@ function escapeRegExp(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-async function analyzeResumeQuality(text) {
+async function analyzeResumeQuality(text, customClient = null) {
+    if (!text || !text.trim()) {
+        console.warn('Resume text is empty; skipping AI quality feedback generation.');
+        return {
+            quantifiableAchievements: {
+                status: 'needs_improvement',
+                feedback: 'Resume text could not be extracted.'
+            },
+            technicalSkills: {
+                status: 'needs_improvement',
+                feedback: 'Resume text could not be extracted.'
+            },
+            projects: {
+                status: 'needs_improvement',
+                feedback: 'Resume text could not be extracted.'
+            },
+            overallFeedback: 'Resume uploaded successfully, but text could not be read for AI feedback.'
+        };
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey && !customClient) {
+        console.warn('GEMINI_API_KEY is not configured in environment variables.');
+        return {
+            quantifiableAchievements: {
+                status: 'needs_improvement',
+                feedback: 'Resume quality analysis was unavailable.'
+            },
+            technicalSkills: {
+                status: 'needs_improvement',
+                feedback: 'Resume quality analysis was unavailable.'
+            },
+            projects: {
+                status: 'needs_improvement',
+                feedback: 'Resume quality analysis was unavailable.'
+            },
+            overallFeedback: 'Resume uploaded successfully, but AI quality feedback could not be generated.'
+        };
+    }
+
     try {
         const prompt = `
 Analyze this resume for quality improvement.
@@ -89,35 +128,81 @@ Give actionable feedback, not a numeric score.
 Return ONLY valid JSON in this format:
 {
   "quantifiableAchievements": {
-    "status": "good" or "needs_improvement",
+    "status": "good",
     "feedback": "..."
   },
   "technicalSkills": {
-    "status": "good" or "needs_improvement",
+    "status": "needs_improvement",
     "feedback": "..."
   },
   "projects": {
-    "status": "good" or "needs_improvement",
+    "status": "good",
     "feedback": "..."
   },
   "overallFeedback": "..."
 }
 
+Note: The "status" property must be either "good" or "needs_improvement".
+
 Resume text:
 ${text}
 `;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: [{ role: 'user', parts: [{ text: prompt }] }]
-        });
+        const modelName = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+        const client = customClient || ai || new GoogleGenAI({ apiKey });
 
-        const rawText = response.text || '{}';
-        const cleanedText = rawText.replace(/```json|```/g, '').trim();
+        let response;
+        try {
+            response = await client.models.generateContent({
+                model: modelName,
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                config: {
+                    responseMimeType: 'application/json'
+                }
+            });
+        } catch (callErr) {
+            const isTransientError = callErr.status === 503 || (callErr.message && /high demand|temporar|503/i.test(callErr.message));
+            if (isTransientError && modelName !== 'gemini-3.5-flash') {
+                console.warn(`Model ${modelName} is experiencing high demand. Failing over to gemini-3.5-flash...`);
+                response = await client.models.generateContent({
+                    model: 'gemini-3.5-flash',
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    config: {
+                        responseMimeType: 'application/json'
+                    }
+                });
+            } else {
+                throw callErr;
+            }
+        }
 
-        return JSON.parse(cleanedText);
+        const rawText = (response && response.text) ? response.text : '{}';
+        let cleanedText = rawText.replace(/```(?:json)?\n?([\s\S]*?)```/g, '$1').replace(/```json|```/g, '').trim();
+        const firstBrace = cleanedText.indexOf('{');
+        const lastBrace = cleanedText.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+            cleanedText = cleanedText.substring(firstBrace, lastBrace + 1);
+        }
+
+        const parsed = JSON.parse(cleanedText);
+
+        return {
+            quantifiableAchievements: {
+                status: parsed && parsed.quantifiableAchievements && parsed.quantifiableAchievements.status ? parsed.quantifiableAchievements.status : 'needs_improvement',
+                feedback: parsed && parsed.quantifiableAchievements && parsed.quantifiableAchievements.feedback ? parsed.quantifiableAchievements.feedback : 'Resume quality analysis was unavailable.'
+            },
+            technicalSkills: {
+                status: parsed && parsed.technicalSkills && parsed.technicalSkills.status ? parsed.technicalSkills.status : 'needs_improvement',
+                feedback: parsed && parsed.technicalSkills && parsed.technicalSkills.feedback ? parsed.technicalSkills.feedback : 'Resume quality analysis was unavailable.'
+            },
+            projects: {
+                status: parsed && parsed.projects && parsed.projects.status ? parsed.projects.status : 'needs_improvement',
+                feedback: parsed && parsed.projects && parsed.projects.feedback ? parsed.projects.feedback : 'Resume quality analysis was unavailable.'
+            },
+            overallFeedback: parsed && parsed.overallFeedback ? parsed.overallFeedback : 'Resume uploaded successfully.'
+        };
     } catch (error) {
-        console.error('Error analyzing resume quality:', error);
+        console.error('Error analyzing resume quality with Gemini AI:', error.message || error);
 
         return {
             quantifiableAchievements: {
@@ -896,5 +981,7 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
         res.status(500).send('Internal Server Error');
     }
 });
+
+router.analyzeResumeQuality = analyzeResumeQuality;
 
 module.exports = router;

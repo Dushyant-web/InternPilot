@@ -151,6 +151,9 @@ app.use('/', activityRoutes);
 app.use('/api', activityRoutes);
 app.use('/api/v1', analyticsRoutes);
 
+// Ignore favicon requests to avoid noisy 404 logs in console
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 // 404 Catch-All Handler (Forward to error handler)
 app.use((req, res, next) => {
     const err = new Error(`Page Not Found: ${req.originalUrl}`);
