@@ -511,17 +511,17 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
 		</tr>
 		<tr>
             <td align="center">
-                <a href="https://github.com/UTT-THE-CODER">
-                    <img src="https://avatars.githubusercontent.com/u/255687562?v=4" width="100;" alt="UTT-THE-CODER"/>
-                    <br />
-                    <sub><b>Uttkarsh </b></sub>
-                </a>
-            </td>
-            <td align="center">
                 <a href="https://github.com/archlight20">
                     <img src="https://avatars.githubusercontent.com/u/120593356?v=4" width="100;" alt="archlight20"/>
                     <br />
                     <sub><b>archlight20</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/UTT-THE-CODER">
+                    <img src="https://avatars.githubusercontent.com/u/255687562?v=4" width="100;" alt="UTT-THE-CODER"/>
+                    <br />
+                    <sub><b>Uttkarsh </b></sub>
                 </a>
             </td>
             <td align="center">
