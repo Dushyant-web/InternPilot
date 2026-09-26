@@ -39,6 +39,7 @@ const chatRoutes = require('./routes/chat');
 const notificationRoutes = require('./routes/notifications');
 const activityRoutes = require('./routes/activity');
 const pagesRoutes = require('./routes/pages');
+const analyticsRoutes = require('./routes/analytics');
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -148,6 +149,7 @@ app.use('/', chatRoutes);
 app.use('/', notificationRoutes);
 app.use('/', activityRoutes);
 app.use('/api', activityRoutes);
+app.use('/api/v1', analyticsRoutes);
 
 // 404 Catch-All Handler (Forward to error handler)
 app.use((req, res, next) => {
