@@ -8,13 +8,17 @@
             ? activeUser.skills.map(name => ({ name, proficiency: 'Intermediate' }))
             : []); %>
 
-    <% const pmisStatus = (typeof eligibility !== 'undefined' && eligibility) ? eligibility : {
-        status: 'incomplete',
-        badge: { label: 'Incomplete — More Info Needed', bgClass: 'bg-amber-50 text-amber-800 border-amber-200', icon: 'ph-warning-circle' },
-        reasons: [],
-        missingFields: ['Age', 'Family Income', 'Qualification', 'Enrollment Status', 'Employment Status'],
-        criteria: []
-    }; %>
+    <% const pmisStatus = (typeof eligibility !== 'undefined' && eligibility) 
+        ? eligibility 
+        : ((typeof checkPmisEligibility === 'function' && activeUser) 
+            ? checkPmisEligibility(activeUser) 
+            : {
+                status: 'incomplete',
+                badge: { label: 'Incomplete — More Info Needed', bgClass: 'bg-amber-50 text-amber-800 border-amber-200', icon: 'ph-warning-circle' },
+                reasons: [],
+                missingFields: ['Age', 'Family Income', 'Qualification', 'Enrollment Status', 'Employment Status'],
+                criteria: []
+            }); %>
 
         <div class="max-w-7xl mx-auto space-y-6">
 
