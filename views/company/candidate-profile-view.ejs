@@ -1,4 +1,9 @@
 <% layout('layouts/boilerplate') %>
+<% const candidateSkillProfiles = (typeof skillProfiles !== 'undefined' && Array.isArray(skillProfiles) && skillProfiles.length)
+    ? skillProfiles
+    : ((candidate && Array.isArray(candidate.skills))
+        ? candidate.skills.map(name => ({ name, proficiency: 'Intermediate' }))
+        : []); %>
 
 <div class="max-w-5xl mx-auto space-y-6">
 
@@ -85,25 +90,31 @@
                     </div>
                     <div>
                         <span class="text-slate-400 font-medium block mb-1">Application Status</span>
-                        <% if (application.status === 'Interview') { %>
-                            <span class="inline-block px-3 py-1.5 text-xs font-semibold rounded-lg border shadow-sm bg-indigo-50 text-indigo-700 border-indigo-200">
-                                Interview
-                            </span>
-                        <% } else { %>
-                        <form action="/company/applications/<%= application._id %>/status"
-                            method="POST" class="inline-block">
-                            <select name="status" onchange="this.form.submit()" class="px-3 py-1.5 text-xs font-semibold rounded-lg border shadow-sm cursor-pointer outline-none transition-colors <%=
+                        <% const isReadOnlyStatus = ['Withdrawn', 'withdrawn', 'Interview'].includes(application.status); %>
+                        <% if (!isReadOnlyStatus && canReviewApplications) { %>
+                            <form action="/company/applications/<%= application._id %>/status"
+                                method="POST" class="inline-block">
+                                <select name="status" onchange="this.form.submit()" class="px-3 py-1.5 text-xs font-semibold rounded-lg border shadow-sm cursor-pointer outline-none transition-colors <%=
                                 application.status === 'Shortlisted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                 application.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
                                 application.status === 'Under Review' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                                 'bg-indigo-50 text-indigo-700 border-indigo-200'
                             %>">
-                                <option value="Submitted" <%=application.status==='Submitted' ? 'selected' : '' %>>Submitted</option>
-                                <option value="Under Review" <%=application.status==='Under Review' ? 'selected' : '' %>>Under Review</option>
-                                <option value="Shortlisted" <%=application.status==='Shortlisted' ? 'selected' : '' %>>Shortlisted</option>
-                                <option value="Rejected" <%=application.status==='Rejected' ? 'selected' : '' %>>Rejected</option>
-                            </select>
-                        </form>
+                                    <option value="Submitted" <%= application.status === 'Submitted' ? 'selected' : '' %>>Submitted</option>
+                                    <option value="Under Review" <%= application.status === 'Under Review' ? 'selected' : '' %>>Under Review</option>
+                                    <option value="Shortlisted" <%= application.status === 'Shortlisted' ? 'selected' : '' %>>Shortlisted</option>
+                                    <option value="Rejected" <%= application.status === 'Rejected' ? 'selected' : '' %>>Rejected</option>
+                                </select>
+                            </form>
+                        <% } else { %>
+                            <span class="inline-block px-3 py-1.5 text-xs font-semibold rounded-lg border <%=
+                                application.status === 'Shortlisted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                application.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                application.status === 'Under Review' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                'bg-indigo-50 text-indigo-700 border-indigo-200'
+                            %>">
+                                <%= application.status || 'Submitted' %>
+                            </span>
                         <% } %>
                     </div>
                     <div>
@@ -181,25 +192,29 @@
                         <% } %>
                     </div>
 
-                    <div class="pt-3 border-t border-slate-100 flex flex-col gap-2">
-                        <button type="button" onclick="openScheduleModal(true)" class="w-full px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg transition-colors border border-indigo-200">
-                            Reschedule Interview
-                        </button>
-                        <button type="button" onclick="document.getElementById('cancelInterviewModal').classList.remove('hidden')" class="w-full px-4 py-2 bg-white hover:bg-rose-50 text-rose-600 text-xs font-semibold rounded-lg transition-colors border border-rose-200">
-                            Cancel Interview
-                        </button>
-                    </div>
+                    <% if (canReviewApplications) { %>
+                        <div class="pt-3 border-t border-slate-100 flex flex-col gap-2">
+                            <button type="button" onclick="openScheduleModal(true)" class="w-full px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg transition-colors border border-indigo-200">
+                                Reschedule Interview
+                            </button>
+                            <button type="button" onclick="document.getElementById('cancelInterviewModal').classList.remove('hidden')" class="w-full px-4 py-2 bg-white hover:bg-rose-50 text-rose-600 text-xs font-semibold rounded-lg transition-colors border border-rose-200">
+                                Cancel Interview
+                            </button>
+                        </div>
+                    <% } %>
                 <% } else { %>
                     <div class="text-center py-4">
                         <p class="text-xs text-slate-500 mb-3">
                             <%= application.interview && application.interview.status === 'Cancelled' ? 'The previous interview was cancelled.' : 'No interview has been scheduled yet.' %>
                         </p>
-                        <% if (application.status !== 'Rejected' && application.status !== 'rejected') { %>
+                        <% if (canReviewApplications && !['Rejected', 'rejected', 'Withdrawn', 'withdrawn'].includes(application.status)) { %>
                             <button type="button" onclick="openScheduleModal(false)" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors w-full shadow-sm">
                                 Schedule Interview
                             </button>
+                        <% } else if (canReviewApplications) { %>
+                            <p class="text-xs text-rose-500 italic">Cannot schedule an interview for a rejected or withdrawn application.</p>
                         <% } else { %>
-                            <p class="text-xs text-rose-500 italic">Cannot schedule interview for a rejected application.</p>
+                            <p class="text-xs text-slate-500 italic">Interview scheduling is available to Admins and Recruiters.</p>
                         <% } %>
                     </div>
                 <% } %>
@@ -260,12 +275,13 @@
                     Skills
                 </h2>
 
-                <% if (candidate.skills && candidate.skills.length > 0) { %>
+                <% if (candidateSkillProfiles.length > 0) { %>
                     <div class="flex flex-wrap gap-2">
-                        <% candidate.skills.forEach(skill => { %>
+                        <% candidateSkillProfiles.forEach(skill => { %>
                             <span
-                                class="bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm">
-                                <%= skill %>
+                                class="inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm">
+                                <%= skill.name %>
+                                <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-bold text-indigo-800" aria-label="<%= skill.name %> proficiency: <%= skill.proficiency %>"><%= skill.proficiency %></span>
                             </span>
                         <% }) %>
                     </div>
@@ -357,6 +373,7 @@
 
 </div>
 
+<% if (canReviewApplications) { %>
 <!-- Interview Modals -->
 <div id="scheduleInterviewModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
@@ -484,3 +501,4 @@ function openScheduleModal(isReschedule) {
     toggleInterviewModeFields();
 }
 </script>
+<% } %>
