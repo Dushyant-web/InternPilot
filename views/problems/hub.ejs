@@ -1,0 +1,139 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-2xl font-bold text-gray-900">Resume Problem Generator</h1>
+    </div>
+
+    <!-- Generator Form -->
+    <div class="bg-white shadow rounded-lg p-6 mb-8">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Generate New Problems</h2>
+        <div id="generatorStep1">
+            <label class="block text-sm font-medium text-gray-700">Select Resume Version</label>
+            <div class="flex gap-4 mt-2">
+                <select id="resumeVersionId" class="block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                    <option value="">-- Select Resume --</option>
+                    <% resumeVersions.forEach(resume => { %>
+                        <option value="<%= resume._id %>"><%= resume.fileName || resume.label || 'Resume ' + new Date(resume.createdAt).toLocaleDateString() %></option>
+                    <% }); %>
+                </select>
+                <button onclick="extractResume()" id="extractBtn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 whitespace-nowrap">Analyze Resume</button>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Upload a new resume from your Profile page if needed.</p>
+        </div>
+
+        <div id="generatorStep2" class="hidden mt-6 border-t pt-4">
+            <h3 class="text-md font-medium text-gray-800 mb-2">Extraction Preview</h3>
+            <p class="text-sm text-gray-600 mb-4">Select a specific project or achievement to focus the generated problems on.</p>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Focus Area</label>
+                <select id="projectFocus" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                    <option value="General Experience">General Overall Experience</option>
+                </select>
+            </div>
+            
+            <button onclick="generateProblems()" id="generateBtn" class="w-full bg-green-600 text-white p-3 rounded-md hover:bg-green-700">Generate Problems</button>
+        </div>
+    </div>
+
+    <!-- History -->
+    <h2 class="text-xl font-bold text-gray-900 mb-4">Problem Sets History</h2>
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+        <ul class="divide-y divide-gray-200">
+            <% if (problemSets && problemSets.length > 0) { %>
+                <% problemSets.forEach(set => { %>
+                    <li>
+                        <div class="px-4 py-4 sm:px-6 flex justify-between items-center">
+                            <div>
+                                <h3 class="text-lg leading-6 font-medium text-gray-900">Problem Set (<%= set.problems.length %> problems)</h3>
+                                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                                    Generated: <%= new Date(set.createdAt).toLocaleString() %>
+                                </p>
+                            </div>
+                            <div>
+                                <a href="/problems/set/<%= set._id %>" class="text-indigo-600 hover:text-indigo-900">Open Workspace</a>
+                            </div>
+                        </div>
+                    </li>
+                <% }); %>
+            <% } else { %>
+                <li class="px-4 py-8 text-center text-gray-500">
+                    No problem sets generated yet.
+                </li>
+            <% } %>
+        </ul>
+    </div>
+</div>
+
+<script>
+let currentResumeId = '';
+
+async function extractResume() {
+    const resumeId = document.getElementById('resumeVersionId').value;
+    if (!resumeId) return alert('Please select a resume.');
+    
+    const btn = document.getElementById('extractBtn');
+    btn.disabled = true;
+    btn.innerText = 'Analyzing...';
+    
+    try {
+        const res = await fetch('/problems/extract', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resumeVersionId: resumeId })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        
+        currentResumeId = data.resumeVersionId;
+        
+        const focusSelect = document.getElementById('projectFocus');
+        focusSelect.innerHTML = '<option value="General Experience">General Overall Experience</option>';
+        
+        if (data.extraction.projects) {
+            data.extraction.projects.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.title + ': ' + p.description;
+                opt.innerText = p.title;
+                focusSelect.appendChild(opt);
+            });
+        }
+        
+        document.getElementById('generatorStep2').classList.remove('hidden');
+    } catch (err) {
+        alert(err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Analyze Resume';
+    }
+}
+
+async function generateProblems() {
+    const btn = document.getElementById('generateBtn');
+    btn.disabled = true;
+    btn.innerText = 'Generating Problems (Takes ~10s)...';
+    
+    try {
+        const res = await fetch('/problems/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                resumeVersionId: currentResumeId,
+                projectFocused: document.getElementById('projectFocus').value
+            })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        
+        window.location.href = `/problems/set/${data.problemSetId}`;
+    } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+        btn.innerText = 'Generate Problems';
+    }
+}
+</script>
+
+
+

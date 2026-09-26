@@ -1,0 +1,38 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-2xl font-bold text-gray-900">Mock Interviews</h1>
+        <a href="/interview/setup" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Start New Interview</a>
+    </div>
+
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+        <ul class="divide-y divide-gray-200">
+            <% if (sessions && sessions.length > 0) { %>
+                <% sessions.forEach(session => { %>
+                    <li>
+                        <div class="px-4 py-4 sm:px-6 flex justify-between items-center">
+                            <div>
+                                <h3 class="text-lg leading-6 font-medium text-gray-900"><%= session.role %> (<%= session.interviewType %>)</h3>
+                                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                                    <%= session.experienceLevel %> | Mode: <%= session.mode %> | Status: <%= session.status %>
+                                </p>
+                            </div>
+                            <div>
+                                <% if (session.status === 'In Progress') { %>
+                                    <a href="/interview/session/<%= session._id %>" class="text-indigo-600 hover:text-indigo-900">Resume</a>
+                                <% } else if (session.status === 'Completed') { %>
+                                    <a href="/interview/session/<%= session._id %>/report" class="text-green-600 hover:text-green-900">View Report</a>
+                                <% } %>
+                            </div>
+                        </div>
+                    </li>
+                <% }); %>
+            <% } else { %>
+                <li class="px-4 py-8 text-center text-gray-500">
+                    No mock interviews found. Click "Start New Interview" to begin your practice.
+                </li>
+            <% } %>
+        </ul>
+    </div>
+</div>
