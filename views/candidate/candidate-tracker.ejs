@@ -55,7 +55,36 @@
         </a>
     </header>
 
-    <% if (safeApplications.length === 0) { %>
+    <% if (typeof stats !== 'undefined' && stats.total > 0) { %>
+        <form method="GET" action="/candidate/applications" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center gap-3 w-full">
+            <div class="relative flex-grow w-full sm:w-auto">
+                <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input type="text" name="search" value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" placeholder="Search internships or companies..." class="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-slate-50 focus:bg-white transition-colors" onchange="this.form.submit()">
+            </div>
+            
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <select name="status" class="w-full sm:w-auto px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-slate-50 focus:bg-white transition-colors cursor-pointer" onchange="this.form.submit()">
+                    <option value="all" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'all') ? 'selected' : '' %>>All Statuses</option>
+                    <option value="submitted" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'submitted') ? 'selected' : '' %>>Submitted</option>
+                    <option value="under review" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'under review') ? 'selected' : '' %>>Under Review</option>
+                    <option value="shortlisted" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'shortlisted') ? 'selected' : '' %>>Shortlisted</option>
+                    <option value="interview" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'interview') ? 'selected' : '' %>>Interview</option>
+                    <option value="rejected" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'rejected') ? 'selected' : '' %>>Rejected</option>
+                    <option value="withdrawn" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'withdrawn') ? 'selected' : '' %>>Withdrawn</option>
+                </select>
+
+                <select name="sort" class="w-full sm:w-auto px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-slate-50 focus:bg-white transition-colors cursor-pointer" onchange="this.form.submit()">
+                    <option value="applied_desc" <%= (typeof sortOrder === 'undefined' || sortOrder === 'applied_desc') ? 'selected' : '' %>>Sort: Application Date (Newest)</option>
+                    <option value="applied_asc" <%= (typeof sortOrder !== 'undefined' && sortOrder === 'applied_asc') ? 'selected' : '' %>>Sort: Application Date (Oldest)</option>
+                    <option value="updated_desc" <%= (typeof sortOrder !== 'undefined' && sortOrder === 'updated_desc') ? 'selected' : '' %>>Sort: Last Updated</option>
+                    <option value="match_desc" <%= (typeof sortOrder !== 'undefined' && sortOrder === 'match_desc') ? 'selected' : '' %>>Sort: AI Match Score</option>
+                </select>
+            </div>
+            <button type="submit" class="hidden">Submit</button>
+        </form>
+    <% } %>
+
+    <% if (typeof stats !== 'undefined' && stats.total === 0) { %>
         <section class="rounded-2xl border border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
             <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
                 <i class="ph-bold ph-paper-plane-tilt text-3xl" aria-hidden="true"></i>
@@ -66,6 +95,18 @@
                 class="mt-5 inline-flex items-center gap-2 rounded-xl bg-indigo-700 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-800 focus:outline-none focus:ring-4 focus:ring-indigo-200">
                 Browse Opportunities
                 <i class="ph-bold ph-arrow-right" aria-hidden="true"></i>
+            </a>
+        </section>
+    <% } else if (safeApplications.length === 0) { %>
+        <section class="rounded-2xl border border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
+            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                <i class="ph-bold ph-funnel text-3xl" aria-hidden="true"></i>
+            </div>
+            <h2 class="text-lg font-bold text-slate-800">No applications found</h2>
+            <p class="mx-auto mt-1 max-w-md text-sm text-slate-500">None of your applications match the current search or filter criteria.</p>
+            <a href="/candidate/applications"
+                class="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-200">
+                Clear Filters
             </a>
         </section>
     <% } else { %>
