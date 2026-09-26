@@ -48,6 +48,7 @@ InternPilot supports three different user roles:
 * Login securely.
 * Apply for internships.
 * Receive application status updates.
+* Set each listed skill to **Beginner**, **Intermediate**, or **Advanced** so matching reflects current proficiency.
 
 #### 🏢 Companies
 
@@ -279,6 +280,16 @@ GOOGLE_CALLBACK_URL=http://localhost:8080/auth/google/callback
 ---
 
 ## 🚀 Getting Started
+
+### Skill-proficiency data migration
+
+Existing candidate skill tags remain supported and are treated as **Intermediate** until they are edited. After deploying this feature, backfill the structured proficiency field once with:
+
+```bash
+npm run migrate:skill-proficiencies
+```
+
+The script only updates candidate profiles and clears their cached recommendations so new proficiency-aware rankings can be generated.
 
 ### ✅ Prerequisites
 

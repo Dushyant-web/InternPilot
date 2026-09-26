@@ -15,6 +15,10 @@ test('candidate matcher ranks skill, qualification, and location alignment', () 
 
     const strongMatch = calculateCandidateMatch({
         skills: ['node.js', 'React'],
+        skillProfiles: [
+            { name: 'node.js', proficiency: 'Advanced' },
+            { name: 'React', proficiency: 'Advanced' }
+        ],
         education: { qualification: 'B.Tech Computer Science' },
         location: { district: 'Noida', state: 'UP' }
     }, internship);
@@ -27,7 +31,9 @@ test('candidate matcher ranks skill, qualification, and location alignment', () 
     assert.equal(strongMatch.score, 100);
     assert.ok(strongMatch.score > weakMatch.score);
     assert.deepEqual(strongMatch.matchingSkills, ['node.js', 'react']);
+    assert.deepEqual(strongMatch.matchingSkillProfiles.map(match => match.proficiency), ['Advanced', 'Advanced']);
     assert.match(strongMatch.rationale, /Matching skills: node\.js, react/);
+    assert.match(strongMatch.rationale, /Proficiency: Advanced node\.js, Advanced React/);
     assert.match(strongMatch.rationale, /Qualification aligns/);
 });
 
@@ -44,8 +50,10 @@ test('company applicants view renders top match and rationale', () => {
             name: 'Asha Rao',
             education: { qualification: 'B.Tech' },
             location: { district: 'Noida', state: 'UP' },
-            skills: ['Node.js']
+            skills: ['Node.js'],
+            skillProfiles: [{ name: 'Node.js', proficiency: 'Advanced' }]
         },
+        candidateSkillProfiles: [{ name: 'Node.js', proficiency: 'Advanced' }],
         notes: []
     };
 
@@ -57,4 +65,8 @@ test('company applicants view renders top match and rationale', () => {
 
     assert.match(html, /Top Match #1/);
     assert.match(html, /Matching skills: node\.js/);
+    assert.match(html, /Advanced/);
+    assert.match(html, /proficiencyFilter/);
+    assert.match(template, /const matchesSearch = !searchTerm \|\| cardData\.includes\(searchTerm\)/);
+    assert.doesNotMatch(template, /queryMatchesSkill/);
 });

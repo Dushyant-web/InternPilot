@@ -26,6 +26,8 @@ const {
 const chatRouter = require('./chat');
 const { logRecruiterActivity } = require('../utils/activityLogger');
 const { buildRecruiterOverview } = require('../utils/dashboardStats');
+const { calculateCandidateMatch } = require('../utils/candidateMatcher');
+const { buildSkillProfiles } = require('../utils/skillProfiles');
 
 function handleLogoUpload(fieldName) {
     return (req, res, next) => {
@@ -449,6 +451,16 @@ router.get('/company/internships/:id/applicants', isAuthenticated, requireCompan
             .populate('candidate')
             .populate('notes.createdBy')
             .sort({ _id: -1 });
+
+        applications.forEach(application => {
+            const match = calculateCandidateMatch(application.candidate, internship);
+            application.matchScore = match.score;
+            application.matchRationale = match.rationale;
+            application.matchingSkills = match.matchingSkills;
+            application.matchingSkillProfiles = match.matchingSkillProfiles;
+            application.candidateSkillProfiles = buildSkillProfiles(application.candidate);
+        });
+        applications.sort((a, b) => b.matchScore - a.matchScore || b._id.getTimestamp() - a._id.getTimestamp());
 
         res.render('company/company-applicants', {
             user: req.user,
@@ -1062,7 +1074,7 @@ router.get('/company/applications/:id/candidate', isAuthenticated, requireCompan
             application,
             candidate: application.candidate,
             internship,
-            permissions: req.companyPermissions
+            skillProfiles: buildSkillProfiles(application.candidate)
         });
     } catch (error) {
         console.error('Error loading candidate profile:', error);

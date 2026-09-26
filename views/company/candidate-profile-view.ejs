@@ -1,6 +1,9 @@
 <% layout('layouts/boilerplate') %>
-<% const permissionList = typeof permissions !== 'undefined' && Array.isArray(permissions) ? permissions : []; %>
-<% const canReviewApplications = permissionList.includes('applications:review'); %>
+<% const candidateSkillProfiles = (typeof skillProfiles !== 'undefined' && Array.isArray(skillProfiles) && skillProfiles.length)
+    ? skillProfiles
+    : ((candidate && Array.isArray(candidate.skills))
+        ? candidate.skills.map(name => ({ name, proficiency: 'Intermediate' }))
+        : []); %>
 
 <div class="max-w-5xl mx-auto space-y-6">
 
@@ -273,12 +276,13 @@
                     Skills
                 </h2>
 
-                <% if (candidate.skills && candidate.skills.length > 0) { %>
+                <% if (candidateSkillProfiles.length > 0) { %>
                     <div class="flex flex-wrap gap-2">
-                        <% candidate.skills.forEach(skill => { %>
+                        <% candidateSkillProfiles.forEach(skill => { %>
                             <span
-                                class="bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm">
-                                <%= skill %>
+                                class="inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm">
+                                <%= skill.name %>
+                                <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-bold text-indigo-800" aria-label="<%= skill.name %> proficiency: <%= skill.proficiency %>"><%= skill.proficiency %></span>
                             </span>
                         <% }) %>
                     </div>

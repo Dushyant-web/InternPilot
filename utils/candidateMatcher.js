@@ -1,3 +1,9 @@
+const {
+    buildSkillProfiles,
+    skillKey,
+    proficiencyWeight
+} = require('./skillProfiles');
+
 function normalize(value) {
     return String(value || '').trim().toLowerCase();
 }
@@ -9,12 +15,35 @@ function normalizeList(values) {
 }
 
 function calculateCandidateMatch(candidate = {}, internship = {}) {
+    candidate = candidate || {};
+    internship = internship || {};
     const requiredSkills = normalizeList(internship.requiredSkills);
-    const candidateSkills = normalizeList(candidate.skills);
-    const matchingSkills = requiredSkills.filter(skill => candidateSkills.includes(skill));
+    const candidateSkillProfiles = buildSkillProfiles(candidate);
+    const candidateProfilesBySkill = new Map(
+        candidateSkillProfiles.map(profile => [skillKey(profile.name), profile])
+    );
+
+    const matchingSkillProfiles = requiredSkills
+        .map(skill => {
+            const profile = candidateProfilesBySkill.get(skill);
+            return profile
+                ? {
+                    skill,
+                    profileSkill: profile.name,
+                    proficiency: profile.proficiency,
+                    weight: proficiencyWeight(profile.proficiency)
+                }
+                : null;
+        })
+        .filter(Boolean);
+    const matchingSkills = matchingSkillProfiles.map(match => match.skill);
+
+    // 70 points are reserved for skills. A Beginner match still receives
+    // credit, while Intermediate and Advanced candidates rank progressively
+    // higher for the same set of required skills.
     const skillScore = requiredSkills.length === 0
         ? 35
-        : Math.round((matchingSkills.length / requiredSkills.length) * 70);
+        : Math.round((matchingSkillProfiles.reduce((total, match) => total + match.weight, 0) / requiredSkills.length) * 70);
 
     const candidateQualification = normalize(candidate.education?.qualification);
     const requiredQualification = normalize(internship.minQualifications);
@@ -35,7 +64,10 @@ function calculateCandidateMatch(candidate = {}, internship = {}) {
 
     const score = Math.min(skillScore + qualificationScore + locationScore, 100);
     const rationale = [];
-    if (matchingSkills.length) rationale.push(`Matching skills: ${matchingSkills.join(', ')}`);
+    if (matchingSkills.length) {
+        rationale.push(`Matching skills: ${matchingSkills.join(', ')}`);
+        rationale.push(`Proficiency: ${matchingSkillProfiles.map(match => `${match.proficiency} ${match.profileSkill}`).join(', ')}`);
+    }
     if (requiredSkills.length && !matchingSkills.length) rationale.push('No required skills matched yet');
     if (requiredQualification) rationale.push(qualificationMatches ? 'Qualification aligns' : 'Qualification needs review');
     if (locationScore) rationale.push(locationScore === 15 ? 'Same district' : 'Same state');
@@ -44,6 +76,7 @@ function calculateCandidateMatch(candidate = {}, internship = {}) {
     return {
         score,
         matchingSkills,
+        matchingSkillProfiles,
         qualificationMatches,
         rationale: rationale.join('. ') + '.'
     };

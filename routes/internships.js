@@ -27,6 +27,7 @@ const {
     DURATION_BUCKETS
 } = require('../utils/queryHelper');
 const { calculateCandidateMatch } = require('../utils/candidateMatcher');
+const { buildSkillProfiles } = require('../utils/skillProfiles');
 
 router.get('/', async (req, res) => {
     try {
@@ -521,6 +522,8 @@ router.get('/:id/applicants', isAuthenticated, requireCompanyPermission('applica
             application.matchScore = match.score;
             application.matchRationale = match.rationale;
             application.matchingSkills = match.matchingSkills;
+            application.matchingSkillProfiles = match.matchingSkillProfiles;
+            application.candidateSkillProfiles = buildSkillProfiles(application.candidate);
         });
         applications.sort((a, b) => b.matchScore - a.matchScore || b._id.getTimestamp() - a._id.getTimestamp());
 
@@ -557,7 +560,7 @@ router.get('/:id/skill-gap', isAuthenticated, authorize('candidate'), async (req
             return res.redirect('/internships');
         }
 
-        const analysis = analyzeSkillGap(candidate.skills || [], internship.requiredSkills || []);
+        const analysis = analyzeSkillGap(candidate, internship.requiredSkills || []);
 
         const existingApp = await Application.findOne({
             internship: internship._id,

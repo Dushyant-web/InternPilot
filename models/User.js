@@ -24,7 +24,20 @@ const userSchema = new mongoose.Schema({
     age: { type: Number },
     familyIncome: { type: Number },
     institution: { type: String },
-    skills: [{ type: String }],
+    // Keep this legacy string list as a compatibility mirror while callers
+    // gradually move to `skillProfiles`. Existing users are read as
+    // Intermediate through utils/skillProfiles when no structured entry exists.
+    skills: [{ type: String, trim: true }],
+    skillProfiles: [{
+        _id: false,
+        name: { type: String, required: true, trim: true, maxlength: 80 },
+        proficiency: {
+            type: String,
+            enum: ['Beginner', 'Intermediate', 'Advanced'],
+            default: 'Intermediate',
+            required: true
+        }
+    }],
     resume: { type: String, default: '' },
 
     resumeQuality: {

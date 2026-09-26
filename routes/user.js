@@ -14,9 +14,14 @@ const Recommendation = require('../models/Recommendation');
 const { generateRecommendationsForUser } = require('../utils/recommendationEngine');
 const { isAuthenticated, authorize } = require('../middleware/auth');
 const { documentUpload, uploadBufferToCloudinary } = require('../middleware/upload');
-const { calculateSkillScore } = require('../utils/skillMatch');
 const { detectProfileConflicts } = require('../utils/conflictDetector');
 const { formatRelativeTime, formatLocalizedDateTime } = require('../utils/dateFormat');
+const {
+    buildSkillProfiles,
+    skillNames,
+    parseSkillProfiles,
+    mergeSkillProfiles
+} = require('../utils/skillProfiles');
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -138,7 +143,8 @@ router.get('/candidate/profile', isAuthenticated, authorize('candidate'), async 
 
         res.render('candidate/candidate-profile', {
             user: freshUser,
-            candidate: freshUser
+            candidate: freshUser,
+            skillProfiles: buildSkillProfiles(freshUser)
         });
     } catch (error) {
         console.error('Error fetching candidate profile:', error);
@@ -162,11 +168,8 @@ router.get('/candidate/resume-builder', isAuthenticated, authorize('candidate'),
 
 router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
-        const { location, age, familyIncome, qualification, institution, skills } = req.body;
-
-        const skillsArray = skills
-            ? skills.split(',').map(s => s.trim()).filter(Boolean)
-            : [];
+        const { location, age, familyIncome, qualification, institution } = req.body;
+        const skillProfiles = parseSkillProfiles(req.body);
 
         const userId = req.user._id || req.user.id;
 
@@ -186,13 +189,16 @@ router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), 
                     familyIncome: familyIncome ? Number(familyIncome) : null,
                     institution: institution || '',
                     'education.institutionName': institution || '',
-                    skills: skillsArray,
+                    // `skills` remains a name-only compatibility mirror for
+                    // legacy flows while `skillProfiles` is canonical.
+                    skills: skillNames(skillProfiles),
+                    skillProfiles,
                     'location.district': district,
                     'location.state': state,
                     'education.qualification': qualification || ''
                 }
             },
-            { new: true, runValidators: false }
+            { new: true, runValidators: true }
         );
 
         // Wipe recommendations cache to force AI regeneration with new skills
@@ -293,6 +299,7 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
             return res.render('candidate/candidate-profile', {
                 user: existingProfile,
                 candidate: existingProfile,
+                skillProfiles: buildSkillProfiles(existingProfile),
                 conflicts,
                 autoMerged,
                 resumeUrl,
@@ -302,29 +309,28 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
         }
 
         // ── No conflicts: apply auto-merged fields + resume data ──
+        const mergedSkillProfiles = mergeSkillProfiles(existingProfile, extractedSkills);
         const updateDoc = {
             $set: {
                 resume: resumeUrl,
-                resumeQuality
+                resumeQuality,
+                // Resume-extracted skills have no reliable proficiency
+                // signal, so new names default to Intermediate while an
+                // existing manual selection is preserved.
+                skillProfiles: mergedSkillProfiles,
+                skills: skillNames(mergedSkillProfiles)
             }
         };
 
         // Apply auto-merged fields
         for (const [key, value] of Object.entries(autoMerged)) {
-            if (key === 'skills') {
-                updateDoc.$addToSet = { skills: { $each: Array.isArray(value) ? value : [value] } };
-            } else {
+            if (key !== 'skills') {
                 updateDoc.$set[key] = value;
             }
         }
 
-        // Also merge extracted skills that were not conflicting
-        if (extractedSkills.length > 0 && !autoMerged.skills) {
-            updateDoc.$addToSet = updateDoc.$addToSet || {};
-            updateDoc.$addToSet.skills = { $each: extractedSkills };
-        }
-
         await User.findByIdAndUpdate(userId, updateDoc);
+        await Recommendation.deleteMany({ candidate: userId });
         if (req.flash) req.flash('success_msg', 'Resume uploaded and profile updated automatically!');
 
         res.redirect('/candidate/profile');
@@ -368,10 +374,12 @@ router.post('/candidate/profile/confirm-update', isAuthenticated, authorize('can
         if (resumeUrl) updateDoc.$set.resume = resumeUrl;
         if (resumeQuality) updateDoc.$set.resumeQuality = resumeQuality;
 
+        let selectedSkillProfiles = null;
+
         // Apply auto-merged fields
         for (const [key, value] of Object.entries(autoMerged)) {
             if (key === 'skills') {
-                updateDoc.$addToSet = { skills: { $each: Array.isArray(value) ? value : [value] } };
+                selectedSkillProfiles = mergeSkillProfiles(existingProfile, value);
             } else {
                 updateDoc.$set[key] = value;
             }
@@ -402,8 +410,7 @@ router.post('/candidate/profile/confirm-update', isAuthenticated, authorize('can
                 const parsedVal = req.body[`parsedValue_${fieldKey}`];
                 if (parsedVal !== undefined && parsedVal !== '') {
                     if (fieldKey === 'skills') {
-                        const skillsArr = parsedVal.split(',').map(s => s.trim()).filter(Boolean);
-                        updateDoc.$set.skills = skillsArr;
+                        selectedSkillProfiles = buildSkillProfiles(parsedVal.split(','));
                     } else if (fieldKey === 'education.institutionName') {
                         updateDoc.$set['education.institutionName'] = parsedVal;
                         updateDoc.$set.institution = parsedVal;
@@ -418,6 +425,11 @@ router.post('/candidate/profile/confirm-update', isAuthenticated, authorize('can
         // Ensure institution stays in sync with education.institutionName
         if (updateDoc.$set['education.institutionName'] && !updateDoc.$set.institution) {
             updateDoc.$set.institution = updateDoc.$set['education.institutionName'];
+        }
+
+        if (selectedSkillProfiles) {
+            updateDoc.$set.skillProfiles = selectedSkillProfiles;
+            updateDoc.$set.skills = skillNames(selectedSkillProfiles);
         }
 
         await User.findByIdAndUpdate(userId, updateDoc, { runValidators: false });
