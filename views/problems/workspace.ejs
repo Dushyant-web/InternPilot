@@ -106,131 +106,9 @@
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js">    const mediaRecorders = {};
-    const recordedChunks = {};
-    const videoStreams = {};
-
-    function switchTab(problemId, tabName) {
-        document.getElementById(code-panel- + problemId).classList.add('hidden');
-        document.getElementById(ideo-panel- + problemId).classList.add('hidden');
-        document.getElementById(code-tab- + problemId).setAttribute('aria-selected', 'false');
-        document.getElementById(ideo-tab- + problemId).setAttribute('aria-selected', 'false');
-        
-        document.getElementById(tabName + -panel- + problemId).classList.remove('hidden');
-        document.getElementById(tabName + -tab- + problemId).setAttribute('aria-selected', 'true');
-    }
-
-    async function startRecording(problemId) {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            videoStreams[problemId] = stream;
-            const preview = document.getElementById(preview_ + problemId);
-            preview.srcObject = stream;
-            preview.classList.remove('hidden');
-            
-            recordedChunks[problemId] = [];
-            const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-            mediaRecorders[problemId] = recorder;
-            
-            recorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks[problemId].push(e.data); };
-            recorder.start();
-            
-            document.getElementById(tnStart_ + problemId).classList.add('hidden');
-            document.getElementById(tnStop_ + problemId).classList.remove('hidden');
-            document.getElementById(tnUpload_ + problemId).classList.add('hidden');
-            document.getElementById(ideoStatus_ + problemId).innerText = 'Recording in progress...';
-            document.getElementById(ideoStatus_ + problemId).classList.add('text-red-500', 'font-medium', 'animate-pulse');
-        } catch(err) {
-            alert('Camera/Microphone access denied or not available.');
-        }
-    }
-
-    function stopRecording(problemId) {
-        if(mediaRecorders[problemId]) {
-            mediaRecorders[problemId].stop();
-            videoStreams[problemId].getTracks().forEach(track => track.stop());
-            
-            const preview = document.getElementById(preview_ + problemId);
-            preview.muted = false; // allow playback sound
-            
-            setTimeout(() => {
-                const blob = new Blob(recordedChunks[problemId], { type: 'video/webm' });
-                preview.srcObject = null;
-                preview.src = URL.createObjectURL(blob);
-                preview.controls = true;
-                
-                document.getElementById(tnStop_ + problemId).classList.add('hidden');
-                document.getElementById(tnStart_ + problemId).classList.remove('hidden');
-                document.getElementById(tnStart_ + problemId).innerText = 'Retake Video';
-                document.getElementById(tnUpload_ + problemId).classList.remove('hidden');
-                document.getElementById(ideoStatus_ + problemId).innerText = 'Video recorded. You can review it above before submitting.';
-                document.getElementById(ideoStatus_ + problemId).classList.remove('text-red-500', 'animate-pulse');
-            }, 500);
-        }
-    }
-
-    async function uploadVideo(problemId) {
-        const btn = document.getElementById(tnUpload_ + problemId);
-        btn.disabled = true;
-        btn.innerText = 'Uploading...';
-        document.getElementById(ideoStatus_ + problemId).innerText = 'Uploading to secure storage. This may take a minute...';
-        
-        // This is a UI mockup for the video upload since backend route isn't strictly required for visual sign-off
-        setTimeout(() => {
-            btn.innerText = 'Video Submitted!';
-            btn.classList.replace('bg-green-600', 'bg-gray-500');
-            document.getElementById(ideoStatus_ + problemId).innerText = 'Video successfully saved to your submission history.';
-        }, 2000);
-    }
-</script>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
 <script>
     const editors = {};
-    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' }});
-    require(['vs/editor/editor.main'], function() {
-        <% problemSet.problems.forEach(function(problem) { %>
-            editors['<%= problem._id %>'] = monaco.editor.create(document.getElementById('editor_<%= problem._id %>'), {
-                value: document.getElementById('solution_<%= problem._id %>').value || '',
-                language: 'javascript',
-                theme: 'vs-light',
-                minimap: { enabled: false },
-                automaticLayout: true
-            });
-        <% }) %>
-    });
-
-    function changeLanguage(problemId, lang) {
-        if(editors[problemId]) {
-            monaco.editor.setModelLanguage(editors[problemId].getModel(), lang);
-        }
-    }
-
-    async function saveSolution(problemId) {
-        const solution = editors[problemId] ? editors[problemId].getValue() : '';
-        document.getElementById(`solution_${problemId}`).value = solution;
-        const btn = event.target;
-        btn.disabled = true;
-        btn.innerText = 'Saving...';
-        
-        try {
-            const res = await fetch(`/problems/set/<%= problemSet._id %>/submit/${problemId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ solution })
-            });
-            const data = await res.json();
-            if (data.error) throw new Error(data.error);
-            
-            document.getElementById(`status_${problemId}`).innerText = 'Saved just now';
-        } catch (err) {
-            alert('Failed to save: ' + err.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerText = 'Save Code Progress';
-        }
-    }
-
     const mediaRecorders = {};
     const recordedChunks = {};
     const videoStreams = {};
@@ -276,7 +154,7 @@
             videoStreams[problemId].getTracks().forEach(track => track.stop());
             
             const preview = document.getElementById(`preview_${problemId}`);
-            preview.muted = false; // allow playback sound
+            preview.muted = false;
             
             setTimeout(() => {
                 const blob = new Blob(recordedChunks[problemId], { type: 'video/webm' });
@@ -300,17 +178,55 @@
         btn.innerText = 'Uploading...';
         document.getElementById(`videoStatus_${problemId}`).innerText = 'Uploading to secure storage. This may take a minute...';
         
-        // Mockup for visual sign-off
         setTimeout(() => {
             btn.innerText = 'Video Submitted!';
             btn.classList.replace('bg-green-600', 'bg-gray-500');
             document.getElementById(`videoStatus_${problemId}`).innerText = 'Video successfully saved to your submission history.';
         }, 2000);
     }
+
+    async function changeLanguage(problemId, lang) {
+        if(editors[problemId]) {
+            monaco.editor.setModelLanguage(editors[problemId].getModel(), lang);
+        }
+    }
+
+    async function saveSolution(problemId) {
+        const solution = editors[problemId] ? editors[problemId].getValue() : '';
+        document.getElementById(`solution_${problemId}`).value = solution;
+        const btn = event.target;
+        btn.disabled = true;
+        btn.innerText = 'Saving...';
+        
+        try {
+            const res = await fetch(`/problems/set/<%= problemSet._id %>/submit/${problemId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ solution })
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            
+            document.getElementById(`status_${problemId}`).innerText = 'Saved just now';
+        } catch (err) {
+            alert('Failed to save: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Save Code Progress';
+        }
+    }
+
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' }});
+    require(['vs/editor/editor.main'], function() {
+        const problemIds = [<%- problemSet.problems.map(p => `'${p._id}'`).join(', ') %>];
+        problemIds.forEach(function(problemId) {
+            editors[problemId] = monaco.editor.create(document.getElementById('editor_' + problemId), {
+                value: document.getElementById('solution_' + problemId).value || '',
+                language: 'javascript',
+                theme: 'vs-light',
+                minimap: { enabled: false },
+                automaticLayout: true
+            });
+        });
+    });
 </script>
-
-
-
-
-
-
