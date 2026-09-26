@@ -506,12 +506,21 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
                 </a>
             </td>
             <td align="center">
+                <a href="https://github.com/rajeevsahani">
+                    <img src="https://avatars.githubusercontent.com/u/10737960?v=4" width="100;" alt="rajeevsahani"/>
+                    <br />
+                    <sub><b>Rajeev Kumar</b></sub>
+                </a>
+            </td>
+            <td align="center">
                 <a href="https://github.com/alisayam-786">
                     <img src="https://avatars.githubusercontent.com/u/233578022?v=4" width="100;" alt="alisayam-786"/>
                     <br />
                     <sub><b>Ali Sayam</b></sub>
                 </a>
             </td>
+		</tr>
+		<tr>
             <td align="center">
                 <a href="https://github.com/rajjayant7">
                     <img src="https://avatars.githubusercontent.com/u/254138862?v=4" width="100;" alt="rajjayant7"/>
@@ -519,8 +528,6 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
                     <sub><b>JAYANT RAJ</b></sub>
                 </a>
             </td>
-		</tr>
-		<tr>
             <td align="center">
                 <a href="https://github.com/UTT-THE-CODER">
                     <img src="https://avatars.githubusercontent.com/u/255687562?v=4" width="100;" alt="UTT-THE-CODER"/>
@@ -536,10 +543,10 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
                 </a>
             </td>
             <td align="center">
-                <a href="https://github.com/rajeevsahani">
-                    <img src="https://avatars.githubusercontent.com/u/10737960?v=4" width="100;" alt="rajeevsahani"/>
+                <a href="https://github.com/deepanshusahani15">
+                    <img src="https://avatars.githubusercontent.com/u/285276346?v=4" width="100;" alt="deepanshusahani15"/>
                     <br />
-                    <sub><b>Rajeev Kumar</b></sub>
+                    <sub><b>Deepanshu Sahani</b></sub>
                 </a>
             </td>
             <td align="center">
@@ -547,13 +554,6 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
                     <img src="https://avatars.githubusercontent.com/u/93484451?v=4" width="100;" alt="ChiragYadav2000"/>
                     <br />
                     <sub><b>ChiragYadav2000</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/deepanshusahani15">
-                    <img src="https://avatars.githubusercontent.com/u/285276346?v=4" width="100;" alt="deepanshusahani15"/>
-                    <br />
-                    <sub><b>Deepanshu Sahani</b></sub>
                 </a>
             </td>
             <td align="center">
