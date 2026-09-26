@@ -15,6 +15,7 @@ const {
 const { logoUpload, uploadBufferToCloudinary } = require('../middleware/upload');
 const { sendStatusUpdateEmail, sendInterviewScheduledEmail, sendInterviewRescheduledEmail, sendInterviewCancelledEmail } = require('../utils/sendEmail');
 const { parseISTEndOfDay, parseISTDatetime } = require('../utils/dateUtils');
+const { sanitizeHttpUrl } = require('../utils/safeUrl');
 const { buildApplicantViewLocals } = require('../utils/candidateFilters');
 const {
     notifyRelevantCandidates,
@@ -1111,11 +1112,14 @@ router.post('/company/applications/:id/interview/schedule', isAuthenticated, req
             return res.redirect(`/company/applications/${req.params.id}/candidate`);
         }
 
-        if (mode === 'Online' && (!meetingLink || !meetingLink.trim())) {
-            if (req.flash) req.flash('error_msg', 'Meeting link is required for Online interviews.');
+        const safeMeetingLink = mode === 'Online' ? sanitizeHttpUrl(meetingLink) : { url: '' };
+        if (mode === 'Online' && !safeMeetingLink.url) {
+            if (req.flash) req.flash('error_msg', safeMeetingLink.error || 'Meeting link is required for Online interviews.');
             return res.redirect(`/company/applications/${req.params.id}/candidate`);
         }
-        if (mode === 'In-Person' && (!location || !location.trim())) {
+
+        const trimmedLocation = typeof location === 'string' ? location.trim() : '';
+        if (mode === 'In-Person' && !trimmedLocation) {
             if (req.flash) req.flash('error_msg', 'Location is required for In-Person interviews.');
             return res.redirect(`/company/applications/${req.params.id}/candidate`);
         }
@@ -1137,9 +1141,9 @@ router.post('/company/applications/:id/interview/schedule', isAuthenticated, req
             scheduledAt: parsedDate,
             duration: Number(duration) || 30,
             mode,
-            meetingLink: mode === 'Online' ? meetingLink.trim() : '',
-            location: mode === 'In-Person' ? location.trim() : '',
-            instructions: instructions ? instructions.trim() : '',
+            meetingLink: safeMeetingLink.url,
+            location: mode === 'In-Person' ? trimmedLocation : '',
+            instructions: typeof instructions === 'string' ? instructions.trim() : '',
             scheduledBy: req.user._id,
             createdAt: new Date(),
             updatedAt: new Date()
@@ -1192,11 +1196,14 @@ router.post('/company/applications/:id/interview/reschedule', isAuthenticated, r
             return res.redirect(`/company/applications/${req.params.id}/candidate`);
         }
 
-        if (mode === 'Online' && (!meetingLink || !meetingLink.trim())) {
-            if (req.flash) req.flash('error_msg', 'Meeting link is required for Online interviews.');
+        const safeMeetingLink = mode === 'Online' ? sanitizeHttpUrl(meetingLink) : { url: '' };
+        if (mode === 'Online' && !safeMeetingLink.url) {
+            if (req.flash) req.flash('error_msg', safeMeetingLink.error || 'Meeting link is required for Online interviews.');
             return res.redirect(`/company/applications/${req.params.id}/candidate`);
         }
-        if (mode === 'In-Person' && (!location || !location.trim())) {
+
+        const trimmedLocation = typeof location === 'string' ? location.trim() : '';
+        if (mode === 'In-Person' && !trimmedLocation) {
             if (req.flash) req.flash('error_msg', 'Location is required for In-Person interviews.');
             return res.redirect(`/company/applications/${req.params.id}/candidate`);
         }
@@ -1217,9 +1224,9 @@ router.post('/company/applications/:id/interview/reschedule', isAuthenticated, r
         application.interview.scheduledAt = parsedDate;
         application.interview.duration = Number(duration) || 30;
         application.interview.mode = mode;
-        application.interview.meetingLink = mode === 'Online' ? meetingLink.trim() : '';
-        application.interview.location = mode === 'In-Person' ? location.trim() : '';
-        application.interview.instructions = instructions ? instructions.trim() : '';
+        application.interview.meetingLink = safeMeetingLink.url;
+        application.interview.location = mode === 'In-Person' ? trimmedLocation : '';
+        application.interview.instructions = typeof instructions === 'string' ? instructions.trim() : '';
         application.interview.updatedAt = new Date();
 
         await application.save();

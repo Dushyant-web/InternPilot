@@ -91,6 +91,7 @@
                             ? 'bg-amber-50 border-amber-200 text-amber-700'
                             : 'bg-rose-50 border-rose-200 text-rose-700';
                     const interview = app.interview && app.interview.status ? app.interview : null;
+                    const safeMeetingLink = interview ? sanitizeHttpUrl(interview.meetingLink).url : '';
                     const statusUpdatedAt = asValidDate(app.statusUpdatedAt || app.appliedAt);
                 %>
 
@@ -249,8 +250,8 @@
                                     <% } %>
                                 </div>
 
-                                <% if (interview.status !== 'Cancelled' && interview.mode === 'Online' && interview.meetingLink) { %>
-                                    <a href="<%= interview.meetingLink %>" target="_blank" rel="noopener noreferrer"
+                                <% if (interview.status !== 'Cancelled' && interview.mode === 'Online' && safeMeetingLink) { %>
+                                    <a href="<%= safeMeetingLink %>" target="_blank" rel="noopener noreferrer"
                                         class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-indigo-700 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-800 focus:outline-none focus:ring-4 focus:ring-indigo-200">
                                         Join meeting
                                         <i class="ph-bold ph-arrow-square-out" aria-hidden="true"></i>

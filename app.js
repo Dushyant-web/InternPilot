@@ -25,6 +25,7 @@ const User = require("./models/User");
 const Internship = require("./models/Internship");
 const Notification = require('./models/Notification');
 const { buildNavigationState } = require('./utils/navigation');
+const { sanitizeHttpUrl } = require('./utils/safeUrl');
 
 const authRoutes = require("./routes/auth");
 const internshipRoutes = require("./routes/internships");
@@ -39,6 +40,9 @@ const pagesRoutes = require('./routes/pages');
 
 const app = express();
 const port = process.env.PORT || 8080;
+
+// Safe URL normalization is available to templates that render stored links.
+app.locals.sanitizeHttpUrl = sanitizeHttpUrl;
 
 // View engine setup
 app.engine("ejs", ejsMate);

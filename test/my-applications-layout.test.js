@@ -3,10 +3,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const ejs = require('ejs');
+const { sanitizeHttpUrl } = require('../utils/safeUrl');
 
 const trackerPath = path.join(__dirname, '..', 'views', 'candidate', 'candidate-tracker.ejs');
 
-function renderTracker() {
+function renderTracker({ meetingLink = 'https://meet.example.test/room' } = {}) {
     const template = fs.readFileSync(trackerPath, 'utf8')
         .replace("<% layout('layouts/boilerplate') %>", '');
     const internship = {
@@ -38,7 +39,7 @@ function renderTracker() {
                 scheduledAt: new Date('2026-09-28T08:30:00.000Z'),
                 duration: 30,
                 mode: 'Online',
-                meetingLink: 'https://meet.example.test/room',
+                meetingLink,
                 instructions: 'Join five minutes early.'
             }
         },
@@ -55,6 +56,7 @@ function renderTracker() {
     return ejs.render(template, {
         applications,
         candidate: { name: 'Candidate' },
+        sanitizeHttpUrl,
         formatRelativeTime: () => '2 days ago',
         formatLocalizedDateTime: () => '24 Sept 2026, 5:30 pm'
     }, { filename: trackerPath });
@@ -99,6 +101,14 @@ test('interview details remain nested in the related application card', () => {
     assert.match(interviewCard, /Interview Scheduled/);
     assert.match(interviewCard, /Join meeting/);
     assert.match(interviewCard, /rel="noopener noreferrer"/);
+});
+
+test('unsafe legacy meeting links are not rendered as candidate actions', () => {
+    const html = renderTracker({ meetingLink: 'javascript:alert("xss")' });
+
+    assert.match(html, /data-interview-details/);
+    assert.doesNotMatch(html, /href="javascript:/i);
+    assert.doesNotMatch(html, />\s*Join meeting\s*</);
 });
 
 test('the legacy My Applications URL renders the canonical tracker template', () => {
