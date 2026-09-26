@@ -11,12 +11,23 @@ const { parseISTEndOfDay } = require('../utils/dateUtils');
 const { calculateSkillScore, analyzeSkillGap } = require('../utils/skillMatch');
 const { notifyRelevantCandidates } = require('../utils/notifications');
 const chatRouter = require('./chat');
-const { parseInternshipQuery, buildPaginationData, buildQueryString } = require('../utils/queryHelper');
+const {
+    parseInternshipQuery,
+    buildPaginationData,
+    buildQueryString,
+    applyDurationFilter,
+    getActiveFilters,
+    clearFiltersHref,
+    uniqueSortedOptions,
+    DURATION_BUCKETS
+} = require('../utils/queryHelper');
 const { calculateCandidateMatch } = require('../utils/candidateMatcher');
 
 router.get('/', async (req, res) => {
     try {
-        const { filterObj, sortObj, state, page, limit } = parseInternshipQuery(req.query);
+        const parsed = parseInternshipQuery(req.query);
+        const { sortObj, state, page, limit } = parsed;
+        const filterObj = await applyDurationFilter(parsed.filterObj, state.duration, Internship);
 
         const totalItems = await Internship.countDocuments(filterObj);
         const pagination = buildPaginationData(totalItems, page, limit);
@@ -26,8 +37,12 @@ router.get('/', async (req, res) => {
             .skip(pagination.skip)
             .limit(pagination.limit);
 
-        const availableSectors = await Internship.distinct('sector');
+        const [availableSectors, availableSkills] = await Promise.all([
+            Internship.distinct('sector'),
+            Internship.distinct('requiredSkills', { status: { $ne: 'draft' } })
+        ]);
         const sectors = availableSectors.filter(Boolean).sort();
+        const skillOptions = uniqueSortedOptions(availableSkills);
 
         const candidate = req.user;
         const currentUser = req.user;
@@ -47,6 +62,10 @@ router.get('/', async (req, res) => {
             currentFilter: state.status,
             pagination,
             sectors,
+            skillOptions,
+            durationBuckets: DURATION_BUCKETS,
+            activeFilters: getActiveFilters(state),
+            clearFiltersUrl: clearFiltersHref(state),
             buildQueryString
         });
     } catch (error) {
