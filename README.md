@@ -485,6 +485,13 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
                 </a>
             </td>
             <td align="center">
+                <a href="https://github.com/archlight20">
+                    <img src="https://avatars.githubusercontent.com/u/120593356?v=4" width="100;" alt="archlight20"/>
+                    <br />
+                    <sub><b>archlight20</b></sub>
+                </a>
+            </td>
+            <td align="center">
                 <a href="https://github.com/Tanmoysahacodes">
                     <img src="https://avatars.githubusercontent.com/u/132278570?v=4" width="100;" alt="Tanmoysahacodes"/>
                     <br />
@@ -496,13 +503,6 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
                     <img src="https://avatars.githubusercontent.com/u/223731712?v=4" width="100;" alt="huzaifa069HUZ"/>
                     <br />
                     <sub><b>Huzaifa Tabish</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/archlight20">
-                    <img src="https://avatars.githubusercontent.com/u/120593356?v=4" width="100;" alt="archlight20"/>
-                    <br />
-                    <sub><b>archlight20</b></sub>
                 </a>
             </td>
             <td align="center">
