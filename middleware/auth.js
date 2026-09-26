@@ -17,7 +17,8 @@ const isAuthenticated = (req, res, next) => {
 
 const requireCompanyRole = (allowedRoles) => {
     return (req, res, next) => {
-        if (!req.user || !req.user.companyId) {
+        const companyId = req.user?.companyId || (req.user?.role === 'company' ? req.user._id : null);
+        if (!req.user || !companyId) {
             req.flash('error_msg', 'You do not belong to a valid company account.');
             return res.redirect('/');
         }
@@ -40,7 +41,7 @@ const authorize = (...allowedRoles) => {
             req.flash('error_msg', 'You do not have permission to access that section.');
 
             if (req.user.role === 'admin') return res.redirect('/admin/dashboard');
-            if (req.user.role === 'company' || req.user.role === 'recruiter') return res.redirect('/company/dashboard');
+            if (['company', 'recruiter', 'hiring_manager'].includes(req.user.role)) return res.redirect('/company/dashboard');
             return res.redirect('/');
         }
 

@@ -12,7 +12,7 @@ const generateSecureOTP = () => {
 const redirectIfAuthenticated = (req, res, next) => {
     if (req.isAuthenticated && req.isAuthenticated()) {
         if (req.user.role === 'admin') return res.redirect('/admin/dashboard');
-        if (req.user.role === 'company' || req.user.role === 'recruiter') return res.redirect('/company/dashboard');
+        if (['company', 'recruiter', 'hiring_manager'].includes(req.user.role)) return res.redirect('/company/dashboard');
         return res.redirect('/');
     }
     next();
@@ -261,7 +261,7 @@ router.post('/login', (req, res, next) => {
 
             if (user.role === 'admin') {
                 return res.redirect('/admin/dashboard');
-            } else if (user.role === 'company' || user.role === 'recruiter') {
+            } else if (['company', 'recruiter', 'hiring_manager'].includes(user.role)) {
                 return res.redirect('/company/dashboard');
             } else {
                 return res.redirect('/');
@@ -290,7 +290,7 @@ router.get('/google/callback', (req, res, next) => {
 
             if (user.role === 'admin') {
                 return res.redirect('/admin/dashboard');
-            } else if (user.role === 'company' || user.role === 'recruiter') {
+            } else if (['company', 'recruiter', 'hiring_manager'].includes(user.role)) {
                 return res.redirect('/company/dashboard');
             } else {
                 return res.redirect('/');

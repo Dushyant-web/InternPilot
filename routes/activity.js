@@ -1,6 +1,7 @@
 const express = require('express');
 const ActivityLog = require('../models/ActivityLog');
-const { isAuthenticated, requireCompanyRole } = require('../middleware/auth');
+const { isAuthenticated } = require('../middleware/auth');
+const { requireCompanyPermission } = require('../middleware/companyAccess');
 
 const router = express.Router();
 
@@ -10,15 +11,15 @@ function toPositiveInteger(value, fallback, maximum) {
     return Math.min(parsed, maximum);
 }
 
-router.get('/companies/:companyId/activity-logs', isAuthenticated, requireCompanyRole(['company']), async (req, res) => {
+router.get('/companies/:companyId/activity-logs', isAuthenticated, requireCompanyPermission('team:manage'), async (req, res) => {
     try {
-        if (String(req.user.companyId) !== String(req.params.companyId)) {
+        if (String(req.company._id) !== String(req.params.companyId)) {
             return res.status(403).json({ error: 'You can only view your own company activity.' });
         }
 
         const page = toPositiveInteger(req.query.page, 1, 1000000);
         const limit = toPositiveInteger(req.query.limit, 25, 100);
-        const filter = { companyId: req.user.companyId };
+        const filter = { companyId: req.company._id };
         if (req.query.actor) filter.actorId = req.query.actor;
         if (req.query.action) filter.action = req.query.action;
 
@@ -47,8 +48,8 @@ router.get('/companies/:companyId/activity-logs', isAuthenticated, requireCompan
     }
 });
 
-router.get('/company/activity', isAuthenticated, requireCompanyRole(['company']), async (req, res) => {
-    res.render('company/activity', { user: req.user });
+router.get('/company/activity', isAuthenticated, requireCompanyPermission('team:manage'), async (req, res) => {
+    res.render('company/activity', { user: req.user, companyId: req.company._id.toString() });
 });
 
 module.exports = router;
