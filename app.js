@@ -26,6 +26,7 @@ const Internship = require("./models/Internship");
 const Notification = require('./models/Notification');
 const { buildNavigationState } = require('./utils/navigation');
 const { checkPmisEligibility } = require('./utils/pmisEligibility');
+const { sanitizeHttpUrl } = require('./utils/safeUrl');
 
 const authRoutes = require("./routes/auth");
 const internshipRoutes = require("./routes/internships");
