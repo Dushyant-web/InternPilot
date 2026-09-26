@@ -9,7 +9,9 @@ const vm = require('vm');
 // bad merge once took out the applicant search and proficiency filter.
 
 const VIEWS_DIR = path.join(__dirname, '..', 'views');
-const JS_TYPES = ['', 'text/javascript', 'application/javascript', 'module'];
+// Classic scripts only. vm.Script can't parse import/export, so a
+// type="module" block would need a module parser (there are none today).
+const JS_TYPES = ['', 'text/javascript', 'application/javascript'];
 
 function listViews(dir) {
     return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
@@ -62,11 +64,11 @@ for (const file of views) {
             assert.equal(/<%/.test(code), false,
                 `${path.relative(VIEWS_DIR, file)}:${line} has EJS control flow inside a script, which this check cannot follow`);
             try {
-                // Wrapped in a function so a top-level `return` is allowed; the
-                // code is only compiled, never run.
-                new vm.Script(`(function () {\n${code}\n})`, { filename: `${file}:${line}` });
+                // Compiled as-is, like the browser does, so a top-level
+                // `return` fails here too. Nothing is run.
+                new vm.Script(code, { filename: `${file}:${line}` });
             } catch (err) {
-                assert.fail(`${path.relative(VIEWS_DIR, file)}:${line} — ${err.message}`);
+                assert.fail(`${path.relative(VIEWS_DIR, file)}:${line}: ${err.message}`);
             }
         });
     });
