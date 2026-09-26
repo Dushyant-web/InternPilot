@@ -119,6 +119,10 @@ async function main() {
     await mongoose.connect(process.env.ATLASDB_URL);
 }
 
+// In-app messaging (#136). Mounted before every page route so its unread
+// count is available to the header on all pages, the homepage included.
+app.use(require('./routes/messages'));
+
 // Homepage Route (Renders views/extras/index.ejs)
 app.get('/', async (req, res) => {
     try {
