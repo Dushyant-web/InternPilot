@@ -14,7 +14,8 @@ const { formatRelativeTime, formatLocalizedDateTime } = require('../utils/dateFo
 
 /**
  * GET /candidate/my-applications
- * Renders the dedicated student applications view with withdrawal controls.
+ * Preserves the legacy URL while using the same canonical application-card
+ * renderer as /candidate/applications.
  */
 router.get('/candidate/my-applications', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
@@ -22,9 +23,9 @@ router.get('/candidate/my-applications', isAuthenticated, authorize('candidate')
         const candidate = await User.findById(userId);
         const applications = await Application.find({ candidate: userId })
             .populate('internship')
-            .sort({ appliedAt: -1 });
+            .sort({ statusUpdatedAt: -1, appliedAt: -1 });
 
-        res.render('candidate/my-applications', {
+        res.render('candidate/candidate-tracker', {
             candidate,
             currentUser: req.user,
             applications,

@@ -1,5 +1,6 @@
 require('dotenv').config();
 const nodemailer = require('nodemailer');
+const { sanitizeHttpUrl } = require('./safeUrl');
 
 /**
  * Creates and returns a configured Nodemailer transporter.
@@ -77,6 +78,24 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const isValidEmail = (email) => {
     return typeof email === 'string' && EMAIL_REGEX.test(email);
+};
+
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;'
+}[character]));
+
+const onlineMeetingDetails = (meetingLink) => {
+    const safeMeetingLink = sanitizeHttpUrl(meetingLink).url;
+    if (!safeMeetingLink) {
+        return '<p><strong>Meeting Link:</strong> Please check InternPilot for the updated link.</p>';
+    }
+
+    const escapedMeetingLink = escapeHtml(safeMeetingLink);
+    return `<p><strong>Meeting Link:</strong> <a href="${escapedMeetingLink}">${escapedMeetingLink}</a></p>`;
 };
 
 /**
@@ -184,7 +203,7 @@ const sendInterviewScheduledEmail = async (email, candidateName, internshipTitle
 
     let modeDetails = '';
     if (interviewDetails.mode === 'Online') {
-        modeDetails = `<p><strong>Meeting Link:</strong> <a href="${interviewDetails.meetingLink}">${interviewDetails.meetingLink}</a></p>`;
+        modeDetails = onlineMeetingDetails(interviewDetails.meetingLink);
     } else if (interviewDetails.mode === 'In-Person') {
         modeDetails = `<p><strong>Location:</strong> ${interviewDetails.location}</p>`;
     }
@@ -228,7 +247,7 @@ const sendInterviewRescheduledEmail = async (email, candidateName, internshipTit
 
     let modeDetails = '';
     if (interviewDetails.mode === 'Online') {
-        modeDetails = `<p><strong>Meeting Link:</strong> <a href="${interviewDetails.meetingLink}">${interviewDetails.meetingLink}</a></p>`;
+        modeDetails = onlineMeetingDetails(interviewDetails.meetingLink);
     } else if (interviewDetails.mode === 'In-Person') {
         modeDetails = `<p><strong>Location:</strong> ${interviewDetails.location}</p>`;
     }
