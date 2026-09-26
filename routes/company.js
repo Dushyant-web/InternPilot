@@ -8,6 +8,7 @@ const { isAuthenticated, requireCompanyRole } = require('../middleware/auth');
 const { logoUpload, uploadBufferToCloudinary } = require('../middleware/upload');
 const { sendStatusUpdateEmail, sendInterviewScheduledEmail, sendInterviewRescheduledEmail, sendInterviewCancelledEmail } = require('../utils/sendEmail');
 const { parseISTEndOfDay, parseISTDatetime } = require('../utils/dateUtils');
+const { buildApplicantViewLocals } = require('../utils/candidateFilters');
 const {
     notifyRelevantCandidates,
     notifyApplicationStatusChange,
@@ -457,7 +458,7 @@ router.get('/company/internships/:id/applicants', isAuthenticated, requireCompan
         res.render('company/company-applicants', {
             user: req.user,
             internship,
-            applications
+            ...buildApplicantViewLocals(applications, req.query, internship._id)
         });
     } catch (error) {
         console.error('Error fetching applicants:', error);
