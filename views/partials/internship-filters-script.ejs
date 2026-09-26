@@ -39,6 +39,8 @@
                 if (!value) continue;
                 if (MULTI.includes(key)) { (lists[key] = lists[key] || []).push(value); continue; }
                 if ((key === 'sort' && value === 'latest') || (key === 'status' && value === 'all')) continue;
+                if (key === 'limit' && (Number(value) === 12 || !value)) continue;
+                if (key === 'page' && Number(value) <= 1) continue;
                 params.set(key, value);
             }
             Object.keys(lists).forEach(key => params.set(key, lists[key].join(',')));
@@ -62,6 +64,7 @@
             set('minStipend', state.minStipend);
             set('maxStipend', state.maxStipend);
             set('status', state.status || 'all');
+            set('limit', state.limit && Number(state.limit) !== 12 ? state.limit : '');
             if (form.elements.sort) form.elements.sort.value = state.sort || 'latest';
 
             if (form.elements.sector) {

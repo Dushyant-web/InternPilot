@@ -37,6 +37,7 @@ router.get('/', async (req, res) => {
 
         const totalItems = await Internship.countDocuments(filterObj);
         const pagination = buildPaginationData(totalItems, page, limit);
+        state.page = pagination.currentPage;
 
         const internships = await Internship.find(filterObj)
             .sort(sortObj)

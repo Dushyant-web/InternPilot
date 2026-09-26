@@ -133,7 +133,7 @@
                                                         <i class="ph-bold ph-calendar"></i> <%= app.interview.status %> Interview
                                                     </span>
                                                 <% } %>
-                                                <% const isPmisEligible = app.candidate && app.candidate.age >= 21 && app.candidate.age <= 24 && app.candidate.familyIncome !== undefined && app.candidate.familyIncome !== null && app.candidate.familyIncome <= 800000; %>
+                                                <% const isPmisEligible = typeof checkPmisEligibility === 'function' ? checkPmisEligibility(app.candidate).isEligible : (app.candidate && app.candidate.age >= 21 && app.candidate.age <= 24 && app.candidate.familyIncome !== undefined && app.candidate.familyIncome !== null && app.candidate.familyIncome <= 800000); %>
                                                 <% if (isPmisEligible) { %>
                                                     <span
                                                         class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
