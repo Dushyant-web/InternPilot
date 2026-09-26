@@ -70,8 +70,10 @@ router.get('/messages', isAuthenticated, async (req, res, next) => {
     try {
         const canMessage = Boolean(messaging.inboxQuery(req.user));
         const conversations = canMessage ? await messaging.getInbox(req.user) : [];
+        const startable = await messaging.getStartableApplications(req.user, conversations);
         res.render('messages/inbox', {
             conversations,
+            startable,
             canMessage,
             viewerSide: req.user.role === 'candidate' ? 'candidate' : 'company'
         });

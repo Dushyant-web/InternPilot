@@ -10,6 +10,7 @@ const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
+const Application = require('../models/Application');
 const { COMPANY_ROLES, hasCompanyPermission } = require('../middleware/companyAccess');
 
 const MAX_MESSAGE_LENGTH = Message.MAX_LENGTH;
@@ -277,6 +278,39 @@ async function getInbox(user) {
 }
 
 /**
+ * Applications a candidate can still start a thread on: open, with a listing,
+ * and no conversation yet.
+ *
+ * @param {Array<object>} applications
+ * @param {Array<object>} conversations The candidate's inbox.
+ * @returns {Array<object>}
+ */
+function startableApplications(applications, conversations) {
+    const started = new Set((conversations || []).map(c => idOf(c.application)));
+    return (applications || []).filter(a =>
+        a && a.internship && !isReadOnlyStatus(a.status) && !started.has(idOf(a._id)));
+}
+
+/**
+ * Lets candidates open a thread from their inbox, so they aren't limited to
+ * replying when a recruiter writes first.
+ *
+ * @param {object} user
+ * @param {Array<object>} conversations From getInbox.
+ * @returns {Promise<Array<object>>}
+ */
+async function getStartableApplications(user, conversations) {
+    if (!user || user.role !== 'candidate') return [];
+    const applications = await Application.find({ candidate: user._id })
+        .sort({ appliedAt: -1 })
+        .limit(50)
+        .populate('internship', 'title companyName')
+        .select('status internship appliedAt')
+        .lean();
+    return startableApplications(applications, conversations);
+}
+
+/**
  * Finds the thread for an application, creating it the first time. The
  * unique index on `application` settles two people starting it at once.
  *
@@ -446,6 +480,8 @@ module.exports = {
     unreadCounts,
     countUnreadMessages,
     getInbox,
+    startableApplications,
+    getStartableApplications,
     getOrCreateConversation,
     markRead,
     postMessage

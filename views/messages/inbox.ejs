@@ -11,6 +11,7 @@
     };
     const isClosed = status => ['withdrawn', 'rejected'].includes(String(status || '').toLowerCase());
     const totalUnread = conversations.reduce((sum, c) => sum + (c.unread || 0), 0);
+    const startList = typeof startable !== 'undefined' && Array.isArray(startable) ? startable : [];
 %>
 
 <div class="max-w-3xl mx-auto space-y-5">
@@ -39,10 +40,9 @@
             <h2 class="text-base font-bold text-slate-800">No conversations yet</h2>
             <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                 <% if (viewerSide === 'candidate') { %>
-                    Recruiters can message you about your applications, or you can start one with "Message recruiter" on
-                    <a href="/candidate/applications" class="text-indigo-600 font-semibold hover:underline">My Applications</a>.
+                    Recruiters can message you about your applications<%= startList.length ? ', or you can start a conversation below' : '' %>.
                 <% } else { %>
-                    Open a candidate's profile from your applicants list and choose "Message candidate".
+                    Use the chat button on an applicant card, or "Message candidate" on their profile.
                 <% } %>
             </p>
         </div>
@@ -88,5 +88,25 @@
                 </li>
             <% }) %>
         </ul>
+    <% } %>
+
+    <% if (canMessage && startList.length) { %>
+        <section class="space-y-2" aria-labelledby="startConversationHeading">
+            <div>
+                <h2 id="startConversationHeading" class="text-sm font-bold text-slate-800">Message a recruiter</h2>
+                <p class="text-xs text-slate-500">Open applications you haven't started a conversation about yet.</p>
+            </div>
+            <ul class="bg-white border border-slate-200 rounded-xl shadow-sm divide-y divide-slate-100 overflow-hidden">
+                <% startList.forEach(a => { %>
+                    <li class="flex items-center justify-between gap-3 px-4 py-3">
+                        <span class="min-w-0">
+                            <span class="block truncate text-sm font-semibold text-slate-800"><%= a.internship.title || 'Internship' %></span>
+                            <span class="block truncate text-[11px] text-slate-500"><%= a.internship.companyName || 'Company' %> · <%= a.status %></span>
+                        </span>
+                        <%- include('../partials/message-start-button', { application: a, label: 'Message recruiter' }) %>
+                    </li>
+                <% }) %>
+            </ul>
+        </section>
     <% } %>
 </div>

@@ -1,5 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('node:path');
+const fs = require('node:fs');
+const ejs = require('ejs');
 const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
 const {
@@ -13,7 +16,8 @@ const {
     createRateLimiter,
     hasUnread,
     lastReadAt,
-    inboxQuery
+    inboxQuery,
+    startableApplications
 } = require('../utils/messaging');
 
 const id = () => new mongoose.Types.ObjectId();
@@ -150,4 +154,70 @@ test('message notifications are accepted by the notification centre', async () =
     await assert.doesNotReject(note.validate());
     const junk = new Notification({ recipient: candidate._id, type: 'not_a_type', title: 't', message: 'm' });
     await assert.rejects(junk.validate());
+});
+
+test('each applicant card gets a Message button once messaging is mounted', () => {
+    const templatePath = path.join(__dirname, '..', 'views', 'company', 'company-applicants.ejs');
+    const template = fs.readFileSync(templatePath, 'utf8').replace("<% layout('layouts/boilerplate') %>", '');
+    const application = {
+        _id: id(),
+        status: 'Submitted',
+        appliedAt: new Date(),
+        matchScore: 80,
+        candidate: {
+            name: 'Asha Rao',
+            education: { qualification: 'B.Tech' },
+            location: { district: 'Noida', state: 'UP' },
+            skills: ['Node.js'],
+            skillProfiles: [{ name: 'Node.js', proficiency: 'Advanced' }]
+        },
+        candidateSkillProfiles: [{ name: 'Node.js', proficiency: 'Advanced' }],
+        notes: []
+    };
+    const locals = {
+        internship: { title: 'Backend Intern', vacancies: 1, companyName: 'Acme' },
+        applications: [application],
+        user: recruiter
+    };
+    const startForm = `action="/messages/start/${application._id}"`;
+
+    const html = ejs.render(template, { ...locals, messageUnreadCount: 0 }, { filename: templatePath });
+    assert.ok(html.includes(startForm));
+    // Icon-only on the card, so the name goes in the tooltip and screen reader label.
+    assert.match(html, /aria-label="Message Asha Rao"/);
+
+    // Views rendered without the messages router (like older tests) leave it out.
+    assert.ok(!ejs.render(template, locals, { filename: templatePath }).includes(startForm));
+});
+
+test('candidates can start a thread only on open applications without one', () => {
+    const listing = { title: 'Backend Intern', companyName: 'Acme' };
+    const open = { _id: id(), status: 'Shortlisted', internship: listing };
+    const alreadyTalking = { _id: id(), status: 'Submitted', internship: listing };
+    const rejected = { _id: id(), status: 'Rejected', internship: listing };
+    const withdrawn = { _id: id(), status: 'withdrawn', internship: listing };
+    const deletedListing = { _id: id(), status: 'Submitted', internship: null };
+    // getInbox populates the application, so match on its _id as well as a raw id.
+    const inbox = [{ application: { _id: alreadyTalking._id, status: 'Submitted' } }];
+
+    const result = startableApplications([open, alreadyTalking, rejected, withdrawn, deletedListing], inbox);
+    assert.deepEqual(result.map(a => a._id), [open._id]);
+    assert.deepEqual(startableApplications([open], [{ application: open._id }]), []);
+    assert.deepEqual(startableApplications(undefined, undefined), []);
+});
+
+test('the candidate inbox lists open applications they can message about', () => {
+    const templatePath = path.join(__dirname, '..', 'views', 'messages', 'inbox.ejs');
+    const template = fs.readFileSync(templatePath, 'utf8').replace("<% layout('layouts/boilerplate') %>", '');
+    const application = { _id: id(), status: 'Submitted', internship: { title: 'Backend Intern', companyName: 'Acme' } };
+    const render = locals => ejs.render(template, { conversations: [], canMessage: true, ...locals }, { filename: templatePath });
+
+    const html = render({ viewerSide: 'candidate', startable: [application] });
+    assert.ok(html.includes(`action="/messages/start/${application._id}"`));
+    assert.match(html, /Message a recruiter/);
+    assert.match(html, /Backend Intern/);
+
+    const companyHtml = render({ viewerSide: 'company', startable: [] });
+    assert.doesNotMatch(companyHtml, /Message a recruiter/);
+    assert.match(companyHtml, /chat button on an applicant card/);
 });
