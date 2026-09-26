@@ -1,5 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const ejs = require('ejs');
+const mongoose = require('mongoose');
 
 const Application = require('../models/Application');
 const {
@@ -53,4 +57,55 @@ test('formats an exact status update time for India', () => {
 
     assert.match(formatted, /24 Sept 2026/);
     assert.match(formatted, /5:30 pm/i);
+});
+
+function renderApplicationsView(viewName, statusUpdatedAt) {
+    const viewPath = path.join(__dirname, '..', 'views', 'candidate', viewName);
+    const template = fs.readFileSync(viewPath, 'utf8')
+        .replace("<% layout('layouts/boilerplate') %>", '');
+    const application = {
+        _id: new mongoose.Types.ObjectId(),
+        status: 'Under Review',
+        appliedAt: new Date('2026-09-20T12:00:00.000Z'),
+        statusUpdatedAt,
+        matchScore: 80,
+        interview: null,
+        notes: [],
+        internship: {
+            _id: new mongoose.Types.ObjectId(),
+            title: 'Software Intern',
+            companyName: 'Acme Labs',
+            sector: 'Technology',
+            monthlyStipend: 10000,
+            location: { district: 'Pune', state: 'Maharashtra' }
+        }
+    };
+
+    return ejs.render(template, {
+        applications: [application],
+        candidate: { _id: new mongoose.Types.ObjectId(), name: 'Asha' },
+        currentUser: { _id: new mongoose.Types.ObjectId(), role: 'candidate' },
+        pageTitle: 'My Applications',
+        formatRelativeTime: () => '3 days ago',
+        formatLocalizedDateTime: () => '24 Sept 2026, 5:30 pm'
+    }, { filename: viewPath });
+}
+
+test('student application views show a human-readable status update timestamp', () => {
+    const updatedAt = new Date('2026-09-21T12:00:00.000Z');
+
+    for (const viewName of ['candidate-tracker.ejs', 'my-applications.ejs']) {
+        const html = renderApplicationsView(viewName, updatedAt);
+        assert.match(html, /Updated 3 days ago/);
+        assert.match(html, /Last status update: 24 Sept 2026, 5:30 pm/);
+        assert.match(html, /aria-label="Last status update: 24 Sept 2026, 5:30 pm"/);
+        assert.match(html, /datetime="2026-09-21T12:00:00\.000Z"/);
+    }
+});
+
+test('student application views fall back to the application date for legacy records', () => {
+    for (const viewName of ['candidate-tracker.ejs', 'my-applications.ejs']) {
+        const html = renderApplicationsView(viewName, null);
+        assert.match(html, /Updated 3 days ago/);
+    }
 });

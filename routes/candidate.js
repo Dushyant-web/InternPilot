@@ -10,6 +10,7 @@ const Application = require('../models/Application');
 const User = require('../models/User');
 const { notifyCandidateWithdrawal } = require('../utils/recruiterNotifications');
 const { isAuthenticated, authorize } = require('../middleware/auth');
+const { formatRelativeTime, formatLocalizedDateTime } = require('../utils/dateFormat');
 
 /**
  * GET /candidate/my-applications
@@ -27,7 +28,9 @@ router.get('/candidate/my-applications', isAuthenticated, authorize('candidate')
             candidate,
             currentUser: req.user,
             applications,
-            pageTitle: 'My Applications'
+            pageTitle: 'My Applications',
+            formatRelativeTime,
+            formatLocalizedDateTime
         });
     } catch (error) {
         console.error('Error fetching candidate applications:', error);
