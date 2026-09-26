@@ -1,0 +1,73 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="max-w-7xl mx-auto space-y-6 pb-12">
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200 pb-5">
+        <div>
+            <a href="/company/dashboard" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800">&larr; Dashboard</a>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-2">Recruiter Activity History</h1>
+            <p class="text-sm text-slate-500 mt-1">A company-admin view of recent team actions.</p>
+        </div>
+        <div class="flex gap-2">
+            <select id="activityAction" class="text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                <option value="">All actions</option>
+                <option value="CREATE_LISTING">Created listing</option>
+                <option value="EDIT_LISTING">Edited listing</option>
+                <option value="PUBLISH_LISTING">Published listing</option>
+                <option value="PAUSE_LISTING">Paused listing</option>
+                <option value="RESUME_LISTING">Resumed listing</option>
+                <option value="DELETE_LISTING">Deleted listing</option>
+                <option value="UPDATE_APPLICATION_STATUS">Updated application</option>
+                <option value="SHORTLIST_CANDIDATE">Shortlisted candidate</option>
+            </select>
+            <button type="button" id="activityRefresh" class="px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold">Refresh</button>
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                    <tr><th class="px-5 py-3">Actor</th><th class="px-5 py-3">Action</th><th class="px-5 py-3">Target</th><th class="px-5 py-3">Timestamp</th></tr>
+                </thead>
+                <tbody id="activityRows" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
+        <div id="activityEmpty" class="hidden px-5 py-10 text-center text-sm text-slate-500">No activity found.</div>
+        <div class="flex items-center justify-between border-t border-slate-200 px-5 py-3 text-xs text-slate-500">
+            <span id="activitySummary"></span>
+            <div class="flex gap-2"><button id="activityPrevious" type="button" class="px-3 py-1.5 border rounded-lg">Previous</button><button id="activityNext" type="button" class="px-3 py-1.5 border rounded-lg">Next</button></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (() => {
+        const companyId = '<%= user.companyId %>';
+        let page = 1;
+        let totalPages = 1;
+        const labels = {
+            CREATE_LISTING: 'created a listing', EDIT_LISTING: 'edited a listing', PUBLISH_LISTING: 'published a listing',
+            PAUSE_LISTING: 'paused a listing', RESUME_LISTING: 'resumed a listing', DELETE_LISTING: 'deleted a listing',
+            UPDATE_APPLICATION_STATUS: 'updated an application status', SHORTLIST_CANDIDATE: 'shortlisted a candidate'
+        };
+        const escapeHtml = value => String(value || '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+        async function loadActivity() {
+            const action = document.getElementById('activityAction').value;
+            const response = await fetch(`/api/companies/${companyId}/activity-logs?page=${page}&limit=25&action=${encodeURIComponent(action)}`);
+            if (!response.ok) return;
+            const data = await response.json();
+            totalPages = data.pagination.totalPages || 1;
+            const rows = document.getElementById('activityRows');
+            rows.innerHTML = data.logs.map(log => `<tr><td class="px-5 py-3 font-semibold text-slate-800">${escapeHtml(log.actorId?.name || log.actorId?.email || 'Unknown recruiter')}</td><td class="px-5 py-3 text-slate-700">${escapeHtml(labels[log.action] || log.action)}</td><td class="px-5 py-3 text-indigo-700">${escapeHtml(log.targetName)}</td><td class="px-5 py-3 text-slate-500 whitespace-nowrap">${new Date(log.createdAt).toLocaleString()}</td></tr>`).join('');
+            document.getElementById('activityEmpty').classList.toggle('hidden', data.logs.length > 0);
+            document.getElementById('activitySummary').textContent = data.pagination.total ? `Page ${page} of ${totalPages}` : '';
+            document.getElementById('activityPrevious').disabled = page <= 1;
+            document.getElementById('activityNext').disabled = page >= totalPages;
+        }
+        document.getElementById('activityAction').addEventListener('change', () => { page = 1; loadActivity(); });
+        document.getElementById('activityRefresh').addEventListener('click', loadActivity);
+        document.getElementById('activityPrevious').addEventListener('click', () => { if (page > 1) { page--; loadActivity(); } });
+        document.getElementById('activityNext').addEventListener('click', () => { if (page < totalPages) { page++; loadActivity(); } });
+        loadActivity();
+    })();
+</script>

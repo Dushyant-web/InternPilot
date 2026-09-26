@@ -1,0 +1,324 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="max-w-5xl mx-auto px-4 py-8 space-y-8">
+
+    <!-- Top Navigation / Breadcrumb -->
+    <div class="flex items-center justify-between">
+        <a href="/internships" class="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+            <i class="ph-bold ph-arrow-left"></i> Back to all listings
+        </a>
+
+        <% if (typeof isCompanyOwnerOrRecruiter !== 'undefined' && isCompanyOwnerOrRecruiter) { %>
+            <a href="/company/profile"
+                class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors">
+                <i class="ph-bold ph-pencil-simple text-sm"></i>
+                <span>Edit Profile</span>
+            </a>
+        <% } %>
+    </div>
+
+    <!-- Company Hero Banner -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-xs relative overflow-hidden">
+        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
+
+            <div class="flex flex-col sm:flex-row sm:items-center gap-5">
+                <!-- Company Logo -->
+                <div class="shrink-0">
+                    <% if (companyDetails.logo) { %>
+                        <img src="<%= companyDetails.logo %>" alt="<%= companyDetails.companyName || company.name %>"
+                            class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border border-slate-200 bg-slate-50 p-1.5 shadow-xs" />
+                    <% } else { %>
+                        <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-4xl font-extrabold uppercase shadow-xs">
+                            <%= (companyDetails.companyName || company.name || 'C').charAt(0) %>
+                        </div>
+                    <% } %>
+                </div>
+
+                <!-- Company Titles & Badges -->
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                            <%= companyDetails.companyName || company.name %>
+                        </h1>
+
+                        <% if (companyDetails.isVerified) { %>
+                            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200" title="Officially verified recruiter on InternPilot">
+                                <i class="ph-bold ph-seal-check text-blue-600 text-sm"></i> Verified Company
+                            </span>
+                        <% } else { %>
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                <i class="ph-bold ph-shield-check"></i> Registered Employer
+                            </span>
+                        <% } %>
+                    </div>
+
+                    <!-- Meta Tags -->
+                    <div class="flex items-center gap-3 text-xs text-slate-600 flex-wrap">
+                        <% if (companyDetails.industry) { %>
+                            <span class="inline-flex items-center gap-1 text-slate-700 font-semibold bg-slate-100 px-2.5 py-1 rounded-lg">
+                                <i class="ph-bold ph-buildings text-indigo-500"></i> <%= companyDetails.industry %>
+                            </span>
+                        <% } %>
+
+                        <% if (companyDetails.location) { %>
+                            <span class="inline-flex items-center gap-1 text-slate-700 font-medium">
+                                <i class="ph-bold ph-map-pin text-rose-500"></i> <%= companyDetails.location %>
+                            </span>
+                        <% } %>
+
+                        <% if (companyDetails.companySize) { %>
+                            <span class="inline-flex items-center gap-1 text-slate-700 font-medium">
+                                <i class="ph-bold ph-users text-indigo-500"></i> <%= companyDetails.companySize %>
+                            </span>
+                        <% } %>
+                    </div>
+
+                    <% if (companyDetails.cin) { %>
+                        <p class="text-[11px] text-slate-400 flex items-center gap-1">
+                            <i class="ph-bold ph-certificate text-amber-500"></i> CIN: <span class="font-mono text-slate-600"><%= companyDetails.cin %></span>
+                        </p>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- Quick Action Links -->
+            <div class="flex sm:flex-col items-center sm:items-end gap-2.5 shrink-0">
+                <% if (companyDetails.website) { %>
+                    <a href="<%= companyDetails.website %>" target="_blank" rel="noopener noreferrer"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all">
+                        <span>Visit Website</span>
+                        <i class="ph-bold ph-arrow-square-out text-sm"></i>
+                    </a>
+                <% } %>
+
+                <% if (companyDetails.contactEmail) { %>
+                    <a href="mailto:<%= companyDetails.contactEmail %>"
+                        class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors">
+                        <i class="ph-bold ph-envelope text-sm text-indigo-600"></i>
+                        <span>Contact Company</span>
+                    </a>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Grid: About & Quick Facts -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left 2 Cols: About / Description -->
+        <div class="lg:col-span-2 space-y-6">
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
+                <h2 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+                    <i class="ph-bold ph-info text-indigo-600"></i>
+                    <span>About <%= companyDetails.companyName || company.name %></span>
+                </h2>
+
+                <% if (companyDetails.description) { %>
+                    <div class="text-xs sm:text-sm text-slate-700 leading-relaxed space-y-3 whitespace-pre-line">
+                        <%= companyDetails.description %>
+                    </div>
+                <% } else { %>
+                    <p class="text-xs text-slate-400 italic py-2">
+                        No description has been provided by this employer yet.
+                    </p>
+                <% } %>
+            </div>
+
+            <!-- Program Trust Banner -->
+            <div class="p-5 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl flex items-start gap-3.5">
+                <div class="p-2 bg-indigo-600 text-white rounded-xl shrink-0 mt-0.5">
+                    <i class="ph-bold ph-shield-check text-xl"></i>
+                </div>
+                <div class="space-y-1">
+                    <h3 class="text-xs font-bold text-indigo-950">Verified Employer on InternPilot</h3>
+                    <p class="text-[11px] text-indigo-900/80 leading-relaxed">
+                        Opportunities posted by this organization are registered for student and graduate internships under the Prime Minister's Internship Scheme. Candidates receive direct stipends, mentorship, and certification upon completion.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Col: Snapshot / Contact Information -->
+        <div class="space-y-6">
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-3 flex items-center gap-1.5">
+                    <i class="ph-bold ph-address-book text-indigo-600"></i> Company Snapshot
+                </h3>
+
+                <dl class="space-y-3.5 text-xs">
+                    <div>
+                        <dt class="text-slate-400 font-medium flex items-center gap-1">
+                            <i class="ph-bold ph-buildings text-indigo-500"></i> Industry
+                        </dt>
+                        <dd class="font-semibold text-slate-800 mt-0.5">
+                            <%= companyDetails.industry || 'Not Specified' %>
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt class="text-slate-400 font-medium flex items-center gap-1">
+                            <i class="ph-bold ph-users text-emerald-500"></i> Company Size
+                        </dt>
+                        <dd class="font-semibold text-slate-800 mt-0.5">
+                            <%= companyDetails.companySize || 'Not Specified' %>
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt class="text-slate-400 font-medium flex items-center gap-1">
+                            <i class="ph-bold ph-map-pin text-rose-500"></i> Headquarters
+                        </dt>
+                        <dd class="font-semibold text-slate-800 mt-0.5">
+                            <%= companyDetails.location || 'Not Specified' %>
+                        </dd>
+                    </div>
+
+                    <% if (companyDetails.website) { %>
+                        <div>
+                            <dt class="text-slate-400 font-medium flex items-center gap-1">
+                                <i class="ph-bold ph-globe text-blue-500"></i> Official Website
+                            </dt>
+                            <dd class="font-semibold text-indigo-600 hover:text-indigo-800 mt-0.5 truncate">
+                                <a href="<%= companyDetails.website %>" target="_blank" rel="noopener noreferrer" class="hover:underline flex items-center gap-1">
+                                    <span class="truncate"><%= companyDetails.website.replace(/^https?:\/\//i, '') %></span>
+                                    <i class="ph-bold ph-arrow-square-out text-xs"></i>
+                                </a>
+                            </dd>
+                        </div>
+                    <% } %>
+
+                    <% if (companyDetails.contactEmail) { %>
+                        <div>
+                            <dt class="text-slate-400 font-medium flex items-center gap-1">
+                                <i class="ph-bold ph-envelope text-indigo-500"></i> Contact Email
+                            </dt>
+                            <dd class="font-semibold text-slate-800 mt-0.5 truncate">
+                                <a href="mailto:<%= companyDetails.contactEmail %>" class="text-indigo-600 hover:underline">
+                                    <%= companyDetails.contactEmail %>
+                                </a>
+                            </dd>
+                        </div>
+                    <% } %>
+
+                    <% if (companyDetails.contactPhone) { %>
+                        <div>
+                            <dt class="text-slate-400 font-medium flex items-center gap-1">
+                                <i class="ph-bold ph-phone text-emerald-500"></i> Contact Phone
+                            </dt>
+                            <dd class="font-semibold text-slate-800 mt-0.5">
+                                <%= companyDetails.contactPhone %>
+                            </dd>
+                        </div>
+                    <% } %>
+
+                    <% if (companyDetails.contactInformation) { %>
+                        <div class="pt-2 border-t border-slate-100">
+                            <dt class="text-slate-400 font-medium">Recruitment Contact Notes</dt>
+                            <dd class="text-slate-600 mt-0.5 text-[11px] leading-relaxed">
+                                <%= companyDetails.contactInformation %>
+                            </dd>
+                        </div>
+                    <% } %>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Opportunities Section -->
+    <div class="space-y-4 pt-4">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+            <div>
+                <h2 class="text-lg font-bold text-slate-900">
+                    Active Opportunities from <%= companyDetails.companyName || company.name %>
+                </h2>
+                <p class="text-xs text-slate-500">Browse current open internship roles accredited under the PMIS framework.</p>
+            </div>
+            <span class="text-xs font-semibold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100">
+                <%= internships ? internships.length : 0 %> Active <%= (internships && internships.length === 1) ? 'Role' : 'Roles' %>
+            </span>
+        </div>
+
+        <% if (!internships || internships.length === 0) { %>
+            <div class="bg-white border border-slate-200 rounded-2xl p-10 text-center shadow-xs">
+                <i class="ph-bold ph-briefcase text-4xl text-slate-300 mb-2"></i>
+                <h3 class="text-sm font-bold text-slate-800">No Open Internships at This Time</h3>
+                <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                    <%= companyDetails.companyName || company.name %> does not currently have any active internship listings published. Check back later or explore other opportunities.
+                </p>
+                <a href="/internships" class="inline-flex items-center gap-1.5 mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors">
+                    Explore Other Listings
+                </a>
+            </div>
+        <% } else { %>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <% internships.forEach(item => { %>
+                    <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between space-y-4">
+                        <div class="space-y-2.5">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
+                                    <%= item.sector || 'General' %>
+                                </span>
+                                <span class="text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded">
+                                    <%= item.vacancies || 1 %> Openings
+                                </span>
+                            </div>
+
+                            <a href="/internships/<%= item._id %>" class="block hover:text-indigo-600 transition-colors">
+                                <h3 class="text-base font-bold text-slate-900 hover:text-indigo-600 transition-colors">
+                                    <%= item.title %>
+                                </h3>
+                            </a>
+
+                            <div class="p-3 bg-slate-50 border border-slate-100 rounded-lg text-xs space-y-1.5 text-slate-600">
+                                <div class="flex items-center gap-1.5">
+                                    <i class="ph-bold ph-map-pin text-rose-500"></i>
+                                    <span>
+                                        <%= typeof item.location === 'object' && item.location !== null
+                                            ? ((item.location.district ? item.location.district + ', ' : '') + (item.location.state || 'Remote'))
+                                            : (item.location || 'Remote') %>
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="flex items-center gap-1">
+                                        <i class="ph-bold ph-currency-inr text-emerald-600"></i>
+                                        <strong class="text-slate-800">₹<%= Number(item.monthlyStipend || 5000).toLocaleString('en-IN') %>/mo</strong>
+                                    </span>
+                                    <span>&bull;</span>
+                                    <span class="flex items-center gap-1 text-slate-500">
+                                        <i class="ph-bold ph-clock"></i> <%= item.duration || '12 Months' %>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <% if (Array.isArray(item.requiredSkills) && item.requiredSkills.length > 0) { %>
+                                <div class="flex flex-wrap gap-1.5 pt-1">
+                                    <% item.requiredSkills.slice(0, 4).forEach(skill => { %>
+                                        <span class="text-[10px] font-medium text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded">
+                                            <%= skill %>
+                                        </span>
+                                    <% }) %>
+                                    <% if (item.requiredSkills.length > 4) { %>
+                                        <span class="text-[10px] text-slate-400 font-medium self-center">
+                                            +<%= item.requiredSkills.length - 4 %> more
+                                        </span>
+                                    <% } %>
+                                </div>
+                            <% } %>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+                            <span class="text-[11px] text-slate-400">
+                                <%= item.applicationDeadline ? 'Deadline: ' + new Date(item.applicationDeadline).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : 'Open Application' %>
+                            </span>
+                            <a href="/internships/<%= item._id %>"
+                                class="inline-flex items-center gap-1 px-3.5 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-2xs transition-colors">
+                                <span>View Details</span>
+                                <i class="ph-bold ph-arrow-right text-xs"></i>
+                            </a>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+        <% } %>
+    </div>
+</div>

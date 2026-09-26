@@ -13,8 +13,31 @@ const applicationSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['Submitted', 'Under Review', 'Shortlisted', 'Rejected'],
+        enum: [
+            'Submitted', 'Under Review', 'Shortlisted', 'Interview',
+            'Rejected', 'Hired', 'Withdrawn', 'pending'
+        ],
         default: 'Submitted'
+    },
+    interview: {
+        status: {
+            type: String,
+            enum: ['Scheduled', 'Rescheduled', 'Cancelled']
+        },
+        scheduledAt: { type: Date },
+        duration: { type: Number, default: 30 }, // in minutes
+        mode: {
+            type: String,
+            enum: ['Online', 'Phone', 'In-Person']
+        },
+        meetingLink: { type: String },
+        location: { type: String },
+        instructions: { type: String },
+        scheduledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        createdAt: { type: Date },
+        updatedAt: { type: Date },
+        cancelledAt: { type: Date },
+        cancelReason: { type: String }
     },
     matchScore: { type: Number, default: 0 },
     appliedAt: { type: Date, default: Date.now },
@@ -22,12 +45,120 @@ const applicationSchema = new mongoose.Schema({
         {
             status: {
                 type: String,
-                enum: ['Submitted', 'Under Review', 'Shortlisted', 'Rejected'],
+                enum: [
+                    'Submitted', 'Under Review', 'Shortlisted', 'Interview',
+                    'Rejected', 'Hired', 'Withdrawn', 'pending'
+                ],
                 required: true
             },
             changedAt: { type: Date, default: Date.now }
         }
-    ]
+    ],
+
+    // Tracks the most recent status transition independently from application
+    // creation, notes, and other edits.
+    statusUpdatedAt: { type: Date, default: Date.now },
+
+    // Withdrawal audit metadata
+    withdrawnAt: { type: Date },
+    withdrawalReason: { type: String, trim: true, default: null },
+
+    notes: [{
+        text: { type: String, required: true },
+        createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        createdAt: { type: Date, default: Date.now },
+        updatedAt: { type: Date }
+    }]
+}, { timestamps: true });
+
+// Statuses from which an application can be transitioned to 'Withdrawn'
+const WITHDRAWABLE_STATUSES = [
+    'Submitted', 'pending',
+    'Under Review',
+    'Shortlisted',
+    'Interview'
+];
+
+// Terminal statuses that forbid withdrawal
+const TERMINAL_STATUSES = [
+    'Rejected',
+    'Hired',
+    'Withdrawn'
+];
+
+/**
+ * Checks whether this application can currently be withdrawn by the student.
+ * Permitted when submitted/pending, under review, shortlisted, or interview stage.
+ * Blocked if already rejected, hired, or withdrawn.
+ * @returns {boolean}
+ */
+applicationSchema.methods.canWithdraw = function () {
+    const s = this.status;
+    if (!s) return false;
+    if (TERMINAL_STATUSES.includes(s)) return false;
+    return WITHDRAWABLE_STATUSES.includes(s);
+};
+
+/**
+ * Transitions the application to Withdrawn, recording audit metadata.
+ * Also cancels any pending interview so the two fields don't disagree.
+ * @param {string} [reason] - Optional reason (e.g. accepted another offer)
+ * @returns {this}
+ */
+applicationSchema.methods.withdraw = function (reason) {
+    if (!this.canWithdraw()) {
+        const err = new Error(`Application currently in '${this.status}' status cannot be withdrawn.`);
+        err.statusCode = 400;
+        err.code = 'INVALID_STATUS_TRANSITION';
+        throw err;
+    }
+    const previousStatus = this.status;
+    this.status = 'Withdrawn';
+    this.withdrawnAt = new Date();
+    if (typeof reason === 'string' && reason.trim()) {
+        this.withdrawalReason = reason.trim();
+    } else {
+        this.withdrawalReason = null;
+    }
+
+    if (previousStatus !== 'Withdrawn') {
+        if (!Array.isArray(this.statusHistory)) {
+            this.statusHistory = [];
+        }
+        if (this.statusHistory.length === 0) {
+            this.statusHistory.push({
+                status: previousStatus || 'Submitted',
+                changedAt: this.appliedAt || new Date()
+            });
+        }
+        this.statusHistory.push({
+            status: 'Withdrawn',
+            changedAt: new Date()
+        });
+    }
+
+    if (this.interview && ['Scheduled', 'Rescheduled'].includes(this.interview.status)) {
+        this.interview.status = 'Cancelled';
+        this.interview.cancelledAt = new Date();
+        this.interview.cancelReason = this.interview.cancelReason || 'Application withdrawn by candidate';
+    }
+
+    return this;
+};
+
+// Expose status lists as statics
+applicationSchema.statics.WITHDRAWABLE_STATUSES = WITHDRAWABLE_STATUSES;
+applicationSchema.statics.TERMINAL_STATUSES = TERMINAL_STATUSES;
+
+// Keep statusUpdatedAt correct regardless of which route changes the status.
+// Legacy records without the field are backfilled from appliedAt.
+applicationSchema.pre('save', function (next) {
+    if (this.isNew || this.isModified('status')) {
+        this.statusUpdatedAt = new Date();
+    } else if (!this.statusUpdatedAt) {
+        this.statusUpdatedAt = this.appliedAt || new Date();
+    }
+    if (typeof next === 'function') next();
 });
 
 module.exports = mongoose.model("Application", applicationSchema);

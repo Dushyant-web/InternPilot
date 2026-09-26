@@ -1,0 +1,368 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="max-w-4xl mx-auto px-4 py-8 space-y-6">
+
+    <!-- Top Navigation / Breadcrumb -->
+    <div class="flex items-center justify-between">
+        <a href="/internships" class="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+            <i class="ph-bold ph-arrow-left"></i> Back to all listings
+        </a>
+        <div class="flex items-center gap-2">
+            <% if (isPaused) { %>
+                <span class="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1.5">
+                    <i class="ph-bold ph-pause-circle text-sm"></i> Applications Paused
+                </span>
+            <% } else { %>
+                <span class="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1.5">
+                    <i class="ph-bold ph-check-circle text-sm"></i> Active Opportunity
+                </span>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- PAUSED PROMINENT BANNER (Shown when applications are paused) -->
+    <% if (isPaused) { %>
+        <div class="bg-amber-50 border-l-4 border-amber-500 rounded-r-xl p-5 shadow-xs flex items-start gap-4" role="alert">
+            <div class="p-2 bg-amber-100 text-amber-700 rounded-lg shrink-0 mt-0.5">
+                <i class="ph-bold ph-pause-circle text-2xl"></i>
+            </div>
+            <div class="flex-1">
+                <h3 class="text-sm font-bold text-amber-900 flex items-center gap-2">
+                    Applications for this position are temporarily paused
+                </h3>
+                <p class="text-xs text-amber-800 mt-1 leading-relaxed">
+                    The recruiter has temporarily paused new applications for this internship listing (e.g. to review current candidate backlog). New applications are not being accepted at this time. You can bookmark this page or browse other active openings.
+                </p>
+            </div>
+        </div>
+    <% } %>
+
+    <!-- Main Detail Card -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+
+        <!-- Role Header -->
+        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-6 border-b border-slate-100">
+            <div>
+                <div class="flex items-center gap-2 flex-wrap mb-2">
+                    <span class="text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-0.5 rounded-full">
+                        <%= internship.sector || "General" %>
+                    </span>
+                    <span class="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 rounded">
+                        <%= internship.vacancies || 1 %> Openings
+                    </span>
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                    <%= internship.title %>
+                </h1>
+                <% const companyId = (typeof company !== 'undefined' && company && company._id) ? company._id : internship.companyId; %>
+                <% const compDetails = (typeof company !== 'undefined' && company && company.companyDetails) ? company.companyDetails : {}; %>
+                <div class="flex items-center gap-2 mt-2">
+                    <% if (compDetails.logo) { %>
+                        <img src="<%= compDetails.logo %>" alt="<%= internship.companyName %> Logo" class="w-6 h-6 rounded-md object-cover border border-slate-200" />
+                    <% } %>
+                    <p class="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                        <i class="ph-bold ph-buildings text-slate-400 text-base"></i>
+                        <% if (companyId) { %>
+                            <a href="/company/<%= companyId %>/profile" class="text-indigo-600 hover:text-indigo-800 hover:underline inline-flex items-center gap-1 font-bold">
+                                <span><%= internship.companyName || internship.company %></span>
+                                <i class="ph-bold ph-arrow-square-out text-xs"></i>
+                            </a>
+                        <% } else { %>
+                            <span><%= internship.companyName || internship.company %></span>
+                        <% } %>
+                        <% if (compDetails.isVerified) { %>
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200" title="Verified Employer">
+                                <i class="ph-bold ph-seal-check"></i> Verified
+                            </span>
+                        <% } %>
+                    </p>
+                </div>
+            </div>
+
+            <div class="sm:text-right shrink-0">
+                <div class="text-xs text-slate-400 font-medium">Monthly Stipend</div>
+                <div class="text-2xl font-bold text-slate-900">
+                    ₹<%= Number(internship.monthlyStipend ?? 5000).toLocaleString('en-IN') %>
+                    <span class="text-xs font-normal text-slate-500">/mo</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="p-3.5 bg-slate-50 border border-slate-100 rounded-xl">
+                <div class="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+                    <i class="ph-bold ph-map-pin text-rose-500"></i> Location
+                </div>
+                <div class="text-xs font-bold text-slate-800 mt-1 truncate">
+                    <%= typeof internship.location === 'object' && internship.location !== null
+                        ? ((internship.location.district ? internship.location.district + ', ' : '') + (internship.location.state || 'Remote'))
+                        : (internship.location || 'Remote') %>
+                </div>
+            </div>
+
+            <div class="p-3.5 bg-slate-50 border border-slate-100 rounded-xl">
+                <div class="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+                    <i class="ph-bold ph-clock text-indigo-500"></i> Duration
+                </div>
+                <div class="text-xs font-bold text-slate-800 mt-1">
+                    <%= internship.duration || '12 Months' %>
+                </div>
+            </div>
+
+            <div class="p-3.5 bg-slate-50 border border-slate-100 rounded-xl">
+                <div class="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+                    <i class="ph-bold ph-graduation-cap text-emerald-500"></i> Qualification
+                </div>
+                <div class="text-xs font-bold text-slate-800 mt-1 truncate">
+                    <%= internship.minQualifications || 'Any' %>
+                </div>
+            </div>
+
+            <div class="p-3.5 bg-slate-50 border border-slate-100 rounded-xl">
+                <div class="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+                    <i class="ph-bold ph-calendar-blank text-amber-500"></i> Deadline
+                </div>
+                <div class="text-xs font-bold <%= internship.applicationDeadline && new Date() > internship.applicationDeadline ? 'text-rose-600' : 'text-slate-800' %> mt-1">
+                    <%= internship.applicationDeadline
+                        ? new Date(internship.applicationDeadline).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })
+                        : 'No Deadline' %>
+                </div>
+            </div>
+        </div>
+
+        <!-- Skills Section -->
+        <div>
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Required Skills</h3>
+            <div class="flex flex-wrap gap-2">
+                <% if (Array.isArray(internship.requiredSkills) && internship.requiredSkills.length > 0) { %>
+                    <% internship.requiredSkills.forEach(skill => { %>
+                        <span class="text-xs font-medium text-indigo-700 bg-indigo-50/70 border border-indigo-200 px-3 py-1 rounded-lg">
+                            <%= skill %>
+                        </span>
+                    <% }) %>
+                <% } else { %>
+                    <span class="text-xs text-slate-400 italic">No specific skills listed.</span>
+                <% } %>
+            </div>
+
+            <% if (currentUser && currentUser.role === 'candidate') { %>
+                <a href="/internships/<%= internship._id %>/skill-gap"
+                    class="mt-3 inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                    <i class="ph-bold ph-chart-donut text-base text-indigo-600"></i>
+                    See how your skills compare
+                </a>
+            <% } %>
+        </div>
+
+        <!-- Role Description -->
+        <% if (internship.description && internship.description.trim()) { %>
+            <div class="p-5 bg-slate-50 border border-slate-100 rounded-xl space-y-2">
+                <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="ph-bold ph-article text-indigo-500 text-base"></i> About This Role
+                </h3>
+                <p class="text-sm text-slate-600 leading-relaxed whitespace-pre-line"><%= internship.description %></p>
+            </div>
+        <% } %>
+
+        <!-- Day-to-Day Responsibilities -->
+        <% if (Array.isArray(internship.responsibilities) && internship.responsibilities.length > 0) { %>
+            <div class="p-5 bg-slate-50 border border-slate-100 rounded-xl space-y-3">
+                <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="ph-bold ph-list-checks text-indigo-500 text-base"></i> Day-to-Day Responsibilities
+                </h3>
+                <ul class="space-y-2">
+                    <% internship.responsibilities.forEach(item => { %>
+                        <li class="flex items-start gap-2 text-sm text-slate-700">
+                            <i class="ph-bold ph-check-circle text-emerald-500 text-base mt-0.5 shrink-0"></i>
+                            <span><%= item %></span>
+                        </li>
+                    <% }) %>
+                </ul>
+            </div>
+        <% } %>
+
+        <!-- Eligibility Criteria -->
+        <% if (Array.isArray(internship.eligibilityCriteria) && internship.eligibilityCriteria.length > 0) { %>
+            <div class="p-5 bg-slate-50 border border-slate-100 rounded-xl space-y-3">
+                <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="ph-bold ph-user-check text-indigo-500 text-base"></i> Eligibility Criteria
+                </h3>
+                <ul class="space-y-2">
+                    <% internship.eligibilityCriteria.forEach(item => { %>
+                        <li class="flex items-start gap-2 text-sm text-slate-700">
+                            <i class="ph-bold ph-dot-outline text-indigo-400 text-base mt-0.5 shrink-0"></i>
+                            <span><%= item %></span>
+                        </li>
+                    <% }) %>
+                </ul>
+            </div>
+        <% } %>
+
+        <!-- Company Profile & Credibility Card -->
+        <% const compId = (typeof company !== 'undefined' && company && company._id) ? company._id : internship.companyId; %>
+        <% const cDetails = (typeof company !== 'undefined' && company && company.companyDetails) ? company.companyDetails : {}; %>
+        <div class="p-5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <% if (cDetails.logo) { %>
+                        <img src="<%= cDetails.logo %>" alt="<%= internship.companyName || 'Company' %>" class="w-12 h-12 rounded-xl object-cover border border-slate-200 bg-white p-1" />
+                    <% } else { %>
+                        <div class="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg uppercase shadow-2xs">
+                            <%= (internship.companyName || 'C').charAt(0) %>
+                        </div>
+                    <% } %>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-sm font-bold text-slate-900">
+                                <%= internship.companyName || internship.company %>
+                            </h3>
+                            <% if (cDetails.isVerified) { %>
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                    <i class="ph-bold ph-seal-check"></i> Verified
+                                </span>
+                            <% } %>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                            <% if (cDetails.industry) { %><span><%= cDetails.industry %></span> &bull;<% } %>
+                            <% if (cDetails.companySize) { %><span><%= cDetails.companySize %></span> &bull;<% } %>
+                            <span><%= cDetails.location || (typeof internship.location === 'object' && internship.location ? (internship.location.district ? internship.location.district + ', ' : '') + (internship.location.state || '') : (internship.location || 'India')) %></span>
+                        </p>
+                    </div>
+                </div>
+
+                <% if (compId) { %>
+                    <a href="/company/<%= compId %>/profile" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 rounded-lg shadow-2xs transition-colors self-start sm:self-auto">
+                        <span>View Company Profile</span>
+                        <i class="ph-bold ph-arrow-square-out"></i>
+                    </a>
+                <% } %>
+            </div>
+
+            <% if (cDetails.description) { %>
+                <p class="text-xs text-slate-600 leading-relaxed pt-1 line-clamp-3">
+                    <%= cDetails.description %>
+                </p>
+            <% } %>
+        </div>
+
+        <!-- Program Context Note -->
+        <div class="p-4 bg-indigo-50/40 border border-indigo-100 rounded-xl text-xs text-indigo-900 leading-relaxed">
+            <strong>About PMIS Opportunities:</strong> This internship is officially accredited under the Prime Minister's Internship Scheme. Selected candidates receive structured mentorship, hands-on industrial training, and monthly PMIS stipend disbursement.
+        </div>
+
+        <!-- Action Section / Button Area -->
+        <div class="pt-4 border-t border-slate-100">
+            <% const isOwnerOrAdmin = currentUser && (
+                currentUser.role === 'admin' ||
+                ((currentUser.role === 'company' || currentUser.role === 'recruiter') &&
+                 internship.companyId && currentUser.companyId &&
+                 internship.companyId.toString() === currentUser.companyId.toString())
+            ); %>
+
+            <% if (isOwnerOrAdmin) { %>
+                <!-- Recruiter / Admin Management Actions -->
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="ph-bold ph-gear"></i> Recruiter Controls
+                        </span>
+                        <span class="text-xs text-slate-500">You manage this listing</span>
+                    </div>
+
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <% if (isPaused) { %>
+                            <form action="/internships/<%= internship._id %>/resume" method="POST" class="inline">
+                                <button type="submit"
+                                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                                    <i class="ph-bold ph-play text-sm"></i> Resume Applications
+                                </button>
+                            </form>
+                        <% } else { %>
+                            <form action="/internships/<%= internship._id %>/pause" method="POST" class="inline">
+                                <button type="submit"
+                                    class="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-xs">
+                                    <i class="ph-bold ph-pause text-sm"></i> Pause Applications
+                                </button>
+                            </form>
+                        <% } %>
+
+                        <a href="/company/internships/edit/<%= internship._id %>"
+                            class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5">
+                            <i class="ph-bold ph-pencil-simple text-sm"></i> Edit Listing
+                        </a>
+
+                        <a href="/company/internships/<%= internship._id %>/applicants"
+                            class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5">
+                            <i class="ph-bold ph-users text-sm"></i> View Applicants &rarr;
+                        </a>
+                    </div>
+                </div>
+
+            <% } else { %>
+                <!-- Candidate / Student Action Area -->
+                <div>
+                    <% if (!currentUser) { %>
+                        <% if (isPaused) { %>
+                            <button disabled
+                                class="w-full py-3 px-4 bg-amber-50 text-amber-700 font-bold text-sm rounded-xl border border-amber-300 cursor-not-allowed flex items-center justify-center gap-2">
+                                <i class="ph-bold ph-pause-circle text-lg"></i>
+                                Applications Temporarily Paused
+                            </button>
+                            <p class="text-xs text-center text-slate-500 mt-2">
+                                New applications are paused by the hiring team.
+                            </p>
+                        <% } else { %>
+                            <a href="/auth/login"
+                                class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-indigo-200 flex items-center justify-center gap-2 text-center">
+                                <i class="ph-bold ph-sign-in text-lg"></i> Sign In to Apply
+                            </a>
+                        <% } %>
+
+                    <% } else if (hasApplied) { %>
+                        <button disabled
+                            class="w-full py-3 px-4 bg-emerald-50 text-emerald-700 font-bold text-sm rounded-xl border border-emerald-200 cursor-not-allowed flex items-center justify-center gap-2">
+                            <i class="ph-bold ph-check-circle text-lg"></i> Already Applied
+                        </button>
+                        <p class="text-xs text-center text-slate-500 mt-2">
+                            You have submitted an application for this role. Track its status in your <a href="/candidate/applications" class="text-indigo-600 font-semibold hover:underline">Application Tracker</a>.
+                        </p>
+
+                    <% } else if (isPaused) { %>
+                        <!-- REQUIREMENT: If paused, clearly display banner/badge & disable/hide "Apply Now" -->
+                        <button disabled
+                            class="w-full py-3 px-4 bg-amber-50 text-amber-700 font-bold text-sm rounded-xl border border-amber-300 cursor-not-allowed flex items-center justify-center gap-2"
+                            title="Applications for this position are temporarily paused.">
+                            <i class="ph-bold ph-pause-circle text-lg"></i>
+                            Applications Temporarily Paused
+                        </button>
+                        <p class="text-xs text-center text-slate-500 mt-2">
+                            The recruiter is not accepting new applications at this time. Please check back later.
+                        </p>
+
+                    <% } else if (internship.applicationDeadline && new Date() > internship.applicationDeadline) { %>
+                        <button disabled
+                            class="w-full py-3 px-4 bg-rose-50 text-rose-700 font-bold text-sm rounded-xl border border-rose-200 cursor-not-allowed flex items-center justify-center gap-2">
+                            <i class="ph-bold ph-x-circle text-lg"></i> Applications Closed
+                        </button>
+                        <p class="text-xs text-center text-slate-500 mt-2">
+                            The deadline for this position has passed.
+                        </p>
+
+                    <% } else { %>
+                        <!-- ACTIVE & OPEN -->
+                        <form action="/internships/<%= internship._id %>/apply" method="POST">
+                            <button type="submit"
+                                class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-indigo-200 flex items-center justify-center gap-2 cursor-pointer">
+                                <i class="ph-bold ph-paper-plane-tilt text-lg"></i>
+                                Apply Now
+                            </button>
+                        </form>
+                    <% } %>
+                </div>
+            <% } %>
+        </div>
+
+    </div>
+
+</div>

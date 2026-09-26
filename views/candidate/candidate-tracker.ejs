@@ -12,11 +12,22 @@
             <p class="text-xs text-slate-500 mt-1">Track real-time status updates, application timelines, and AI match scores.</p>
         </div>
 
-        <a href="/internships"
-            class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm transition-colors self-start sm:self-auto">
-            <i class="ph-bold ph-magnifying-glass"></i>
-            Find More Internships
-        </a>
+        <div class="flex items-center gap-3 self-start sm:self-auto flex-wrap">
+            <% const hasAnyInterview = applications && applications.some(app => app.interview && app.interview.status); %>
+            <% if (hasAnyInterview) { %>
+                <button type="button" id="toggleInterviewsBtn"
+                    class="inline-flex items-center gap-2 bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold text-xs px-4 py-2.5 rounded-lg shadow-2xs transition-colors">
+                    <i class="ph-bold ph-calendar-check"></i>
+                    My Interviews
+                </button>
+            <% } %>
+
+            <a href="/internships"
+                class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg shadow-2xs transition-colors">
+                <i class="ph-bold ph-magnifying-glass"></i>
+                Find More Internships
+            </a>
+        </div>
     </div>
 
     <!-- 1. Application Overview Statistics -->
@@ -71,7 +82,9 @@
                     <option value="Submitted" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Submitted') ? 'selected' : '' %>>Submitted</option>
                     <option value="Under Review" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Under Review') ? 'selected' : '' %>>Under Review</option>
                     <option value="Shortlisted" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Shortlisted') ? 'selected' : '' %>>Shortlisted</option>
+                    <option value="Interview" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Interview') ? 'selected' : '' %>>Interview</option>
                     <option value="Rejected" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Rejected') ? 'selected' : '' %>>Rejected</option>
+                    <option value="Withdrawn" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Withdrawn') ? 'selected' : '' %>>Withdrawn</option>
                 </select>
             </div>
 
@@ -145,97 +158,136 @@
                     <%
                         const searchContent = `${app.internship?.title || ''} ${app.internship?.companyName || ''} ${app.internship?.sector || ''}`.toLowerCase();
                         const appStatus = app.status || 'Submitted';
+                        const hasInterview = app.interview && app.interview.status;
+                        const canWithdrawApp = typeof app.canWithdraw === 'function' ? app.canWithdraw() : ['Submitted', 'Under Review', 'Shortlisted', 'Interview'].includes(appStatus);
                     %>
-                    <div class="app-card bg-white border border-slate-200 rounded-xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    <div class="app-card bg-white border border-slate-200 rounded-xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col space-y-4"
                         data-search="<%= searchContent %>"
-                        data-status="<%= appStatus %>">
+                        data-status="<%= appStatus %>"
+                        data-has-interview="<%= hasInterview ? 'true' : 'false' %>">
 
-                        <!-- Role & Company Info -->
-                        <div class="space-y-2 max-w-xl">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
-                                    <%= app.internship?.sector || "General" %>
-                                </span>
-                                <span class="text-xs text-slate-400">&bull;</span>
-                                <span class="text-xs text-slate-500 font-medium">
-                                    Applied on <%= new Date(app.appliedAt || app._id.getTimestamp()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %>
-                                </span>
-                            </div>
-
-                            <h3 class="text-base font-bold text-slate-900 leading-snug">
-                                <%= app.internship?.title || 'Internship Position' %>
-                            </h3>
-
-                            <p class="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                                <i class="ph-bold ph-buildings text-slate-400 text-sm"></i>
-                                <%= app.internship?.companyName || 'Company' %>
-                            </p>
-
-                            <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500 pt-1">
-                                <span class="flex items-center gap-1">
-                                    <i class="ph-bold ph-map-pin text-rose-500"></i>
-                                    <%= typeof app.internship?.location === 'object' && app.internship?.location !== null
-                                        ? ((app.internship.location.district ? app.internship.location.district + ', ' : '') + (app.internship.location.state || 'Remote'))
-                                        : (app.internship?.location || 'Remote') %>
-                                </span>
-                                <span>&bull;</span>
-                                <span class="flex items-center gap-1 text-emerald-700 font-semibold">
-                                    <i class="ph-bold ph-currency-inr"></i>
-                                    ₹<%= app.internship?.monthlyStipend ? Number(app.internship.monthlyStipend).toLocaleString('en-IN') : '5,000' %>/mo
-                                </span>
-                                <% if (app.internship?.duration) { %>
-                                    <span>&bull;</span>
-                                    <span class="flex items-center gap-1">
-                                        <i class="ph-bold ph-clock text-indigo-500"></i>
-                                        <%= app.internship.duration %>
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <!-- Role & Company Info -->
+                            <div class="space-y-2 max-w-xl">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
+                                        <%= app.internship?.sector || "General" %>
                                     </span>
-                                <% } %>
-                            </div>
-                        </div>
+                                    <span class="text-xs text-slate-400">&bull;</span>
+                                    <span class="text-xs text-slate-500 font-medium">
+                                        Applied on <%= new Date(app.appliedAt || app._id.getTimestamp()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %>
+                                    </span>
+                                </div>
 
-                        <!-- Right Actions & Badges -->
-                        <div class="flex items-center justify-between md:justify-end gap-5 pt-3 md:pt-0 border-t md:border-0 border-slate-100 flex-wrap sm:flex-nowrap">
+                                <h3 class="text-base font-bold text-slate-900 leading-snug">
+                                    <%= app.internship?.title || 'Internship Position' %>
+                                </h3>
 
-                            <!-- AI Fit Score -->
-                            <div class="text-center shrink-0">
-                                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">AI Skill Fit</span>
-                                <div class="px-3 py-1 rounded-lg border text-xs font-bold <%= app.matchScore >= 75 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : (app.matchScore >= 40 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-rose-50 border-rose-200 text-rose-700') %>">
-                                    <%= app.matchScore || 0 %>% Match
+                                <p class="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+                                    <i class="ph-bold ph-buildings text-slate-400 text-sm"></i>
+                                    <%= app.internship?.companyName || 'Company' %>
+                                </p>
+
+                                <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500 pt-1">
+                                    <span class="flex items-center gap-1">
+                                        <i class="ph-bold ph-map-pin text-rose-500"></i>
+                                        <%= typeof app.internship?.location === 'object' && app.internship?.location !== null
+                                            ? ((app.internship.location.district ? app.internship.location.district + ', ' : '') + (app.internship.location.state || 'Remote'))
+                                            : (app.internship?.location || 'Remote') %>
+                                    </span>
+                                    <span>&bull;</span>
+                                    <span class="flex items-center gap-1 text-emerald-700 font-semibold">
+                                        <i class="ph-bold ph-currency-inr"></i>
+                                        ₹<%= app.internship?.monthlyStipend ? Number(app.internship.monthlyStipend).toLocaleString('en-IN') : '5,000' %>/mo
+                                    </span>
+                                    <% if (app.internship?.duration) { %>
+                                        <span>&bull;</span>
+                                        <span class="flex items-center gap-1">
+                                            <i class="ph-bold ph-clock text-indigo-500"></i>
+                                            <%= app.internship.duration %>
+                                        </span>
+                                    <% } %>
                                 </div>
                             </div>
 
-                            <!-- Current Status Pill -->
-                            <div class="text-right shrink-0">
-                                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status</span>
-                                <% if (appStatus === 'Submitted') { %>
-                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> Submitted
-                                    </span>
-                                <% } else if (appStatus === 'Under Review') { %>
-                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Under Review
-                                    </span>
-                                <% } else if (appStatus === 'Shortlisted') { %>
-                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Shortlisted
-                                    </span>
-                                <% } else if (appStatus === 'Rejected') { %>
-                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-800 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-md">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Rejected
-                                    </span>
-                                <% } %>
-                            </div>
+                            <!-- Right Actions & Badges -->
+                            <div class="flex items-center justify-between md:justify-end gap-5 pt-3 md:pt-0 border-t md:border-0 border-slate-100 flex-wrap sm:flex-nowrap">
 
-                            <!-- View Details Action Button -->
-                            <div class="w-full sm:w-auto text-right">
-                                <button type="button"
-                                    onclick='openAppDetailsModal(<%= JSON.stringify(app) %>)'
-                                    class="w-full sm:w-auto px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1">
-                                    <span>View Details</span>
-                                    <i class="ph-bold ph-caret-right"></i>
-                                </button>
+                                <!-- AI Fit Score -->
+                                <div class="text-center shrink-0">
+                                    <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">AI Skill Fit</span>
+                                    <div class="px-3 py-1 rounded-lg border text-xs font-bold <%= app.matchScore >= 75 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : (app.matchScore >= 40 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-rose-50 border-rose-200 text-rose-700') %>">
+                                        <%= app.matchScore || 0 %>% Match
+                                    </div>
+                                </div>
+
+                                <!-- Current Status Pill -->
+                                <div class="text-right shrink-0">
+                                    <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status</span>
+                                    <% if (appStatus === 'Submitted') { %>
+                                        <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> Submitted
+                                        </span>
+                                    <% } else if (appStatus === 'Under Review') { %>
+                                        <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Under Review
+                                        </span>
+                                    <% } else if (appStatus === 'Shortlisted') { %>
+                                        <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Shortlisted
+                                        </span>
+                                    <% } else if (appStatus === 'Interview') { %>
+                                        <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-800 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-md">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span> Interview
+                                        </span>
+                                    <% } else if (appStatus === 'Rejected') { %>
+                                        <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-800 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-md">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Rejected
+                                        </span>
+                                    <% } else if (appStatus === 'Withdrawn') { %>
+                                        <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-md">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Withdrawn
+                                        </span>
+                                    <% } %>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="w-full sm:w-auto text-right flex items-center gap-2 justify-end">
+                                    <% if (canWithdrawApp) { %>
+                                        <form action="/candidate/applications/<%= app._id %>/withdraw" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to withdraw this application?');">
+                                            <button type="submit" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold text-xs rounded-lg transition-colors">
+                                                Withdraw
+                                            </button>
+                                        </form>
+                                    <% } %>
+
+                                    <button type="button"
+                                        onclick='openAppDetailsModal(<%= JSON.stringify(app) %>)'
+                                        class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1">
+                                        <span>View Details</span>
+                                        <i class="ph-bold ph-caret-right"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
+
+                        <!-- Optional Interview Card Notification Banner -->
+                        <% if (hasInterview) { %>
+                            <div class="mt-2 p-3 bg-indigo-50/70 border border-indigo-200 rounded-lg flex items-center justify-between gap-3 text-xs">
+                                <div class="flex items-center gap-2 text-indigo-900 font-medium">
+                                    <i class="ph-bold ph-calendar-check text-indigo-600 text-base"></i>
+                                    <span>
+                                        <strong>Interview Scheduled:</strong> <%= app.interview.mode || 'Online' %> Interview on
+                                        <%= new Date(app.interview.scheduledAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %>
+                                    </span>
+                                </div>
+                                <% if (app.interview.meetingLink) { %>
+                                    <a href="<%= app.interview.meetingLink %>" target="_blank" rel="noopener noreferrer" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded shadow-2xs text-[11px] shrink-0">
+                                        Join Meeting &rarr;
+                                    </a>
+                                <% } %>
+                            </div>
+                        <% } %>
 
                     </div>
                 <% }) %>
@@ -286,6 +338,18 @@
             </div>
         </div>
 
+        <!-- Optional Interview Details Box -->
+        <div id="modal-interview-box" class="hidden p-4 bg-indigo-50 border border-indigo-200 rounded-xl space-y-2">
+            <h4 class="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+                <i class="ph-bold ph-calendar-check text-indigo-600"></i> Scheduled Interview Details
+            </h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-indigo-800">
+                <div><strong>Mode:</strong> <span id="modal-interview-mode">Online</span></div>
+                <div><strong>Date & Time:</strong> <span id="modal-interview-time">N/A</span></div>
+                <div class="col-span-2" id="modal-interview-link-container"></div>
+            </div>
+        </div>
+
         <!-- Chronological Status History Timeline -->
         <div class="space-y-3">
             <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
@@ -318,8 +382,11 @@
     const searchInput = document.getElementById('search-input');
     const statusSelect = document.getElementById('status-select');
     const resetBtn = document.getElementById('reset-filters-btn');
+    const toggleInterviewsBtn = document.getElementById('toggleInterviewsBtn');
     const cardsList = document.getElementById('applications-list');
     const noResultsState = document.getElementById('no-results-state');
+
+    let filterInterviewsOnly = false;
 
     function filterApplications() {
         const query = (searchInput?.value || '').toLowerCase().trim();
@@ -331,11 +398,13 @@
         cards.forEach(card => {
             const searchData = card.getAttribute('data-search') || '';
             const cardStatus = card.getAttribute('data-status') || '';
+            const hasInterview = card.getAttribute('data-has-interview') === 'true';
 
             const matchesSearch = !query || searchData.includes(query);
             const matchesStatus = (selectedStatus === 'all') || (cardStatus === selectedStatus);
+            const matchesInterviewFilter = !filterInterviewsOnly || hasInterview;
 
-            if (matchesSearch && matchesStatus) {
+            if (matchesSearch && matchesStatus && matchesInterviewFilter) {
                 card.classList.remove('hidden');
                 visibleCount++;
             } else {
@@ -355,12 +424,31 @@
     function clearFilters() {
         if (searchInput) searchInput.value = '';
         if (statusSelect) statusSelect.value = 'all';
+        filterInterviewsOnly = false;
+        if (toggleInterviewsBtn) {
+            toggleInterviewsBtn.classList.remove('bg-indigo-50', 'border-indigo-300');
+            toggleInterviewsBtn.classList.add('bg-white', 'border-indigo-200');
+        }
         filterApplications();
     }
 
     if (searchInput) searchInput.addEventListener('input', filterApplications);
     if (statusSelect) statusSelect.addEventListener('change', filterApplications);
     if (resetBtn) resetBtn.addEventListener('click', clearFilters);
+
+    if (toggleInterviewsBtn) {
+        toggleInterviewsBtn.addEventListener('click', () => {
+            filterInterviewsOnly = !filterInterviewsOnly;
+            if (filterInterviewsOnly) {
+                toggleInterviewsBtn.classList.add('bg-indigo-50', 'border-indigo-300');
+                toggleInterviewsBtn.classList.remove('bg-white', 'border-indigo-200');
+            } else {
+                toggleInterviewsBtn.classList.remove('bg-indigo-50', 'border-indigo-300');
+                toggleInterviewsBtn.classList.add('bg-white', 'border-indigo-200');
+            }
+            filterApplications();
+        });
+    }
 
     // Initial trigger to apply URL search params if present
     document.addEventListener('DOMContentLoaded', filterApplications);
@@ -379,6 +467,10 @@
         const modalMatch = document.getElementById('modal-match');
         const modalLink = document.getElementById('modal-internship-link');
         const modalTimeline = document.getElementById('modal-timeline');
+        const modalInterviewBox = document.getElementById('modal-interview-box');
+        const modalInterviewMode = document.getElementById('modal-interview-mode');
+        const modalInterviewTime = document.getElementById('modal-interview-time');
+        const modalInterviewLinkContainer = document.getElementById('modal-interview-link-container');
 
         const internship = app.internship || {};
 
@@ -398,6 +490,25 @@
         if (modalDuration) modalDuration.innerText = internship.duration || '12 Months';
         if (modalMatch) modalMatch.innerText = `${app.matchScore || 0}% Match`;
         if (modalLink) modalLink.href = `/internships/${internship._id || ''}`;
+
+        // Interview box details if interview is scheduled
+        if (app.interview && app.interview.status) {
+            if (modalInterviewBox) modalInterviewBox.classList.remove('hidden');
+            if (modalInterviewMode) modalInterviewMode.innerText = app.interview.mode || 'Online';
+            if (modalInterviewTime && app.interview.scheduledAt) {
+                const dateObj = new Date(app.interview.scheduledAt);
+                modalInterviewTime.innerText = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + ' at ' + dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+            }
+            if (modalInterviewLinkContainer) {
+                if (app.interview.meetingLink) {
+                    modalInterviewLinkContainer.innerHTML = `<a href="${app.interview.meetingLink}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-bold text-indigo-700 hover:underline">Join Meeting &rarr;</a>`;
+                } else {
+                    modalInterviewLinkContainer.innerHTML = '';
+                }
+            }
+        } else {
+            if (modalInterviewBox) modalInterviewBox.classList.add('hidden');
+        }
 
         // Build Chronological Status History Timeline
         if (modalTimeline) {
@@ -427,9 +538,15 @@
                 } else if (item.status === 'Shortlisted') {
                     badgeStyle = 'bg-emerald-50 text-emerald-800 border-emerald-200';
                     iconClass = 'ph-bold ph-check-circle text-emerald-600';
+                } else if (item.status === 'Interview') {
+                    badgeStyle = 'bg-indigo-50 text-indigo-800 border-indigo-200';
+                    iconClass = 'ph-bold ph-calendar-check text-indigo-600';
                 } else if (item.status === 'Rejected') {
                     badgeStyle = 'bg-rose-50 text-rose-800 border-rose-200';
                     iconClass = 'ph-bold ph-x-circle text-rose-600';
+                } else if (item.status === 'Withdrawn') {
+                    badgeStyle = 'bg-slate-100 text-slate-600 border-slate-300';
+                    iconClass = 'ph-bold ph-arrow-u-up-left text-slate-500';
                 }
 
                 const isLatest = (index === history.length - 1);

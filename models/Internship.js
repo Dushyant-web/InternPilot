@@ -3,21 +3,98 @@ const mongoose = require("mongoose");
 const internshipSchema = new mongoose.Schema({
     companyName: { type: String, required: true },
     sector: String,
-    title: { type: String, required: true },
+    title: { 
+        type: String, 
+        required: function () {
+            return this.status === 'published' || this.status === 'paused';
+        }
+    },
+    status: {
+        type: String,
+        enum: ['published', 'draft', 'closed', 'paused'],
+        default: 'published',
+        index: true,
+        set: function (val) {
+            if (val === 'paused') {
+                this.isPaused = true;
+            } else if (val === 'published' || val === 'draft' || val === 'closed') {
+                this.isPaused = false;
+            }
+            return val;
+        }
+    },
+    isPaused: {
+        type: Boolean,
+        default: false,
+        index: true,
+        set: function (val) {
+            if (val === true && this.status !== 'draft') {
+                this.status = 'paused';
+            } else if (val === false && this.status === 'paused') {
+                this.status = 'published';
+            }
+            return val;
+        }
+    },
     location: {
         district: String,
         state: String
     },
-    minQualifications: String,
+    minQualifications: { type: String, alias: 'minQualification' },
     requiredSkills: [String],
     monthlyStipend: { type: Number, default: 5000 },
     duration: { type: String, default: "12 Months" },
     vacancies: { type: Number, default: 1 },
+    description: { type: String, default: '' },
+    responsibilities: { type: [String], default: [] },
+    eligibilityCriteria: { type: [String], default: [] },
+
     embedding: [Number],
     postedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
+    },
+    companyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+    },
+    applicationDeadline: {
+        type: Date
     }
+}, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
+
+// Secondary safety check before saving
+internshipSchema.pre('save', function (next) {
+    if (this.status === 'paused') {
+        this.isPaused = true;
+    } else if (this.isPaused && this.status !== 'draft') {
+        this.status = 'paused';
+    } else if (this.status === 'published' && !this.isPaused) {
+        this.isPaused = false;
+    }
+    if (typeof next === 'function') {
+        next();
+    }
+});
+
+internshipSchema.methods.pause = function () {
+    this.status = 'paused';
+    this.isPaused = true;
+    return this.save();
+};
+
+internshipSchema.methods.resume = function () {
+    this.status = 'published';
+    this.isPaused = false;
+    return this.save();
+};
+
+internshipSchema.virtual('company').get(function () {
+    return this.companyName;
+});
+
+internshipSchema.virtual('stipend').get(function () {
+    return this.monthlyStipend;
 });
 
 module.exports = mongoose.model("Internship", internshipSchema);

@@ -1,103 +1,259 @@
+<%
+    const navPrefixes = {
+        home: ['/'],
+        opportunities: ['/internships'],
+        candidateProfile: ['/candidate/profile', '/candidate/resume-builder'],
+        applications: ['/candidate/applications', '/candidate/my-applications'],
+        recommendations: ['/recommendations'],
+        notifications: ['/notifications'],
+        companyNotifications: ['/company/notifications'],
+        companyDashboard: ['/company/dashboard', '/company/internships', '/company/applications'],
+        companyProfile: ['/company/profile'],
+        manageTeam: ['/company/team'],
+        activityHistory: ['/company/activity'],
+        adminDashboard: ['/admin']
+    };
+    const activePath = typeof currentPath === 'string' ? currentPath : '/';
+    const normalizePath = value => {
+        const path = String(value || '/').split(/[?#]/, 1)[0] || '/';
+        const withLeadingSlash = path.startsWith('/') ? path : `/${path}`;
+        return withLeadingSlash === '/' ? '/' : withLeadingSlash.replace(/\/+$/, '');
+    };
+    const fallbackNavigation = Object.fromEntries(Object.entries(navPrefixes).map(([name, prefixes]) => [
+        name,
+        prefixes.some(prefix => {
+            const normalizedPath = normalizePath(activePath);
+            const normalizedPrefix = normalizePath(prefix);
+            return normalizedPrefix === '/'
+                ? normalizedPath === '/'
+                : normalizedPath === normalizedPrefix || normalizedPath.startsWith(`${normalizedPrefix}/`);
+        })
+    ]));
+    const navigationState = typeof navigation !== 'undefined' && navigation ? navigation : fallbackNavigation;
+    const isActive = name => Boolean(navigationState[name]);
+    const ariaCurrent = active => active ? 'aria-current="page"' : '';
+    const desktopLinkClass = active => [
+        'nav-link inline-flex items-center border-b-2 px-1 py-2 text-xs transition-colors',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2',
+        active
+            ? 'border-indigo-700 bg-indigo-50 text-indigo-900 font-bold'
+            : 'border-transparent text-slate-600 font-semibold hover:border-indigo-300 hover:text-indigo-700'
+    ].join(' ');
+    const mobileLinkClass = active => [
+        'nav-link block rounded-lg border-l-4 px-3 py-2.5 text-sm transition-colors',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2',
+        active
+            ? 'border-indigo-700 bg-indigo-50 text-indigo-900 font-bold'
+            : 'border-transparent text-slate-600 font-semibold hover:bg-slate-100 hover:text-indigo-700'
+    ].join(' ');
+    const navPrefixAttribute = name => navPrefixes[name].join('|');
+%>
+
 <!-- Top Tricolor Border Line -->
-<div class="h-1.5 bg-gradient-to-r from-orange-500 via-white to-emerald-600 w-full"></div>
+<div class="h-1.5 w-full bg-gradient-to-r from-orange-500 via-white to-emerald-600"></div>
 
 <!-- Official Government Header Bar -->
-<header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-20">
-
+<header class="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex h-20 items-center justify-between">
             <!-- Left: Official Emblem & Platform Branding -->
-            <div class="flex items-center gap-4">
-                <!-- Ashoka Emblem -->
-                <div class="flex items-center">
-                    <img src="/images/emblem.jpg" alt="State Emblem of India"
-                        class="h-12 w-auto object-contain mix-blend-multiply" />
+            <div class="flex min-w-0 items-center gap-4">
+                <div class="flex shrink-0 items-center">
+                    <img src="/images/emblem.jpg" alt="State Emblem of India" class="h-12 w-auto object-contain mix-blend-multiply">
                 </div>
-
-                <div class="h-10 w-[1px] bg-slate-200 hidden sm:block"></div>
-
-                <!-- Platform Title & Ministry Badge -->
-                <div>
+                <div class="hidden h-10 w-px bg-slate-200 sm:block"></div>
+                <div class="min-w-0">
                     <div class="flex items-center gap-2">
-                        <a href="/" class="text-xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+                        <a href="/" class="flex items-center gap-1.5 text-xl font-black tracking-tight text-slate-900">
                             <span class="text-indigo-700">Intern</span>Pilot
                         </a>
-                        <span
-                            class="text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200">
-                            PMIS
-                        </span>
+                        <span class="rounded-full border border-indigo-200 bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-700">PMIS</span>
                     </div>
-                    <p class="text-[11px] font-medium text-slate-500 hidden sm:block">
-                        Prime Minister's Internship Scheme Portal
-                    </p>
+                    <p class="hidden text-[11px] font-medium text-slate-500 sm:block">Prime Minister's Internship Scheme Portal</p>
                 </div>
             </div>
 
-            <!-- Right: Navigation & User Auth Controls -->
-            <div class="flex items-center gap-4 sm:gap-6">
-                <!-- Navigation Links -->
-                <nav class="hidden md:flex items-center gap-5 text-xs font-semibold text-slate-600">
-                    <a href="/" class="hover:text-indigo-700 transition-colors">Home</a>
-                    <a href="/internships" class="hover:text-indigo-700 transition-colors">Opportunities</a>
+            <!-- Navigation, notification, and account controls -->
+            <div class="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6">
+                <nav aria-label="Primary navigation" class="hidden items-center gap-5 md:flex">
+                    <a href="/" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('home') %>" class="<%= desktopLinkClass(isActive('home')) %>" <%- ariaCurrent(isActive('home')) %>>Home</a>
+                    <a href="/internships" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('opportunities') %>" class="<%= desktopLinkClass(isActive('opportunities')) %>" <%- ariaCurrent(isActive('opportunities')) %>>Opportunities</a>
 
                     <% if (currentUser) { %>
-                        <% if (currentUser.role==='candidate' ) { %>
-                            <a href="/candidate/profile" class="hover:text-indigo-700 transition-colors">Candidate
-                                Profile</a>
-                            <a href="/candidate/applications" class="hover:text-indigo-700 transition-colors">My
-                                Applications</a>
-                            <% } else if (currentUser.role==='company' ) { %>
-                                <a href="/company/dashboard" class="hover:text-indigo-700 transition-colors">Company
-                                    Dashboard</a>
-                                <% } %>
-                                    <% } %>
+                        <% if (currentUser.role === 'candidate') { %>
+                            <a href="/candidate/profile" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('candidateProfile') %>" class="<%= desktopLinkClass(isActive('candidateProfile')) %>" <%- ariaCurrent(isActive('candidateProfile')) %>>Candidate Profile</a>
+                            <a href="/candidate/applications" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('applications') %>" class="<%= desktopLinkClass(isActive('applications')) %>" <%- ariaCurrent(isActive('applications')) %>>My Applications</a>
+                            <a href="/recommendations/<%= currentUser._id %>" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('recommendations') %>" class="<%= desktopLinkClass(isActive('recommendations')) %>" <%- ariaCurrent(isActive('recommendations')) %>>Recommendations</a>
+                        <% } else if (['company', 'recruiter'].includes(currentUser.role)) { %>
+                            <a href="/company/dashboard" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('companyDashboard') %>" class="<%= desktopLinkClass(isActive('companyDashboard')) %>" <%- ariaCurrent(isActive('companyDashboard')) %>>Company Dashboard</a>
+                            <a href="/company/profile" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('companyProfile') %>" class="<%= desktopLinkClass(isActive('companyProfile')) %>" <%- ariaCurrent(isActive('companyProfile')) %>>Company Profile</a>
+                            <% if (currentUser.role === 'company') { %>
+                                <a href="/company/team" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('manageTeam') %>" class="<%= desktopLinkClass(isActive('manageTeam')) %>" <%- ariaCurrent(isActive('manageTeam')) %>>Manage Team</a>
+                                <a href="/company/activity" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('activityHistory') %>" class="<%= desktopLinkClass(isActive('activityHistory')) %>" <%- ariaCurrent(isActive('activityHistory')) %>>Activity History</a>
+                            <% } %>
+                        <% } else if (currentUser.role === 'admin') { %>
+                            <a href="/admin/dashboard" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('adminDashboard') %>" class="<%= desktopLinkClass(isActive('adminDashboard')) %>" <%- ariaCurrent(isActive('adminDashboard')) %>>Admin Dashboard</a>
+                        <% } %>
+                    <% } %>
                 </nav>
 
-                <div class="h-10 w-[1px] bg-slate-200 hidden md:block"></div>
+                <div class="hidden h-10 w-px bg-slate-200 md:block"></div>
 
-                <!-- Dynamic Auth Actions (Login / Register vs User Menu & Logout) -->
-                <div class="flex items-center gap-3">
+                <button id="mobileNavToggle" type="button" class="inline-flex items-center justify-center rounded-lg p-2 text-slate-700 transition-colors hover:bg-slate-100 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 md:hidden" aria-controls="mobileNavigation" aria-expanded="false">
+                    <i id="mobileNavIcon" class="ph-bold ph-list text-xl" aria-hidden="true"></i>
+                    <span id="mobileNavToggleLabel" class="sr-only">Open navigation menu</span>
+                </button>
+
+                <% if (currentUser && ['candidate', 'company', 'recruiter'].includes(currentUser.role)) { %>
+                    <% const notifLink = currentUser.role === 'candidate' ? '/notifications' : '/company/notifications'; %>
+                    <% const notificationSection = currentUser.role === 'candidate' ? 'notifications' : 'companyNotifications'; %>
+                    <a href="<%= notifLink %>" aria-label="Notifications" data-nav-link data-nav-variant="icon" data-nav-prefixes="<%= navPrefixAttribute(notificationSection) %>" class="relative inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 <%= isActive(notificationSection) ? 'bg-indigo-100 font-bold text-indigo-900 ring-1 ring-indigo-700' : '' %>" <%- ariaCurrent(isActive(notificationSection)) %> title="Notifications">
+                        <i class="ph-bold ph-bell text-lg" aria-hidden="true"></i>
+                        <% if (notificationUnreadCount > 0) { %>
+                            <span class="absolute -right-0.5 -top-0.5 h-4 min-w-4 rounded-full bg-rose-600 px-1 text-center text-[9px] font-bold leading-4 text-white"><%= notificationUnreadCount > 99 ? '99+' : notificationUnreadCount %></span>
+                        <% } %>
+                    </a>
+                <% } %>
+
+                <div class="flex items-center gap-2 sm:gap-3">
                     <% if (!currentUser) { %>
-                        <!-- Unauthenticated View -->
-                        <a href="/auth/login"
-                            class="text-xs font-semibold text-slate-700 hover:text-indigo-700 px-3 py-2 rounded-lg transition-colors">
-                            Log In
-                        </a>
-                        <a href="/auth/register"
-                            class="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-sm transition-all">
-                            Sign Up
-                        </a>
-                        <% } else { %>
-                            <!-- Authenticated View: User Info & Logout -->
-                            <div
-                                class="flex items-center gap-2 bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-lg">
-                                <% if (currentUser.avatar) { %>
-                                    <img src="<%= currentUser.avatar %>" alt="User Avatar"
-                                        class="h-6 w-6 rounded-full object-cover border border-slate-300" />
-                                    <% } else { %>
-                                        <div
-                                            class="h-6 w-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-bold">
-                                            <%= currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U' %>
-                                        </div>
-                                        <% } %>
-                                            <span class="text-xs font-semibold text-slate-700 max-w-[100px] truncate">
-                                                <%= currentUser.name %>
-                                            </span>
-                            </div>
-
-                            <a href="/auth/logout"
-                                class="text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-2 rounded-lg transition-colors">
-                                Log Out
-                            </a>
+                        <a href="/auth/login" class="rounded-lg px-2 py-2 text-xs font-semibold text-slate-700 transition-colors hover:text-indigo-700 sm:px-3">Log In</a>
+                        <a href="/auth/register" class="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 sm:px-4">Sign Up</a>
+                    <% } else { %>
+                        <div class="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 sm:flex">
+                            <% if (currentUser.avatar) { %>
+                                <img src="<%= currentUser.avatar %>" alt="User Avatar" class="h-6 w-6 rounded-full border border-slate-300 object-cover">
+                            <% } else { %>
+                                <div class="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white"><%= currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U' %></div>
                             <% } %>
+                            <span class="max-w-[100px] truncate text-xs font-semibold text-slate-700"><%= currentUser.name %></span>
+                        </div>
+                        <a href="/auth/logout" class="rounded-lg border border-red-200 bg-red-50 px-2 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100 sm:px-3">Log Out</a>
+                    <% } %>
                 </div>
 
-                <div class="hidden lg:flex items-center justify-center pl-2">
-                    <img src="/images/azadi-logo.jpg" alt="Azadi Ka Amrit Mahotsav"
-                        class="h-11 w-auto object-contain mix-blend-multiply contrast-125" />
+                <div class="hidden items-center justify-center pl-2 lg:flex">
+                    <img src="/images/azadi-logo.jpg" alt="Azadi Ka Amrit Mahotsav" class="h-11 w-auto object-contain mix-blend-multiply contrast-125">
                 </div>
             </div>
+        </div>
 
+        <div id="mobileNavigation" class="hidden border-t border-slate-200 py-3 md:hidden">
+            <nav aria-label="Mobile navigation" class="grid gap-1">
+                <a href="/" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('home') %>" class="<%= mobileLinkClass(isActive('home')) %>" <%- ariaCurrent(isActive('home')) %>>Home</a>
+                <a href="/internships" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('opportunities') %>" class="<%= mobileLinkClass(isActive('opportunities')) %>" <%- ariaCurrent(isActive('opportunities')) %>>Opportunities</a>
+
+                <% if (currentUser) { %>
+                    <% if (currentUser.role === 'candidate') { %>
+                        <a href="/candidate/profile" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('candidateProfile') %>" class="<%= mobileLinkClass(isActive('candidateProfile')) %>" <%- ariaCurrent(isActive('candidateProfile')) %>>Candidate Profile</a>
+                        <a href="/candidate/applications" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('applications') %>" class="<%= mobileLinkClass(isActive('applications')) %>" <%- ariaCurrent(isActive('applications')) %>>My Applications</a>
+                        <a href="/recommendations/<%= currentUser._id %>" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('recommendations') %>" class="<%= mobileLinkClass(isActive('recommendations')) %>" <%- ariaCurrent(isActive('recommendations')) %>>Recommendations</a>
+                        <a href="/notifications" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('notifications') %>" class="<%= mobileLinkClass(isActive('notifications')) %>" <%- ariaCurrent(isActive('notifications')) %>>Notifications<% if (notificationUnreadCount > 0) { %> (<%= notificationUnreadCount > 99 ? '99+' : notificationUnreadCount %>)<% } %></a>
+                    <% } else if (['company', 'recruiter'].includes(currentUser.role)) { %>
+                        <a href="/company/dashboard" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('companyDashboard') %>" class="<%= mobileLinkClass(isActive('companyDashboard')) %>" <%- ariaCurrent(isActive('companyDashboard')) %>>Company Dashboard</a>
+                        <a href="/company/profile" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('companyProfile') %>" class="<%= mobileLinkClass(isActive('companyProfile')) %>" <%- ariaCurrent(isActive('companyProfile')) %>>Company Profile</a>
+                        <% if (currentUser.role === 'company') { %>
+                            <a href="/company/team" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('manageTeam') %>" class="<%= mobileLinkClass(isActive('manageTeam')) %>" <%- ariaCurrent(isActive('manageTeam')) %>>Manage Team</a>
+                            <a href="/company/activity" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('activityHistory') %>" class="<%= mobileLinkClass(isActive('activityHistory')) %>" <%- ariaCurrent(isActive('activityHistory')) %>>Activity History</a>
+                        <% } %>
+                        <a href="/company/notifications" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('companyNotifications') %>" class="<%= mobileLinkClass(isActive('companyNotifications')) %>" <%- ariaCurrent(isActive('companyNotifications')) %>>Notifications<% if (notificationUnreadCount > 0) { %> (<%= notificationUnreadCount > 99 ? '99+' : notificationUnreadCount %>)<% } %></a>
+                    <% } else if (currentUser.role === 'admin') { %>
+                        <a href="/admin/dashboard" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('adminDashboard') %>" class="<%= mobileLinkClass(isActive('adminDashboard')) %>" <%- ariaCurrent(isActive('adminDashboard')) %>>Admin Dashboard</a>
+                    <% } %>
+                <% } %>
+            </nav>
         </div>
     </div>
 </header>
+
+<script>
+    (() => {
+        const toggle = document.getElementById('mobileNavToggle');
+        const menu = document.getElementById('mobileNavigation');
+        const icon = document.getElementById('mobileNavIcon');
+        const toggleLabel = document.getElementById('mobileNavToggleLabel');
+        const activeClassMap = {
+            desktop: {
+                active: ['border-indigo-700', 'bg-indigo-50', 'text-indigo-900', 'font-bold'],
+                inactive: ['border-transparent', 'text-slate-600', 'font-semibold']
+            },
+            mobile: {
+                active: ['border-indigo-700', 'bg-indigo-50', 'text-indigo-900', 'font-bold'],
+                inactive: ['border-transparent', 'text-slate-600', 'font-semibold']
+            },
+            icon: {
+                active: ['bg-indigo-100', 'font-bold', 'text-indigo-900', 'ring-1', 'ring-indigo-700'],
+                inactive: ['text-slate-600']
+            }
+        };
+
+        const normalizePath = value => {
+            const path = String(value || '/').split(/[?#]/, 1)[0] || '/';
+            const withLeadingSlash = path.startsWith('/') ? path : `/${path}`;
+            return withLeadingSlash === '/' ? '/' : withLeadingSlash.replace(/\/+$/, '');
+        };
+
+        const matchesPrefix = (pathname, prefix) => {
+            const normalizedPath = normalizePath(pathname);
+            const normalizedPrefix = normalizePath(prefix);
+            return normalizedPrefix === '/'
+                ? normalizedPath === '/'
+                : normalizedPath === normalizedPrefix || normalizedPath.startsWith(`${normalizedPrefix}/`);
+        };
+
+        const syncActiveNavigation = (pathname = window.location.pathname) => {
+            document.querySelectorAll('[data-nav-link]').forEach(link => {
+                const prefixes = (link.dataset.navPrefixes || '').split('|').filter(Boolean);
+                const active = prefixes.some(prefix => matchesPrefix(pathname, prefix));
+                const classes = activeClassMap[link.dataset.navVariant] || activeClassMap.desktop;
+
+                classes.active.forEach(className => link.classList.toggle(className, active));
+                classes.inactive.forEach(className => link.classList.toggle(className, !active));
+                if (active) link.setAttribute('aria-current', 'page');
+                else link.removeAttribute('aria-current');
+            });
+        };
+
+        const closeMobileNavigation = () => {
+            if (!toggle || !menu) return;
+            menu.classList.add('hidden');
+            toggle.setAttribute('aria-expanded', 'false');
+            if (icon) icon.className = 'ph-bold ph-list text-xl';
+            if (toggleLabel) toggleLabel.textContent = 'Open navigation menu';
+        };
+
+        if (toggle && menu) {
+            toggle.addEventListener('click', () => {
+                const isOpen = !menu.classList.contains('hidden');
+                menu.classList.toggle('hidden', isOpen);
+                toggle.setAttribute('aria-expanded', String(!isOpen));
+                if (icon) icon.className = isOpen ? 'ph-bold ph-list text-xl' : 'ph-bold ph-x text-xl';
+                if (toggleLabel) toggleLabel.textContent = isOpen ? 'Open navigation menu' : 'Close navigation menu';
+            });
+
+            document.addEventListener('keydown', event => {
+                if (event.key === 'Escape') closeMobileNavigation();
+            });
+        }
+
+        document.addEventListener('click', event => {
+            const link = event.target.closest('[data-nav-link]');
+            if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            syncActiveNavigation(new URL(link.href, window.location.href).pathname);
+            closeMobileNavigation();
+        });
+
+        ['pushState', 'replaceState'].forEach(method => {
+            const originalMethod = window.history[method];
+            window.history[method] = function (...args) {
+                const result = originalMethod.apply(this, args);
+                window.dispatchEvent(new Event('internpilot:navigation'));
+                return result;
+            };
+        });
+
+        window.addEventListener('popstate', syncActiveNavigation);
+        window.addEventListener('internpilot:navigation', syncActiveNavigation);
+        syncActiveNavigation();
+    })();
+</script>

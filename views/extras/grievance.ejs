@@ -1,0 +1,126 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="max-w-5xl mx-auto px-4 py-8 space-y-8">
+
+    <!-- Top Breadcrumb -->
+    <nav class="flex items-center gap-2 text-xs text-slate-500">
+        <a href="/" class="hover:text-indigo-600 transition-colors">Home</a>
+        <i class="ph ph-caret-right text-[10px]"></i>
+        <span class="text-slate-800 font-semibold">Grievance Redressal</span>
+    </nav>
+
+    <!-- Header Section -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 shadow-sm relative overflow-hidden">
+        <div class="max-w-3xl space-y-3">
+            <div class="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 border border-rose-200 text-rose-700 rounded-full text-xs font-semibold">
+                <i class="ph-bold ph-shield-warning text-rose-600"></i>
+                <span>Time-Bound Citizen Redressal Mechanism</span>
+            </div>
+
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">
+                Public Grievance Redressal & Resolution Policy
+            </h1>
+
+            <p class="text-sm text-slate-600 leading-relaxed">
+                In compliance with Government of India Citizen Charter guidelines, InternPilot is committed to providing a transparent, fair, and prompt redressal mechanism for all student candidates and partner employers under PMIS.
+            </p>
+        </div>
+    </div>
+
+    <!-- Grievance Types -->
+    <div class="space-y-4">
+        <div>
+            <h2 class="text-lg font-bold text-slate-900">Categories of Grievances Addressed</h2>
+            <p class="text-xs text-slate-500">We take strict action against non-compliance and procedural irregularities</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-2">
+                <span class="text-xs font-bold text-indigo-700 uppercase tracking-wider block">Candidate Protections</span>
+                <h3 class="text-sm font-bold text-slate-900">Demands for Fees or Security Deposits</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    InternPilot operates under strict zero-fee policies. Any company demanding registration charges, training deposits, or laptop deposits will face immediate blacklisting and legal referral.
+                </p>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-2">
+                <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider block">Financial Protections</span>
+                <h3 class="text-sm font-bold text-slate-900">Stipend & Grant Disbursement Issues</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Delays or errors in the Direct Benefit Transfer (DBT) monthly stipend of ₹5,000 or the ₹6,000 one-time incident grant will be fast-tracked with the PMIS Accounts Cell.
+                </p>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-2">
+                <span class="text-xs font-bold text-amber-700 uppercase tracking-wider block">Fair Recruitment</span>
+                <h3 class="text-sm font-bold text-slate-900">Misleading Internship Specifications</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Report job descriptions that significantly diverge from actual on-site tasks, unfair selection procedures, or non-provision of mentorship under PMIS regulations.
+                </p>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-2">
+                <span class="text-xs font-bold text-purple-700 uppercase tracking-wider block">System Discrepancies</span>
+                <h3 class="text-sm font-bold text-slate-900">Verification & Account Anomaly</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Issues pertaining to Aadhaar eKYC mismatches, college qualification validation errors, or company CIN authentication discrepancies.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3-Tier Escalation Matrix -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+        <div>
+            <h2 class="text-lg font-bold text-slate-900">Three-Tier Escalation Matrix</h2>
+            <p class="text-xs text-slate-500 mt-1">Structured resolution hierarchy with committed timelines</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
+            <!-- Tier 1 -->
+            <div class="border border-slate-200 rounded-xl p-5 space-y-2 bg-slate-50">
+                <div class="inline-block px-2.5 py-0.5 bg-indigo-100 text-indigo-800 rounded font-bold text-[10px]">
+                    TIER 1 &bull; 48 HOURS
+                </div>
+                <h3 class="text-sm font-bold text-slate-900">Internal Helpdesk</h3>
+                <p class="text-slate-600 leading-relaxed">
+                    Submit ticket via portal support or write to <span class="font-medium text-slate-800">helpdesk@internpilot.in</span>. Acknowledged within 24 hours.
+                </p>
+            </div>
+
+            <!-- Tier 2 -->
+            <div class="border border-slate-200 rounded-xl p-5 space-y-2 bg-slate-50">
+                <div class="inline-block px-2.5 py-0.5 bg-amber-100 text-amber-800 rounded font-bold text-[10px]">
+                    TIER 2 &bull; 7 WORKING DAYS
+                </div>
+                <h3 class="text-sm font-bold text-slate-900">Grievance Redressal Officer</h3>
+                <p class="text-slate-600 leading-relaxed">
+                    If unresolved at Tier 1, escalate directly to the designated Public Grievance Officer, PMIS Cell at <span class="font-medium text-slate-800">grievance-pmis@gov.in</span>.
+                </p>
+            </div>
+
+            <!-- Tier 3 -->
+            <div class="border border-slate-200 rounded-xl p-5 space-y-2 bg-slate-50">
+                <div class="inline-block px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold text-[10px]">
+                    TIER 3 &bull; 15 WORKING DAYS
+                </div>
+                <h3 class="text-sm font-bold text-slate-900">Central CPGRAMS Portal</h3>
+                <p class="text-slate-600 leading-relaxed">
+                    Lodge a formal petition on the Department of Administrative Reforms & Public Grievances CPGRAMS portal.
+                </p>
+            </div>
+        </div>
+
+        <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-100">
+            <div class="text-xs text-slate-500">
+                External Portal: Centralized Public Grievance Redress and Monitoring System (CPGRAMS)
+            </div>
+            <a href="https://pgportal.gov.in" target="_blank" rel="noopener noreferrer"
+                class="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors">
+                <span>Visit CPGRAMS Portal</span>
+                <i class="ph-bold ph-arrow-square-out text-sm"></i>
+            </a>
+        </div>
+    </div>
+
+</div>

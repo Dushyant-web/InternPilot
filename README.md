@@ -460,6 +460,133 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
 
 ---
 
+## Contributors
+
+<!-- readme: contributors-start -->
+<table>
+	<tbody>
+		<tr>
+            <td align="center">
+                <a href="https://github.com/somu0571">
+                    <img src="https://avatars.githubusercontent.com/u/218252841?v=4" width="100;" alt="somu0571"/>
+                    <br />
+                    <sub><b>SOMSUBHRA CHATTERJEE</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/Tanmoysahacodes">
+                    <img src="https://avatars.githubusercontent.com/u/132278570?v=4" width="100;" alt="Tanmoysahacodes"/>
+                    <br />
+                    <sub><b>TANMOY SAHA</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/Dushyant-web">
+                    <img src="https://avatars.githubusercontent.com/u/76154071?v=4" width="100;" alt="Dushyant-web"/>
+                    <br />
+                    <sub><b>Dushyant Prajapati</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/huzaifa069HUZ">
+                    <img src="https://avatars.githubusercontent.com/u/223731712?v=4" width="100;" alt="huzaifa069HUZ"/>
+                    <br />
+                    <sub><b>Huzaifa Tabish</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/alisayam-786">
+                    <img src="https://avatars.githubusercontent.com/u/233578022?v=4" width="100;" alt="alisayam-786"/>
+                    <br />
+                    <sub><b>Ali Sayam</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/rajjayant7">
+                    <img src="https://avatars.githubusercontent.com/u/254138862?v=4" width="100;" alt="rajjayant7"/>
+                    <br />
+                    <sub><b>JAYANT RAJ</b></sub>
+                </a>
+            </td>
+		</tr>
+		<tr>
+            <td align="center">
+                <a href="https://github.com/archlight20">
+                    <img src="https://avatars.githubusercontent.com/u/120593356?v=4" width="100;" alt="archlight20"/>
+                    <br />
+                    <sub><b>archlight20</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/UTT-THE-CODER">
+                    <img src="https://avatars.githubusercontent.com/u/255687562?v=4" width="100;" alt="UTT-THE-CODER"/>
+                    <br />
+                    <sub><b>Uttkarsh </b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/rajeevsahani">
+                    <img src="https://avatars.githubusercontent.com/u/10737960?v=4" width="100;" alt="rajeevsahani"/>
+                    <br />
+                    <sub><b>Rajeev Kumar</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/ChiragYadav2000">
+                    <img src="https://avatars.githubusercontent.com/u/93484451?v=4" width="100;" alt="ChiragYadav2000"/>
+                    <br />
+                    <sub><b>ChiragYadav2000</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/deepanshusahani15">
+                    <img src="https://avatars.githubusercontent.com/u/285276346?v=4" width="100;" alt="deepanshusahani15"/>
+                    <br />
+                    <sub><b>Deepanshu Sahani</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/vishnu-s-tripathi06">
+                    <img src="https://avatars.githubusercontent.com/u/108225421?v=4" width="100;" alt="vishnu-s-tripathi06"/>
+                    <br />
+                    <sub><b>Vishnu Shankar Tripathi</b></sub>
+                </a>
+            </td>
+		</tr>
+		<tr>
+            <td align="center">
+                <a href="https://github.com/YaKoT77">
+                    <img src="https://avatars.githubusercontent.com/u/210996344?v=4" width="100;" alt="YaKoT77"/>
+                    <br />
+                    <sub><b>Yash Kotnala</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/bhandarijiya28-sketch">
+                    <img src="https://avatars.githubusercontent.com/u/331283845?v=4" width="100;" alt="bhandarijiya28-sketch"/>
+                    <br />
+                    <sub><b>bhandarijiya28-sketch</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/vaishnaviverma16112008-byte">
+                    <img src="https://avatars.githubusercontent.com/u/324442031?v=4" width="100;" alt="vaishnaviverma16112008-byte"/>
+                    <br />
+                    <sub><b>vaishnaviverma16112008-byte</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/zaidindia1max">
+                    <img src="https://avatars.githubusercontent.com/u/244500526?v=4" width="100;" alt="zaidindia1max"/>
+                    <br />
+                    <sub><b>zaidindia1max</b></sub>
+                </a>
+            </td>
+		</tr>
+	<tbody>
+</table>
+<!-- readme: contributors-end -->
+
 ## ⭐ Acknowledgement
 
 This project represents our effort towards building a practical full-stack solution that improves internship discovery, application management, and communication between students and organizations.
