@@ -485,17 +485,17 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
                 </a>
             </td>
             <td align="center">
-                <a href="https://github.com/Dushyant-web">
-                    <img src="https://avatars.githubusercontent.com/u/76154071?v=4" width="100;" alt="Dushyant-web"/>
-                    <br />
-                    <sub><b>Dushyant Prajapati</b></sub>
-                </a>
-            </td>
-            <td align="center">
                 <a href="https://github.com/Tanmoysahacodes">
                     <img src="https://avatars.githubusercontent.com/u/132278570?v=4" width="100;" alt="Tanmoysahacodes"/>
                     <br />
                     <sub><b>TANMOY SAHA</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/Dushyant-web">
+                    <img src="https://avatars.githubusercontent.com/u/76154071?v=4" width="100;" alt="Dushyant-web"/>
+                    <br />
+                    <sub><b>Dushyant Prajapati</b></sub>
                 </a>
             </td>
             <td align="center">
