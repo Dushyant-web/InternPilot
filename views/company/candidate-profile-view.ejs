@@ -35,9 +35,8 @@
                         ? ([candidate.location.district, candidate.location.state].filter(Boolean).join(', ') || 'Location Not Provided')
                         : (candidate.location || 'Location Not Provided') %>
                 </p>
-                <% const isAgeEligible = candidate.age && candidate.age >= 21 && candidate.age <= 24; %>
-                <% const isIncomeEligible = candidate.familyIncome && candidate.familyIncome <= 800000; %>
-                <% if (isAgeEligible && isIncomeEligible) { %>
+                <% const candidateEligible = (typeof eligibility !== 'undefined' && eligibility) ? eligibility.isEligible : (typeof checkPmisEligibility === 'function' ? checkPmisEligibility(candidate).isEligible : (candidate.age && candidate.age >= 21 && candidate.age <= 24 && candidate.familyIncome && candidate.familyIncome <= 800000)); %>
+                <% if (candidateEligible) { %>
                     <span
                         class="inline-block mt-1.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
                         PMIS Eligible

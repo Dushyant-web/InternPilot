@@ -17,6 +17,7 @@ const { documentUpload, uploadBufferToCloudinary } = require('../middleware/uplo
 const { calculateSkillScore } = require('../utils/skillMatch');
 const { detectProfileConflicts } = require('../utils/conflictDetector');
 const { formatRelativeTime, formatLocalizedDateTime } = require('../utils/dateFormat');
+const { checkPmisEligibility, PMIS_RULES } = require('../utils/pmisEligibility');
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -135,10 +136,13 @@ router.get('/candidate/profile', isAuthenticated, authorize('candidate'), async 
     try {
         const userId = req.user._id || req.user.id;
         const freshUser = await User.findById(userId);
+        const eligibility = checkPmisEligibility(freshUser);
 
         res.render('candidate/candidate-profile', {
             user: freshUser,
-            candidate: freshUser
+            candidate: freshUser,
+            eligibility,
+            pmisRules: PMIS_RULES
         });
     } catch (error) {
         console.error('Error fetching candidate profile:', error);
@@ -162,7 +166,7 @@ router.get('/candidate/resume-builder', isAuthenticated, authorize('candidate'),
 
 router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
-        const { location, age, familyIncome, qualification, institution, skills } = req.body;
+        const { location, age, familyIncome, qualification, institution, skills, enrollmentStatus, employmentStatus } = req.body;
 
         const skillsArray = skills
             ? skills.split(',').map(s => s.trim()).filter(Boolean)
@@ -182,14 +186,16 @@ router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), 
             userId,
             {
                 $set: {
-                    age: age ? Number(age) : null,
-                    familyIncome: familyIncome ? Number(familyIncome) : null,
+                    age: age !== undefined && age !== '' ? Number(age) : null,
+                    familyIncome: familyIncome !== undefined && familyIncome !== '' ? Number(familyIncome) : null,
                     institution: institution || '',
                     'education.institutionName': institution || '',
                     skills: skillsArray,
                     'location.district': district,
                     'location.state': state,
-                    'education.qualification': qualification || ''
+                    'education.qualification': qualification || '',
+                    enrollmentStatus: enrollmentStatus ? enrollmentStatus.trim() : '',
+                    employmentStatus: employmentStatus ? employmentStatus.trim() : ''
                 }
             },
             { new: true, runValidators: false }
@@ -704,15 +710,7 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
             return res.status(404).send('Candidate profile not found.');
         }
 
-        const isAgeValid = user.age >= 21 && user.age <= 24;
-        const isIncomeValid = user.familyIncome !== undefined && user.familyIncome !== null && user.familyIncome <= 800000;
-        const isEligible = isAgeValid && isIncomeValid;
-
-        const reasons = [];
-        if (!isAgeValid) reasons.push(`Age (${user.age || 'N/A'}) falls outside the 21–24 permitted range.`);
-        if (!isIncomeValid) reasons.push(`Family income (${user.familyIncome ? '₹' + user.familyIncome.toLocaleString('en-IN') : 'N/A'}) exceeds the ₹8,00,000 ceiling.`);
-
-        const eligibility = { isEligible, reasons };
+        const eligibility = checkPmisEligibility(user);
 
         // Fetch already applied IDs to exclude from read-time view
         const apps = await Application.find({ candidate: user._id }).select('internship');

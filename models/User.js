@@ -24,6 +24,8 @@ const userSchema = new mongoose.Schema({
     age: { type: Number },
     familyIncome: { type: Number },
     institution: { type: String },
+    enrollmentStatus: { type: String, trim: true, default: '' },
+    employmentStatus: { type: String, trim: true, default: '' },
     skills: [{ type: String }],
     resume: { type: String, default: '' },
 
