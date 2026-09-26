@@ -67,14 +67,20 @@ test('buildPaginationData calculates page bounds accurately', () => {
     const p1 = buildPaginationData(25, 1, 10);
     assert.equal(p1.totalPages, 3);
     assert.equal(p1.currentPage, 1);
+    assert.equal(p1.startItem, 1);
+    assert.equal(p1.endItem, 10);
     assert.equal(p1.hasNextPage, true);
     assert.equal(p1.hasPrevPage, false);
+    assert.deepEqual(p1.pages, [1, 2, 3]);
 
     const p3 = buildPaginationData(25, 3, 10);
     assert.equal(p3.totalPages, 3);
     assert.equal(p3.currentPage, 3);
+    assert.equal(p3.startItem, 21);
+    assert.equal(p3.endItem, 25);
     assert.equal(p3.hasNextPage, false);
     assert.equal(p3.hasPrevPage, true);
+    assert.deepEqual(p3.pages, [1, 2, 3]);
 });
 
 test('buildQueryString preserves query state while updating overrides', () => {

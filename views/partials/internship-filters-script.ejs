@@ -1,0 +1,212 @@
+<script>
+    (function () {
+        // Updates the listing without a full page reload. The server still
+        // renders everything: this fetches the same /internships URL, swaps
+        // the [data-live-region] blocks, and keeps the address bar in sync.
+        // Without JavaScript the form and links work as ordinary navigation.
+        const form = document.querySelector('[data-internship-filters]');
+        if (!form || !window.fetch || !window.DOMParser || !window.history) return;
+
+        const STORAGE_KEY = 'internpilot:internshipFilters';
+        const MULTI = ['skills', 'duration'];
+        let controller = null;
+        let timer = null;
+
+        const storage = {
+            get() { try { return sessionStorage.getItem(STORAGE_KEY) || ''; } catch (e) { return ''; } },
+            set(value) {
+                try {
+                    if (value) sessionStorage.setItem(STORAGE_KEY, value);
+                    else sessionStorage.removeItem(STORAGE_KEY);
+                } catch (e) { /* private mode: persistence is a nice-to-have */ }
+            }
+        };
+
+        const resultsRegion = () => document.querySelector('[data-live-region="results"]');
+
+        const readState = () => {
+            const region = resultsRegion();
+            try { return JSON.parse(region && region.dataset.state ? region.dataset.state : '{}'); } catch (e) { return {}; }
+        };
+
+        // Builds a tidy URL from the form: blanks and defaults are left out, and
+        // multi-select values are joined the same way buildQueryString does.
+        const urlFromForm = () => {
+            const params = new URLSearchParams();
+            const lists = {};
+            for (const [key, raw] of new FormData(form).entries()) {
+                const value = String(raw).trim();
+                if (!value) continue;
+                if (MULTI.includes(key)) { (lists[key] = lists[key] || []).push(value); continue; }
+                if ((key === 'sort' && value === 'latest') || (key === 'status' && value === 'all')) continue;
+                if (key === 'limit' && (Number(value) === 12 || !value)) continue;
+                if (key === 'page' && Number(value) <= 1) continue;
+                params.set(key, value);
+            }
+            Object.keys(lists).forEach(key => params.set(key, lists[key].join(',')));
+            const qs = params.toString();
+            return qs ? '/internships?' + qs : '/internships';
+        };
+
+        const updateSkillsSummary = () => {
+            const summary = form.querySelector('[data-skills-summary]');
+            if (!summary) return;
+            const count = form.querySelectorAll('input[name="skills"]:checked').length;
+            summary.textContent = count ? 'Skills (' + count + ' selected)' : 'Skills: any';
+        };
+
+        // Puts the form back in line with what the server actually applied,
+        // e.g. after Back, after removing a chip, or when a min/max pair was swapped.
+        const syncForm = (state) => {
+            const set = (name, value) => { if (form.elements[name]) form.elements[name].value = value || ''; };
+            set('search', state.search);
+            set('location', state.location);
+            set('minStipend', state.minStipend);
+            set('maxStipend', state.maxStipend);
+            set('status', state.status || 'all');
+            set('limit', state.limit && Number(state.limit) !== 12 ? state.limit : '');
+            if (form.elements.sort) form.elements.sort.value = state.sort || 'latest';
+
+            if (form.elements.sector) {
+                const wanted = (state.sector || '').toLowerCase();
+                const match = Array.from(form.elements.sector.options).find(o => o.value.toLowerCase() === wanted);
+                form.elements.sector.value = match ? match.value : '';
+            }
+
+            const skills = (state.skills || []).map(s => s.toLowerCase());
+            form.querySelectorAll('input[name="skills"]').forEach(box => { box.checked = skills.includes(box.value.toLowerCase()); });
+            const durations = state.duration || [];
+            form.querySelectorAll('input[name="duration"]').forEach(box => { box.checked = durations.includes(box.value); });
+            updateSkillsSummary();
+        };
+
+        const setBusy = (busy) => {
+            const region = resultsRegion();
+            if (!region) return;
+            region.setAttribute('aria-busy', busy ? 'true' : 'false');
+            region.classList.toggle('opacity-50', busy);
+            region.classList.toggle('pointer-events-none', busy);
+        };
+
+        const load = async (url, { push = true, replace = false, scroll = false } = {}) => {
+            if (controller) controller.abort();
+            controller = new AbortController();
+            setBusy(true);
+
+            try {
+                const res = await fetch(url, {
+                    headers: { Accept: 'text/html', 'X-Requested-With': 'fetch' },
+                    credentials: 'same-origin',
+                    signal: controller.signal
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+
+                const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+                const incoming = doc.querySelector('[data-live-region="results"]');
+                if (!incoming) throw new Error('Unexpected response');
+
+                document.querySelectorAll('[data-live-region]').forEach(el => {
+                    const next = doc.querySelector('[data-live-region="' + el.dataset.liveRegion + '"]');
+                    if (next) el.replaceWith(next);
+                });
+
+                if (replace) history.replaceState({ internshipFilters: true }, '', url);
+                else if (push) history.pushState({ internshipFilters: true }, '', url);
+
+                syncForm(readState());
+                storage.set(location.search);
+
+                const region = resultsRegion();
+                if (scroll && region && region.getBoundingClientRect().top < 0) {
+                    region.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+                // Anything unexpected: fall back to a normal page load.
+                window.location.assign(url);
+            } finally {
+                setBusy(false);
+            }
+        };
+
+        const scheduleApply = (delay) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => load(urlFromForm()), delay);
+        };
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            clearTimeout(timer);
+            load(urlFromForm());
+        });
+
+        // Checkboxes and selects apply straight away; typing waits for a pause.
+        form.addEventListener('change', (e) => {
+            if (e.target.matches('[data-skills-search]')) return;
+            if (e.target.matches('input[type="checkbox"], select')) {
+                if (e.target.name === 'skills') updateSkillsSummary();
+                scheduleApply(150);
+            }
+        });
+        form.addEventListener('input', (e) => {
+            if (e.target.matches('input[type="text"], input[type="number"]')) scheduleApply(500);
+        });
+
+        // Chips, Clear all, status tabs and pagination: any plain click on a
+        // link back to /internships loads in place.
+        document.addEventListener('click', (e) => {
+            if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            const link = e.target.closest('a[href]');
+            if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
+            const url = new URL(link.getAttribute('href'), window.location.href);
+            if (url.origin !== window.location.origin || url.pathname !== '/internships') return;
+            e.preventDefault();
+            load(url.pathname + url.search, { scroll: true });
+        });
+
+        window.addEventListener('popstate', () => {
+            load(window.location.pathname + window.location.search, { push: false });
+        });
+
+        // Skills dropdown: filter the list as you type, close on outside click or Escape.
+        const dropdown = form.querySelector('[data-skills-dropdown]');
+        if (dropdown) {
+            const search = dropdown.querySelector('[data-skills-search]');
+            const empty = dropdown.querySelector('[data-skills-empty]');
+            if (search) {
+                search.addEventListener('input', () => {
+                    const term = search.value.trim().toLowerCase();
+                    let shown = 0;
+                    dropdown.querySelectorAll('[data-skill-option]').forEach(option => {
+                        const match = !term || option.dataset.skillOption.includes(term);
+                        option.classList.toggle('hidden', !match);
+                        if (match) shown++;
+                    });
+                    if (empty) empty.classList.toggle('hidden', shown > 0);
+                });
+                // Enter in the skill search should not submit the whole form.
+                search.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
+            }
+            document.addEventListener('click', (e) => {
+                if (dropdown.open && !dropdown.contains(e.target)) dropdown.removeAttribute('open');
+            });
+            dropdown.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') { dropdown.removeAttribute('open'); dropdown.querySelector('summary').focus(); }
+            });
+        }
+
+        // Start from what the server applied, so auto-apply never drops a
+        // filter the form failed to show.
+        syncForm(readState());
+        history.replaceState({ internshipFilters: true }, '', window.location.href);
+
+        // Per-session persistence: arriving on a bare /internships brings back
+        // the filters used earlier in this tab. "Clear all" empties it.
+        const saved = storage.get();
+        if (!window.location.search && saved) {
+            load('/internships' + saved, { replace: true });
+        } else {
+            storage.set(window.location.search);
+        }
+    })();
+</script>

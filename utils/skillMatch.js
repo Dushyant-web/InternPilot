@@ -1,71 +1,48 @@
-const normalize = (skill) => String(skill || '').trim().toLowerCase();
+const {
+    buildSkillProfiles,
+    skillKey,
+    proficiencyWeight
+} = require('./skillProfiles');
 
 const clean = (skills) => (Array.isArray(skills) ? skills : []).filter(Boolean);
 
 /**
- * Percentage of an internship's required skills that a candidate already has.
+ * Percentage of an internship's required skills that a candidate covers,
+ * weighted by the declared proficiency for every exact skill match.
  *
- * Kept identical to the scoring that internships and recommendations already
- * relied on, so match percentages do not shift for existing data.
- *
- * @param {string[]} userSkills Skills listed on the candidate's profile.
- * @param {string[]} requiredSkills Skills the internship asks for.
- * @returns {number} 0-100. Returns 100 when nothing is required, 0 when the
- *   candidate has no skills at all.
+ * Legacy string skills are deliberately treated as Intermediate by
+ * `buildSkillProfiles`, so existing data continues to produce a useful score.
  */
-function calculateSkillScore(userSkills = [], requiredSkills = []) {
-    if (!requiredSkills || !requiredSkills.length) return 100;
-    if (!userSkills || !userSkills.length) return 0;
+function calculateSkillScore(userOrSkills = [], requiredSkills = [], suppliedProfiles) {
+    const required = clean(requiredSkills);
+    if (!required.length) return 100;
 
-    const userSkillsLower = clean(userSkills).map(normalize);
-    let matchCount = 0;
+    const profilesBySkill = new Map(
+        buildSkillProfiles(userOrSkills, suppliedProfiles)
+            .map(profile => [skillKey(profile.name), profile])
+    );
+    if (!profilesBySkill.size) return 0;
 
-    clean(requiredSkills).forEach(skill => {
-        if (userSkillsLower.includes(normalize(skill))) matchCount++;
-    });
+    const weightedMatches = required.reduce((total, skill) => {
+        const profile = profilesBySkill.get(skillKey(skill));
+        return total + (profile ? proficiencyWeight(profile.proficiency) : 0);
+    }, 0);
 
-    return Math.round((matchCount / requiredSkills.length) * 100);
+    return Math.round((weightedMatches / required.length) * 100);
 }
 
-/**
- * Finds a profile skill that looks like a differently worded version of a
- * required skill.
- *
- * "React" vs "React.js" should not read as a total miss, but two-letter
- * overlaps like "Go" inside "Django" should not count either, so both sides
- * need at least three characters.
- *
- * @param {string} requiredSkill A single skill the internship asks for.
- * @param {string[]} userSkills Skills listed on the candidate's profile.
- * @returns {string|null} The matching profile skill, or null if none is close.
- */
-function findPartialMatch(requiredSkill, userSkills) {
-    const required = normalize(requiredSkill);
+function findPartialMatch(requiredSkill, profiles) {
+    const required = skillKey(requiredSkill);
     if (required.length < 3) return null;
 
-    return userSkills.find(userSkill => {
-        const candidate = normalize(userSkill);
+    return profiles.find(profile => {
+        const candidate = skillKey(profile.name);
         if (candidate.length < 3 || candidate === required) return false;
         return candidate.includes(required) || required.includes(candidate);
     }) || null;
 }
 
-/**
- * Builds the single actionable sentence shown above the analysis.
- *
- * Only claims full coverage when every requirement matched exactly, so a
- * loose match never reads as a complete one.
- *
- * @param {object} result Buckets produced by {@link analyzeSkillGap}.
- * @param {boolean} result.hasProfileSkills Whether the profile lists any skill.
- * @param {number} result.totalRequired How many skills the internship asks for.
- * @param {number} result.matchCount How many matched exactly.
- * @param {string[]} result.missing Requirements with no match at all.
- * @param {Array<{required: string, profileSkill: string}>} result.partial
- *   Requirements that only matched loosely.
- * @returns {string} A sentence safe to render as-is.
- */
-function buildSummary({ hasProfileSkills, totalRequired, matchCount, missing, partial }) {
+function buildSummary({ hasProfileSkills, totalRequired, matchCount, missing, partial, developing }) {
     if (!totalRequired) {
         return 'This internship has not listed any required skills yet, so there is nothing to compare against.';
     }
@@ -73,57 +50,70 @@ function buildSummary({ hasProfileSkills, totalRequired, matchCount, missing, pa
         return 'Add the skills you already have to your profile to see how well you fit this role.';
     }
 
-    const base = `You match ${matchCount} of ${totalRequired} required skills.`;
+    const base = `You fully meet ${matchCount} of ${totalRequired} required skills.`;
+    const developingText = developing.length
+        ? ` You are still developing: ${developing.map(item => item.required).join(', ')}.`
+        : '';
 
     if (missing.length) {
-        return `${base} Consider learning: ${missing.join(', ')}.`;
+        return `${base}${developingText} Consider learning: ${missing.join(', ')}.`;
     }
     if (partial.length) {
         const names = partial.map(item => item.required);
-        return `${base} Close but worth confirming: ${names.join(', ')}.`;
+        return `${base}${developingText} Close but worth confirming: ${names.join(', ')}.`;
     }
+    if (developing.length) return `${base}${developingText}`;
     return `${base} Your profile covers everything this role asks for.`;
 }
 
 /**
- * Compares a candidate's skills against an internship's required skills.
- *
- * Every requirement lands in exactly one bucket: an exact match, a loose
- * match against differently worded profile skill, or missing.
- *
- * @param {string[]} userSkills Skills listed on the candidate's profile.
- * @param {string[]} requiredSkills Skills the internship asks for.
- * @returns {{hasProfileSkills: boolean, hasRequiredSkills: boolean,
- *   totalRequired: number, matchCount: number, matched: string[],
- *   partial: Array<{required: string, profileSkill: string}>,
- *   missing: string[], score: number, summary: string}} Buckets a view can
- *   render directly, plus the score and a summary sentence.
+ * Compares a candidate's skills against an internship's requirements.
+ * Beginner exact matches are shown as developing skills rather than full
+ * coverage, while Intermediate and Advanced exact matches satisfy the skill.
  */
-function analyzeSkillGap(userSkills = [], requiredSkills = []) {
-    const profileSkills = clean(userSkills);
+function analyzeSkillGap(userOrSkills = [], requiredSkills = [], suppliedProfiles) {
+    const profiles = buildSkillProfiles(userOrSkills, suppliedProfiles);
     const required = clean(requiredSkills);
-    const profileSkillsLower = profileSkills.map(normalize);
+    const profilesBySkill = new Map(profiles.map(profile => [skillKey(profile.name), profile]));
 
     const matched = [];
+    const matchedSkillProfiles = [];
+    const developing = [];
     const partial = [];
     const missing = [];
 
     required.forEach(skill => {
-        if (profileSkillsLower.includes(normalize(skill))) {
-            matched.push(skill);
+        const profile = profilesBySkill.get(skillKey(skill));
+        if (profile) {
+            const detail = {
+                required: skill,
+                profileSkill: profile.name,
+                proficiency: profile.proficiency,
+                weight: proficiencyWeight(profile.proficiency)
+            };
+            if (profile.proficiency === 'Beginner') {
+                developing.push(detail);
+            } else {
+                matched.push(skill);
+                matchedSkillProfiles.push(detail);
+            }
             return;
         }
 
-        const near = findPartialMatch(skill, profileSkills);
+        const near = findPartialMatch(skill, profiles);
         if (near) {
-            partial.push({ required: skill, profileSkill: near });
+            partial.push({
+                required: skill,
+                profileSkill: near.name,
+                proficiency: near.proficiency
+            });
             return;
         }
 
         missing.push(skill);
     });
 
-    const hasProfileSkills = profileSkills.length > 0;
+    const hasProfileSkills = profiles.length > 0;
     const totalRequired = required.length;
     const matchCount = matched.length;
 
@@ -133,10 +123,12 @@ function analyzeSkillGap(userSkills = [], requiredSkills = []) {
         totalRequired,
         matchCount,
         matched,
+        matchedSkillProfiles,
+        developing,
         partial,
         missing,
-        score: calculateSkillScore(profileSkills, required),
-        summary: buildSummary({ hasProfileSkills, totalRequired, matchCount, missing, partial })
+        score: calculateSkillScore(profiles, required),
+        summary: buildSummary({ hasProfileSkills, totalRequired, matchCount, missing, partial, developing })
     };
 }
 

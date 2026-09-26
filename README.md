@@ -48,6 +48,7 @@ InternPilot supports three different user roles:
 * Login securely.
 * Apply for internships.
 * Receive application status updates.
+* Set each listed skill to **Beginner**, **Intermediate**, or **Advanced** so matching reflects current proficiency.
 
 #### 🏢 Companies
 
@@ -280,6 +281,16 @@ GOOGLE_CALLBACK_URL=http://localhost:8080/auth/google/callback
 
 ## 🚀 Getting Started
 
+### Skill-proficiency data migration
+
+Existing candidate skill tags remain supported and are treated as **Intermediate** until they are edited. After deploying this feature, backfill the structured proficiency field once with:
+
+```bash
+npm run migrate:skill-proficiencies
+```
+
+The script only updates candidate profiles and clears their cached recommendations so new proficiency-aware rankings can be generated.
+
 ### ✅ Prerequisites
 
 Make sure you have installed:
@@ -474,6 +485,13 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
                 </a>
             </td>
             <td align="center">
+                <a href="https://github.com/huzaifa069HUZ">
+                    <img src="https://avatars.githubusercontent.com/u/223731712?v=4" width="100;" alt="huzaifa069HUZ"/>
+                    <br />
+                    <sub><b>Huzaifa Tabish</b></sub>
+                </a>
+            </td>
+            <td align="center">
                 <a href="https://github.com/Tanmoysahacodes">
                     <img src="https://avatars.githubusercontent.com/u/132278570?v=4" width="100;" alt="Tanmoysahacodes"/>
                     <br />
@@ -488,12 +506,21 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
                 </a>
             </td>
             <td align="center">
-                <a href="https://github.com/huzaifa069HUZ">
-                    <img src="https://avatars.githubusercontent.com/u/223731712?v=4" width="100;" alt="huzaifa069HUZ"/>
+                <a href="https://github.com/rajeevsahani">
+                    <img src="https://avatars.githubusercontent.com/u/10737960?v=4" width="100;" alt="rajeevsahani"/>
                     <br />
-                    <sub><b>Huzaifa Tabish</b></sub>
+                    <sub><b>Rajeev Kumar</b></sub>
                 </a>
             </td>
+            <td align="center">
+                <a href="https://github.com/archlight20">
+                    <img src="https://avatars.githubusercontent.com/u/120593356?v=4" width="100;" alt="archlight20"/>
+                    <br />
+                    <sub><b>archlight20</b></sub>
+                </a>
+            </td>
+		</tr>
+		<tr>
             <td align="center">
                 <a href="https://github.com/alisayam-786">
                     <img src="https://avatars.githubusercontent.com/u/233578022?v=4" width="100;" alt="alisayam-786"/>
@@ -508,15 +535,6 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
                     <sub><b>JAYANT RAJ</b></sub>
                 </a>
             </td>
-		</tr>
-		<tr>
-            <td align="center">
-                <a href="https://github.com/archlight20">
-                    <img src="https://avatars.githubusercontent.com/u/120593356?v=4" width="100;" alt="archlight20"/>
-                    <br />
-                    <sub><b>archlight20</b></sub>
-                </a>
-            </td>
             <td align="center">
                 <a href="https://github.com/UTT-THE-CODER">
                     <img src="https://avatars.githubusercontent.com/u/255687562?v=4" width="100;" alt="UTT-THE-CODER"/>
@@ -525,10 +543,10 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
                 </a>
             </td>
             <td align="center">
-                <a href="https://github.com/rajeevsahani">
-                    <img src="https://avatars.githubusercontent.com/u/10737960?v=4" width="100;" alt="rajeevsahani"/>
+                <a href="https://github.com/deepanshusahani15">
+                    <img src="https://avatars.githubusercontent.com/u/285276346?v=4" width="100;" alt="deepanshusahani15"/>
                     <br />
-                    <sub><b>Rajeev Kumar</b></sub>
+                    <sub><b>Deepanshu Sahani</b></sub>
                 </a>
             </td>
             <td align="center">
@@ -536,13 +554,6 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
                     <img src="https://avatars.githubusercontent.com/u/93484451?v=4" width="100;" alt="ChiragYadav2000"/>
                     <br />
                     <sub><b>ChiragYadav2000</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/deepanshusahani15">
-                    <img src="https://avatars.githubusercontent.com/u/285276346?v=4" width="100;" alt="deepanshusahani15"/>
-                    <br />
-                    <sub><b>Deepanshu Sahani</b></sub>
                 </a>
             </td>
             <td align="center">

@@ -3,6 +3,7 @@ const Internship = require('../models/Internship');
 const Application = require('../models/Application');
 const Recommendation = require('../models/Recommendation');
 const { calculatePreFilterScore } = require('./candidateMatcher');
+const { buildSkillProfiles } = require('./skillProfiles');
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const POOL_SIZE = parseInt(process.env.RECOMMENDATION_AI_POOL_SIZE, 10) || 25;
@@ -48,7 +49,7 @@ async function generateRecommendationsForUser(user) {
 
         // 4. Privacy Filter: Strip PII before sending to Gemini
         const candidateProfile = {
-            skills: user.skills || [],
+            skillProfiles: buildSkillProfiles(user),
             education: user.education || {},
             location: user.location || {}
         };

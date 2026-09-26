@@ -4,6 +4,7 @@
         opportunities: ['/internships'],
         candidateProfile: ['/candidate/profile', '/candidate/resume-builder'],
         applications: ['/candidate/applications', '/candidate/my-applications'],
+        savedInternships: ['/candidate/saved-internships'],
         recommendations: ['/recommendations'],
         notifications: ['/notifications'],
         companyNotifications: ['/company/notifications'],
@@ -84,12 +85,21 @@
                             <a href="/candidate/profile" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('candidateProfile') %>" class="<%= desktopLinkClass(isActive('candidateProfile')) %>" <%- ariaCurrent(isActive('candidateProfile')) %>>Candidate Profile</a>
                             <a href="/candidate/applications" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('applications') %>" class="<%= desktopLinkClass(isActive('applications')) %>" <%- ariaCurrent(isActive('applications')) %>>My Applications</a>
                             <a href="/recommendations/<%= currentUser._id %>" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('recommendations') %>" class="<%= desktopLinkClass(isActive('recommendations')) %>" <%- ariaCurrent(isActive('recommendations')) %>>Recommendations</a>
-                        <% } else if (['company', 'recruiter'].includes(currentUser.role)) { %>
+                        <% } else if (['company', 'recruiter', 'hiring_manager'].includes(currentUser.role)) { %>
                             <a href="/company/dashboard" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('companyDashboard') %>" class="<%= desktopLinkClass(isActive('companyDashboard')) %>" <%- ariaCurrent(isActive('companyDashboard')) %>>Company Dashboard</a>
-                            <a href="/company/profile" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('companyProfile') %>" class="<%= desktopLinkClass(isActive('companyProfile')) %>" <%- ariaCurrent(isActive('companyProfile')) %>>Company Profile</a>
-                            <% if (currentUser.role === 'company') { %>
-                                <a href="/company/team" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('manageTeam') %>" class="<%= desktopLinkClass(isActive('manageTeam')) %>" <%- ariaCurrent(isActive('manageTeam')) %>>Manage Team</a>
-                                <a href="/company/activity" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('activityHistory') %>" class="<%= desktopLinkClass(isActive('activityHistory')) %>" <%- ariaCurrent(isActive('activityHistory')) %>>Activity History</a>
+                            <% if (['company', 'recruiter'].includes(currentUser.role)) { %>
+                                <div class="group relative inline-block">
+                                    <button class="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors <%= isActive('companyProfile') || isActive('manageTeam') || isActive('activityHistory') ? 'bg-indigo-100 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-indigo-600' %>">
+                                        Manage <i class="ph-bold ph-caret-down text-xs transition-transform group-hover:rotate-180" aria-hidden="true"></i>
+                                    </button>
+                                    <div class="absolute left-0 top-full z-50 mt-1 hidden w-48 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg group-hover:block">
+                                        <a href="/company/profile" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('companyProfile') %>" class="block px-4 py-2.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 hover:text-indigo-600 <%= isActive('companyProfile') ? 'bg-indigo-50 font-bold text-indigo-700' : '' %>" <%- ariaCurrent(isActive('companyProfile')) %>>Company Profile</a>
+                                        <% if (currentUser.role === 'company') { %>
+                                            <a href="/company/team" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('manageTeam') %>" class="block border-t border-slate-100 px-4 py-2.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 hover:text-indigo-600 <%= isActive('manageTeam') ? 'bg-indigo-50 font-bold text-indigo-700' : '' %>" <%- ariaCurrent(isActive('manageTeam')) %>>Manage Team</a>
+                                            <a href="/company/activity" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('activityHistory') %>" class="block border-t border-slate-100 px-4 py-2.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 hover:text-indigo-600 <%= isActive('activityHistory') ? 'bg-indigo-50 font-bold text-indigo-700' : '' %>" <%- ariaCurrent(isActive('activityHistory')) %>>Activity History</a>
+                                        <% } %>
+                                    </div>
+                                </div>
                             <% } %>
                         <% } else if (currentUser.role === 'admin') { %>
                             <a href="/admin/dashboard" data-nav-link data-nav-variant="desktop" data-nav-prefixes="<%= navPrefixAttribute('adminDashboard') %>" class="<%= desktopLinkClass(isActive('adminDashboard')) %>" <%- ariaCurrent(isActive('adminDashboard')) %>>Admin Dashboard</a>
@@ -105,6 +115,14 @@
                 </button>
 
                 <% if (currentUser && ['candidate', 'company', 'recruiter'].includes(currentUser.role)) { %>
+                    <% if (currentUser.role === 'candidate') { %>
+                        <a href="/candidate/saved-internships" aria-label="Saved Internships" data-nav-link data-nav-variant="icon" data-nav-prefixes="<%= navPrefixAttribute('savedInternships') %>" class="relative inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 <%= isActive('savedInternships') ? 'bg-indigo-100 font-bold text-indigo-900 ring-1 ring-indigo-700' : '' %>" <%- ariaCurrent(isActive('savedInternships')) %> title="Saved Internships">
+                            <i class="ph-bold ph-bookmark-simple text-lg" aria-hidden="true"></i>
+                            <% if (currentUser.savedInternships && currentUser.savedInternships.length > 0) { %>
+                                <span class="absolute -right-0.5 -top-0.5 h-4 min-w-4 rounded-full bg-indigo-600 px-1 text-center text-[9px] font-bold leading-4 text-white"><%= currentUser.savedInternships.length > 99 ? '99+' : currentUser.savedInternships.length %></span>
+                            <% } %>
+                        </a>
+                    <% } %>
                     <% const notifLink = currentUser.role === 'candidate' ? '/notifications' : '/company/notifications'; %>
                     <% const notificationSection = currentUser.role === 'candidate' ? 'notifications' : 'companyNotifications'; %>
                     <a href="<%= notifLink %>" aria-label="Notifications" data-nav-link data-nav-variant="icon" data-nav-prefixes="<%= navPrefixAttribute(notificationSection) %>" class="relative inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 <%= isActive(notificationSection) ? 'bg-indigo-100 font-bold text-indigo-900 ring-1 ring-indigo-700' : '' %>" <%- ariaCurrent(isActive(notificationSection)) %> title="Notifications">
@@ -120,15 +138,22 @@
                         <a href="/auth/login" class="rounded-lg px-2 py-2 text-xs font-semibold text-slate-700 transition-colors hover:text-indigo-700 sm:px-3">Log In</a>
                         <a href="/auth/register" class="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 sm:px-4">Sign Up</a>
                     <% } else { %>
-                        <div class="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 sm:flex">
-                            <% if (currentUser.avatar) { %>
-                                <img src="<%= currentUser.avatar %>" alt="User Avatar" class="h-6 w-6 rounded-full border border-slate-300 object-cover">
-                            <% } else { %>
-                                <div class="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white"><%= currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U' %></div>
-                            <% } %>
-                            <span class="max-w-[100px] truncate text-xs font-semibold text-slate-700"><%= currentUser.name %></span>
+                        <div class="group relative hidden sm:block">
+                            <button class="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 transition-colors hover:bg-slate-200 cursor-pointer">
+                                <% if (currentUser.avatar) { %>
+                                    <img src="<%= currentUser.avatar %>" alt="User Avatar" class="h-6 w-6 rounded-full border border-slate-300 object-cover">
+                                <% } else { %>
+                                    <div class="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white"><%= currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U' %></div>
+                                <% } %>
+                                <span class="max-w-[100px] truncate text-xs font-semibold text-slate-700"><%= currentUser.name %></span>
+                                <i class="ph-bold ph-caret-down text-[10px] text-slate-500 transition-transform group-hover:rotate-180"></i>
+                            </button>
+                            <div class="absolute right-0 top-full mt-2 hidden w-40 rounded-xl border border-slate-200 bg-white shadow-lg group-hover:block z-50 overflow-hidden">
+                                <a href="/auth/logout" class="flex items-center gap-2 px-4 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50">
+                                    <i class="ph-bold ph-sign-out"></i> Log Out
+                                </a>
+                            </div>
                         </div>
-                        <a href="/auth/logout" class="rounded-lg border border-red-200 bg-red-50 px-2 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100 sm:px-3">Log Out</a>
                     <% } %>
                 </div>
 
@@ -149,23 +174,32 @@
                         <a href="/candidate/applications" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('applications') %>" class="<%= mobileLinkClass(isActive('applications')) %>" <%- ariaCurrent(isActive('applications')) %>>My Applications</a>
                         <a href="/recommendations/<%= currentUser._id %>" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('recommendations') %>" class="<%= mobileLinkClass(isActive('recommendations')) %>" <%- ariaCurrent(isActive('recommendations')) %>>Recommendations</a>
                         <a href="/notifications" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('notifications') %>" class="<%= mobileLinkClass(isActive('notifications')) %>" <%- ariaCurrent(isActive('notifications')) %>>Notifications<% if (notificationUnreadCount > 0) { %> (<%= notificationUnreadCount > 99 ? '99+' : notificationUnreadCount %>)<% } %></a>
-                    <% } else if (['company', 'recruiter'].includes(currentUser.role)) { %>
+                    <% } else if (['company', 'recruiter', 'hiring_manager'].includes(currentUser.role)) { %>
                         <a href="/company/dashboard" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('companyDashboard') %>" class="<%= mobileLinkClass(isActive('companyDashboard')) %>" <%- ariaCurrent(isActive('companyDashboard')) %>>Company Dashboard</a>
+                        <% if (['company', 'recruiter'].includes(currentUser.role)) { %>
                         <a href="/company/profile" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('companyProfile') %>" class="<%= mobileLinkClass(isActive('companyProfile')) %>" <%- ariaCurrent(isActive('companyProfile')) %>>Company Profile</a>
+                        <% } %>
                         <% if (currentUser.role === 'company') { %>
                             <a href="/company/team" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('manageTeam') %>" class="<%= mobileLinkClass(isActive('manageTeam')) %>" <%- ariaCurrent(isActive('manageTeam')) %>>Manage Team</a>
                             <a href="/company/activity" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('activityHistory') %>" class="<%= mobileLinkClass(isActive('activityHistory')) %>" <%- ariaCurrent(isActive('activityHistory')) %>>Activity History</a>
                         <% } %>
+                        <% if (['company', 'recruiter'].includes(currentUser.role)) { %>
                         <a href="/company/notifications" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('companyNotifications') %>" class="<%= mobileLinkClass(isActive('companyNotifications')) %>" <%- ariaCurrent(isActive('companyNotifications')) %>>Notifications<% if (notificationUnreadCount > 0) { %> (<%= notificationUnreadCount > 99 ? '99+' : notificationUnreadCount %>)<% } %></a>
+                        <% } %>
                     <% } else if (currentUser.role === 'admin') { %>
                         <a href="/admin/dashboard" data-nav-link data-nav-variant="mobile" data-nav-prefixes="<%= navPrefixAttribute('adminDashboard') %>" class="<%= mobileLinkClass(isActive('adminDashboard')) %>" <%- ariaCurrent(isActive('adminDashboard')) %>>Admin Dashboard</a>
                     <% } %>
+                <% } %>
+                <% if (currentUser) { %>
+                    <div class="my-2 border-t border-slate-200"></div>
+                    <a href="/auth/logout" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50">
+                        <i class="ph-bold ph-sign-out"></i> Log Out
+                    </a>
                 <% } %>
             </nav>
         </div>
     </div>
 </header>
-
 <script>
     (() => {
         const toggle = document.getElementById('mobileNavToggle');

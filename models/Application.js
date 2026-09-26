@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { isSafeHttpUrl } = require('../utils/safeUrl');
 
 const applicationSchema = new mongoose.Schema({
     internship: {
@@ -30,7 +31,14 @@ const applicationSchema = new mongoose.Schema({
             type: String,
             enum: ['Online', 'Phone', 'In-Person']
         },
-        meetingLink: { type: String },
+        meetingLink: {
+            type: String,
+            trim: true,
+            validate: {
+                validator: (value) => !value || isSafeHttpUrl(value),
+                message: 'Meeting link must be a valid http:// or https:// URL.'
+            }
+        },
         location: { type: String },
         instructions: { type: String },
         scheduledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

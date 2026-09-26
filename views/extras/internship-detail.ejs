@@ -79,9 +79,17 @@
                 </div>
             </div>
 
-            <div class="sm:text-right shrink-0">
-                <div class="text-xs text-slate-400 font-medium">Monthly Stipend</div>
-                <div class="text-2xl font-bold text-slate-900">
+            <div class="sm:text-right shrink-0 flex flex-col items-end">
+                <div class="flex items-center gap-3 mb-1">
+                    <div class="text-xs text-slate-400 font-medium">Monthly Stipend</div>
+                    <% if (typeof currentUser !== 'undefined' && currentUser && currentUser.role === 'candidate') { %>
+                        <% const isSaved = currentUser.savedInternships && currentUser.savedInternships.includes(internship._id.toString()); %>
+                        <button class="bookmark-btn text-slate-400 hover:text-indigo-600 transition-all active:scale-90" data-id="<%= internship._id %>" title="Save Internship">
+                            <i class="<%= isSaved ? 'ph-fill text-indigo-600' : 'ph-bold' %> ph-heart text-xl"></i>
+                        </button>
+                    <% } %>
+                </div>
+                <div class="text-2xl font-bold text-slate-900 mt-1">
                     ₹<%= Number(internship.monthlyStipend ?? 5000).toLocaleString('en-IN') %>
                     <span class="text-xs font-normal text-slate-500">/mo</span>
                 </div>
@@ -366,3 +374,56 @@
     </div>
 
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const bookmarkBtns = document.querySelectorAll('.bookmark-btn');
+        bookmarkBtns.forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const icon = btn.querySelector('i');
+                const internshipId = btn.getAttribute('data-id');
+                
+                // Optimistic UI update for sleek feel
+                const isCurrentlySaved = icon.classList.contains('ph-fill');
+                if (isCurrentlySaved) {
+                    icon.classList.remove('ph-fill', 'text-indigo-600');
+                    icon.classList.add('ph-bold');
+                } else {
+                    icon.classList.remove('ph-bold');
+                    icon.classList.add('ph-fill', 'text-indigo-600');
+                }
+                
+                try {
+                    const response = await fetch(`/candidate/saved-internships/${internshipId}/toggle`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await response.json();
+                    if (!data.success) {
+                        // Revert on failure
+                        if (isCurrentlySaved) {
+                            icon.classList.remove('ph-bold');
+                            icon.classList.add('ph-fill', 'text-indigo-600');
+                        } else {
+                            icon.classList.remove('ph-fill', 'text-indigo-600');
+                            icon.classList.add('ph-bold');
+                        }
+                        alert('Failed to save internship. Please try again.');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    // Revert on error
+                    if (isCurrentlySaved) {
+                        icon.classList.remove('ph-bold');
+                        icon.classList.add('ph-fill', 'text-indigo-600');
+                    } else {
+                        icon.classList.remove('ph-fill', 'text-indigo-600');
+                        icon.classList.add('ph-bold');
+                    }
+                }
+            });
+        });
+    });
+</script>
