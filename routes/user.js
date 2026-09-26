@@ -182,6 +182,16 @@ router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), 
             state = parts[1] || '';
         }
 
+        const ALLOWED_ENROLLMENT = ['not_enrolled', 'part_time_or_distance', 'full_time'];
+        const ALLOWED_EMPLOYMENT = ['unemployed', 'part_time_or_freelance', 'full_time'];
+
+        const validEnrollment = (enrollmentStatus && ALLOWED_ENROLLMENT.includes(enrollmentStatus.trim()))
+            ? enrollmentStatus.trim()
+            : '';
+        const validEmployment = (employmentStatus && ALLOWED_EMPLOYMENT.includes(employmentStatus.trim()))
+            ? employmentStatus.trim()
+            : '';
+
         await User.findByIdAndUpdate(
             userId,
             {
@@ -194,8 +204,8 @@ router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), 
                     'location.district': district,
                     'location.state': state,
                     'education.qualification': qualification || '',
-                    enrollmentStatus: enrollmentStatus ? enrollmentStatus.trim() : '',
-                    employmentStatus: employmentStatus ? employmentStatus.trim() : ''
+                    enrollmentStatus: validEnrollment,
+                    employmentStatus: validEmployment
                 }
             },
             { new: true, runValidators: false }
@@ -296,9 +306,12 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
 
         if (hasConflicts) {
             // Render the profile page with the conflict-resolution modal
+            const eligibility = checkPmisEligibility(existingProfile);
             return res.render('candidate/candidate-profile', {
                 user: existingProfile,
                 candidate: existingProfile,
+                eligibility,
+                pmisRules: PMIS_RULES,
                 conflicts,
                 autoMerged,
                 resumeUrl,

@@ -185,6 +185,24 @@ test('PMIS eligibility: supports custom configurable rules override', () => {
     const customResult = checkPmisEligibility(candidate, customRules);
     assert.equal(customResult.status, 'eligible');
     assert.equal(customResult.isEligible, true);
+    assert.match(customResult.criteria[0].message, /18–28/);
+    assert.match(customResult.criteria[1].message, /₹12,00,000/);
+});
+
+test('PMIS eligibility: age value <= 0 is treated as missing, not disqualifying', () => {
+    const candidate = {
+        age: 0,
+        familyIncome: 400000,
+        education: { qualification: 'B.Tech' },
+        enrollmentStatus: 'not_enrolled',
+        employmentStatus: 'unemployed'
+    };
+
+    const result = checkPmisEligibility(candidate);
+    assert.equal(result.status, 'incomplete');
+    assert.equal(result.isEligible, false);
+    assert.ok(result.missingFields.some(f => f.includes('Age')));
+    assert.equal(result.reasons.length, 0);
 });
 
 test('PMIS eligibility: formatCurrency formats amounts in Indian numbering', () => {

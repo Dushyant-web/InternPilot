@@ -104,7 +104,7 @@ function checkPmisEligibility(candidate = {}, customConfig = {}) {
         }
     } else if (rules.age.required) {
         ageStatus = 'missing';
-        missingFields.push('Age is not specified (must be between 21 and 24 years).');
+        missingFields.push(`Age is not specified (must be between ${rules.age.min} and ${rules.age.max} years).`);
     }
 
     let incomeStatus = 'pass';
@@ -200,9 +200,9 @@ function checkPmisEligibility(candidate = {}, customConfig = {}) {
             status: ageStatus,
             value: hasAge ? `${ageNum} years` : 'Not provided',
             message: ageStatus === 'pass'
-                ? `Age (${ageNum}) is within the 21–24 permitted range.`
+                ? `Age (${ageNum}) is within the ${rules.age.min}–${rules.age.max} permitted range.`
                 : (ageStatus === 'fail'
-                    ? (ageNum < rules.age.min ? `Age (${ageNum}) is below 21 years.` : `Age (${ageNum}) exceeds 24 years.`)
+                    ? (ageNum < rules.age.min ? `Age (${ageNum}) is below ${rules.age.min} years.` : `Age (${ageNum}) exceeds ${rules.age.max} years.`)
                     : 'Age is missing from profile.')
         },
         {
@@ -211,9 +211,9 @@ function checkPmisEligibility(candidate = {}, customConfig = {}) {
             status: incomeStatus,
             value: hasIncome ? `${formatCurrency(incomeNum)} / year` : 'Not provided',
             message: incomeStatus === 'pass'
-                ? `Income (${formatCurrency(incomeNum)}) is within the ₹8,00,000 ceiling.`
+                ? `Income (${formatCurrency(incomeNum)}) is within the ${formatCurrency(rules.familyIncome.max)} ceiling.`
                 : (incomeStatus === 'fail'
-                    ? `Income (${formatCurrency(incomeNum)}) exceeds the ₹8,00,000 ceiling.`
+                    ? `Income (${formatCurrency(incomeNum)}) exceeds the ${formatCurrency(rules.familyIncome.max)} ceiling.`
                     : 'Annual family income is missing from profile.')
         },
         {
