@@ -1,4 +1,6 @@
 <% layout('layouts/boilerplate') %>
+<% const permissionList = typeof permissions !== 'undefined' && Array.isArray(permissions) ? permissions : []; %>
+<% const canReviewApplications = permissionList.includes('applications:review'); %>
 
     <div class="max-w-5xl mx-auto space-y-6">
         <!-- Header -->
@@ -215,7 +217,7 @@
                                                                 <i class="ph-bold ph-calendar text-indigo-600"></i>
                                                                 Interview
                                                             </div>
-                                                        <% } else { %>
+                                                        <% } else if (canReviewApplications) { %>
                                                             <form action="/company/applications/<%= app._id %>/status"
                                                                 method="POST" class="inline-block" data-loading-text="Updating...">
                                                                 <select name="status" onchange="if (this.form.requestSubmit) { this.form.requestSubmit(); } else { this.form.submit(); }" class="px-3 py-1.5 text-xs font-semibold rounded-lg border shadow-sm cursor-pointer outline-none transition-colors <%=
@@ -234,6 +236,10 @@
                                                                         ? 'selected' : '' %>>Rejected</option>
                                                                 </select>
                                                             </form>
+                                                        <% } else { %>
+                                                            <span class="px-3 py-1.5 bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg">
+                                                                <%= app.status || 'Submitted' %>
+                                                            </span>
                                                         <% } %>
 
                                     </div>
@@ -260,7 +266,7 @@
                                                             <span class="text-[10px] text-slate-400">
                                                                 <%= new Date(note.createdAt).toLocaleString() %><%= note.updatedAt ? ' (edited)' : '' %>
                                                             </span>
-                                                            <% if (isNoteCreator) { %>
+                                                            <% if (canReviewApplications && isNoteCreator) { %>
                                                                 <div class="flex items-center gap-1.5 ml-1">
                                                                     <button type="button" onclick="document.getElementById('edit-note-<%= note._id %>').classList.toggle('hidden')" class="text-slate-400 hover:text-indigo-600 transition-colors" title="Edit Note">
                                                                         <i class="ph-bold ph-pencil-simple text-xs"></i>
@@ -276,7 +282,7 @@
                                                     </div>
                                                     <p class="text-slate-700 whitespace-pre-line"><%= note.text %></p>
 
-                                                    <% if (isNoteCreator) { %>
+                                                    <% if (canReviewApplications && isNoteCreator) { %>
                                                         <div id="edit-note-<%= note._id %>" class="hidden pt-2 border-t border-slate-200 mt-2">
                                                             <form action="/company/applications/<%= app._id %>/notes/<%= note._id %>/edit" method="POST" class="flex items-start gap-2" data-loading-text="Saving...">
                                                                 <textarea name="text" required rows="2"
@@ -299,6 +305,7 @@
                                         <p class="text-xs text-slate-400 italic">No notes added yet.</p>
                                     <% } %>
 
+                                    <% if (canReviewApplications) { %>
                                     <form action="/company/applications/<%= app._id %>/notes" method="POST" class="flex items-center gap-2 pt-1" data-loading-text="Adding...">
                                         <input type="text" name="text" placeholder="Add a note about this candidate..." required
                                             class="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 bg-slate-50 focus:bg-white transition-colors" />
@@ -307,6 +314,7 @@
                                             <i class="ph-bold ph-plus text-xs"></i> Add Note
                                         </button>
                                     </form>
+                                    <% } %>
                                 </div>
 
                             </div>

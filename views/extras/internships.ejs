@@ -16,6 +16,9 @@
         const qs = p.toString();
         return qs ? `/internships?${qs}` : '/internships';
     };
+    const isCompanyTeamMember = currentUser && ['company', 'recruiter', 'hiring_manager'].includes(currentUser.role);
+    const canCreateListings = currentUser && ['company', 'recruiter'].includes(currentUser.role);
+    const currentUserCompanyId = currentUser && (currentUser.companyId || (currentUser.role === 'company' ? currentUser._id : null));
 %>
 
     <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -43,7 +46,7 @@
                 </a>
             </div>
 
-            <% if (typeof currentUser !== 'undefined' && currentUser && (currentUser.role === 'company' || currentUser.role === 'recruiter' || currentUser.role === 'admin')) { %>
+            <% if (canCreateListings) { %>
                 <button onclick="openModal()" class="px-4 py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors flex items-center gap-1.5">
                     <i class="ph-bold ph-plus text-sm"></i> Post New Listing
                 </button>
@@ -132,6 +135,9 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <% internships.forEach(item => { %>
             <% const isItemPaused = item.status === 'paused' || item.isPaused; %>
+            <% const isOwnedByCurrentCompany = currentUserCompanyId && item.companyId && item.companyId.toString() === currentUserCompanyId.toString(); %>
+            <% const canEditItem = isOwnedByCurrentCompany && currentUser && ['company', 'recruiter'].includes(currentUser.role); %>
+            <% const canDeleteItem = isOwnedByCurrentCompany && currentUser && currentUser.role === 'company'; %>
             <div
                 class="internship-card bg-white border <%= isItemPaused ? 'border-amber-300' : 'border-slate-200' %> rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between relative group"
                 data-stipend="<%= item.monthlyStipend || 5000 %>"
@@ -159,16 +165,16 @@
                                 <%= item.vacancies || 1 %> Openings
                             </span>
 
-                            <!-- Show Edit/Delete ONLY if Admin OR if logged in as the owning Company/Recruiter -->
-                            <% if (typeof currentUser !== 'undefined' && currentUser && (currentUser.role === 'admin' || ((currentUser.role === 'company' || currentUser.role === 'recruiter') &&
-                                ((item.companyId && currentUser.companyId && item.companyId.toString() === currentUser.companyId.toString()) ||
-                                 (item.postedBy && item.postedBy.toString() === currentUser._id.toString()))))) { %>
+                            <% if (canEditItem) { %>
                                 <button onclick="openEditModal(this)" data-item='<%= JSON.stringify(item) %>'
                                     class="text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer p-0.5"
                                     title="Edit">
                                     <i class="ph-bold ph-pencil-simple text-sm"></i>
                                 </button>
 
+                            <% } %>
+
+                            <% if (canDeleteItem) { %>
                                 <form action="/internships/<%= item._id %>/delete" method="POST"
                                     onsubmit="return confirm('Delete this internship?');" class="inline">
                                     <button type="submit"
@@ -245,8 +251,8 @@
                     </div>
                 </div>
 
-                <!-- ACTION BUTTON AREA (HIDDEN FOR COMPANY & ADMIN ROLES) -->
-                <% if (!currentUser || (currentUser.role !== 'company' && currentUser.role !== 'recruiter' && currentUser.role !== 'admin')) { %>
+                <!-- Candidate-only application controls. Team accounts are read-only here. -->
+                <% if (!currentUser || currentUser.role === 'candidate') { %>
                     <div class="pt-2">
                         <% if (!currentUser) { %>
                             <!-- 1. NOT LOGGED IN -> Redirect to Login Page or show Paused -->
@@ -345,6 +351,7 @@
 
     </div>
 
+    <% if (canCreateListings) { %>
     <!-- POST NEW MODAL -->
     <div id="postingModal"
         class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -427,8 +434,10 @@
             </form>
         </div>
     </div>
+    <% } %>
 
 
+    <% if (canCreateListings) { %>
     <div id="editModal"
         class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white border border-slate-200 rounded-xl max-w-lg w-full p-6 shadow-xl relative max-h-[90vh] overflow-y-auto">
@@ -508,6 +517,7 @@
             </form>
         </div>
     </div>
+    <% } %>
 
     <%- include('../partials/internship-filters-script') %>
 
