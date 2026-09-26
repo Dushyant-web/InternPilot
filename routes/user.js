@@ -16,15 +16,9 @@ const Recommendation = require('../models/Recommendation');
 const { generateRecommendationsForUser } = require('../utils/recommendationEngine');
 const { isAuthenticated, authorize } = require('../middleware/auth');
 const { documentUpload, uploadBufferToCloudinary } = require('../middleware/upload');
+const { calculateSkillScore } = require('../utils/skillMatch');
 const { detectProfileConflicts } = require('../utils/conflictDetector');
 const { formatRelativeTime, formatLocalizedDateTime } = require('../utils/dateFormat');
-const { checkPmisEligibility, PMIS_RULES } = require('../utils/pmisEligibility');
-const {
-    buildSkillProfiles,
-    skillNames,
-    parseSkillProfiles,
-    mergeSkillProfiles
-} = require('../utils/skillProfiles');
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -147,14 +141,10 @@ router.get('/candidate/profile', isAuthenticated, authorize('candidate'), async 
     try {
         const userId = req.user._id || req.user.id;
         const freshUser = await User.findById(userId);
-        const eligibility = checkPmisEligibility(freshUser);
 
         res.render('candidate/candidate-profile', {
             user: freshUser,
-            candidate: freshUser,
-            eligibility,
-            pmisRules: PMIS_RULES,
-            skillProfiles: buildSkillProfiles(freshUser)
+            candidate: freshUser
         });
     } catch (error) {
         console.error('Error fetching candidate profile:', error);
@@ -178,8 +168,11 @@ router.get('/candidate/resume-builder', isAuthenticated, authorize('candidate'),
 
 router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
-        const { location, age, familyIncome, qualification, institution, enrollmentStatus, employmentStatus } = req.body;
-        const skillProfiles = parseSkillProfiles(req.body);
+        const { location, age, familyIncome, qualification, institution, skills } = req.body;
+
+        const skillsArray = skills
+            ? skills.split(',').map(s => s.trim()).filter(Boolean)
+            : [];
 
         const userId = req.user._id || req.user.id;
 
@@ -191,36 +184,21 @@ router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), 
             state = parts[1] || '';
         }
 
-        const ALLOWED_ENROLLMENT = ['not_enrolled', 'part_time_or_distance', 'full_time'];
-        const ALLOWED_EMPLOYMENT = ['unemployed', 'part_time_or_freelance', 'full_time'];
-
-        const validEnrollment = (enrollmentStatus && ALLOWED_ENROLLMENT.includes(enrollmentStatus.trim()))
-            ? enrollmentStatus.trim()
-            : '';
-        const validEmployment = (employmentStatus && ALLOWED_EMPLOYMENT.includes(employmentStatus.trim()))
-            ? employmentStatus.trim()
-            : '';
-
         await User.findByIdAndUpdate(
             userId,
             {
                 $set: {
-                    age: age !== undefined && age !== '' ? Number(age) : null,
-                    familyIncome: familyIncome !== undefined && familyIncome !== '' ? Number(familyIncome) : null,
+                    age: age ? Number(age) : null,
+                    familyIncome: familyIncome ? Number(familyIncome) : null,
                     institution: institution || '',
                     'education.institutionName': institution || '',
-                    // `skills` remains a name-only compatibility mirror for
-                    // legacy flows while `skillProfiles` is canonical.
-                    skills: skillNames(skillProfiles),
-                    skillProfiles,
+                    skills: skillsArray,
                     'location.district': district,
                     'location.state': state,
-                    'education.qualification': qualification || '',
-                    enrollmentStatus: validEnrollment,
-                    employmentStatus: validEmployment
+                    'education.qualification': qualification || ''
                 }
             },
-            { new: true, runValidators: true }
+            { new: true, runValidators: false }
         );
 
         // Wipe recommendations cache to force AI regeneration with new skills
@@ -350,13 +328,9 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
 
         if (hasConflicts) {
             // Render the profile page with the conflict-resolution modal
-            const eligibility = checkPmisEligibility(existingProfile);
             return res.render('candidate/candidate-profile', {
                 user: existingProfile,
                 candidate: existingProfile,
-                eligibility,
-                pmisRules: PMIS_RULES,
-                skillProfiles: buildSkillProfiles(existingProfile),
                 conflicts,
                 autoMerged,
                 resumeUrl,
@@ -367,26 +341,28 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
         }
 
         // ── No conflicts: apply auto-merged fields + resume data ──
-        const mergedSkillProfiles = mergeSkillProfiles(existingProfile, extractedSkills);
         const updateDoc = {
             $set: {
                 resume: resumeUrl,
                 resumeOriginalName,
                 resumeUploadedAt,
-                resumeQuality,
-                // Resume-extracted skills have no reliable proficiency
-                // signal, so new names default to Intermediate while an
-                // existing manual selection is preserved.
-                skillProfiles: mergedSkillProfiles,
-                skills: skillNames(mergedSkillProfiles)
+                resumeQuality
             }
         };
 
         // Apply auto-merged fields
         for (const [key, value] of Object.entries(autoMerged)) {
-            if (key !== 'skills') {
+            if (key === 'skills') {
+                updateDoc.$addToSet = { skills: { $each: Array.isArray(value) ? value : [value] } };
+            } else {
                 updateDoc.$set[key] = value;
             }
+        }
+
+        // Also merge extracted skills that were not conflicting
+        if (extractedSkills.length > 0 && !autoMerged.skills) {
+            updateDoc.$addToSet = updateDoc.$addToSet || {};
+            updateDoc.$addToSet.skills = { $each: extractedSkills };
         }
 
         await User.findByIdAndUpdate(userId, updateDoc);
@@ -448,12 +424,10 @@ router.post('/candidate/profile/confirm-update', isAuthenticated, authorize('can
         }
         if (resumeQuality) updateDoc.$set.resumeQuality = resumeQuality;
 
-        let selectedSkillProfiles = null;
-
         // Apply auto-merged fields
         for (const [key, value] of Object.entries(autoMerged)) {
             if (key === 'skills') {
-                selectedSkillProfiles = mergeSkillProfiles(existingProfile, value);
+                updateDoc.$addToSet = { skills: { $each: Array.isArray(value) ? value : [value] } };
             } else {
                 updateDoc.$set[key] = value;
             }
@@ -484,7 +458,8 @@ router.post('/candidate/profile/confirm-update', isAuthenticated, authorize('can
                 const parsedVal = req.body[`parsedValue_${fieldKey}`];
                 if (parsedVal !== undefined && parsedVal !== '') {
                     if (fieldKey === 'skills') {
-                        selectedSkillProfiles = buildSkillProfiles(parsedVal.split(','));
+                        const skillsArr = parsedVal.split(',').map(s => s.trim()).filter(Boolean);
+                        updateDoc.$set.skills = skillsArr;
                     } else if (fieldKey === 'education.institutionName') {
                         updateDoc.$set['education.institutionName'] = parsedVal;
                         updateDoc.$set.institution = parsedVal;
@@ -499,11 +474,6 @@ router.post('/candidate/profile/confirm-update', isAuthenticated, authorize('can
         // Ensure institution stays in sync with education.institutionName
         if (updateDoc.$set['education.institutionName'] && !updateDoc.$set.institution) {
             updateDoc.$set.institution = updateDoc.$set['education.institutionName'];
-        }
-
-        if (selectedSkillProfiles) {
-            updateDoc.$set.skillProfiles = selectedSkillProfiles;
-            updateDoc.$set.skills = skillNames(selectedSkillProfiles);
         }
 
         await User.findByIdAndUpdate(userId, updateDoc, { runValidators: false });
@@ -796,14 +766,29 @@ router.get('/candidate/applications', isAuthenticated, authorize('candidate'), a
         const candidate = await User.findById(userId);
         const applications = await Application.find({ candidate: userId })
             .populate('internship')
-            .sort({ statusUpdatedAt: -1, appliedAt: -1 });
+            .sort({ appliedAt: -1, _id: -1 });
+
+        const stats = {
+            total: applications.length,
+            submitted: applications.filter(a => a.status === 'Submitted').length,
+            underReview: applications.filter(a => a.status === 'Under Review').length,
+            shortlisted: applications.filter(a => a.status === 'Shortlisted').length,
+            rejected: applications.filter(a => a.status === 'Rejected').length
+        };
+
+        const searchQuery = (req.query.search || '').trim();
+        const statusFilter = (req.query.status || 'all').trim();
 
         res.render('candidate/candidate-tracker', {
             candidate,
             applications,
+            stats,
+            searchQuery,
+            statusFilter,
             formatRelativeTime,
             formatLocalizedDateTime
         });
+
     } catch (error) {
         console.error('Error fetching tracker data:', error);
         res.status(500).send('Database Error');
@@ -825,7 +810,15 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
             return res.status(404).send('Candidate profile not found.');
         }
 
-        const eligibility = checkPmisEligibility(user);
+        const isAgeValid = user.age >= 21 && user.age <= 24;
+        const isIncomeValid = user.familyIncome !== undefined && user.familyIncome !== null && user.familyIncome <= 800000;
+        const isEligible = isAgeValid && isIncomeValid;
+
+        const reasons = [];
+        if (!isAgeValid) reasons.push(`Age (${user.age || 'N/A'}) falls outside the 21–24 permitted range.`);
+        if (!isIncomeValid) reasons.push(`Family income (${user.familyIncome ? '₹' + user.familyIncome.toLocaleString('en-IN') : 'N/A'}) exceeds the ₹8,00,000 ceiling.`);
+
+        const eligibility = { isEligible, reasons };
 
         // Fetch already applied IDs to exclude from read-time view
         const apps = await Application.find({ candidate: user._id }).select('internship');
@@ -837,16 +830,16 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
             .sort({ aiMatchScore: -1 });
 
         let needsRegeneration = false;
-        
+
         if (recommendations.length === 0) {
             needsRegeneration = true;
         } else {
             const firstGenTime = recommendations[0].generatedAt;
             const isFresh = firstGenTime && (new Date() - firstGenTime < 24 * 60 * 60 * 1000); // < 24h
-            
+
             // Check if mixed generation or stale
             const isMixed = recommendations.some(r => !r.generatedAt || r.generatedAt.getTime() !== firstGenTime.getTime());
-            
+
             if (!isFresh || isMixed) {
                 needsRegeneration = true;
             }
@@ -866,7 +859,7 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
             if (internship.status !== 'published') return false;
             if (internship.isPaused) return false;
             if (appliedIds.includes(internship._id.toString())) return false;
-            
+
             if (internship.applicationDeadline && internship.applicationDeadline < now) {
                 return false;
             }
@@ -878,7 +871,7 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
         if (recommendations.length === 0 && !needsRegeneration) {
             recommendations = await generateRecommendationsForUser(user);
             recommendations = await Recommendation.populate(recommendations, { path: 'internship' });
-            
+
             recommendations = recommendations.filter(rec => {
                 const internship = rec.internship;
                 if (!internship || internship.status !== 'published' || internship.isPaused) return false;

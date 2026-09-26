@@ -49,6 +49,19 @@ const applicationSchema = new mongoose.Schema({
     },
     matchScore: { type: Number, default: 0 },
     appliedAt: { type: Date, default: Date.now },
+    statusHistory: [
+        {
+            status: {
+                type: String,
+                enum: [
+                    'Submitted', 'Under Review', 'Shortlisted', 'Interview',
+                    'Rejected', 'Hired', 'Withdrawn', 'pending'
+                ],
+                required: true
+            },
+            changedAt: { type: Date, default: Date.now }
+        }
+    ],
 
     // Tracks the most recent status transition independently from application
     // creation, notes, and other edits.
@@ -107,12 +120,29 @@ applicationSchema.methods.withdraw = function (reason) {
         err.code = 'INVALID_STATUS_TRANSITION';
         throw err;
     }
+    const previousStatus = this.status;
     this.status = 'Withdrawn';
     this.withdrawnAt = new Date();
     if (typeof reason === 'string' && reason.trim()) {
         this.withdrawalReason = reason.trim();
     } else {
         this.withdrawalReason = null;
+    }
+
+    if (previousStatus !== 'Withdrawn') {
+        if (!Array.isArray(this.statusHistory)) {
+            this.statusHistory = [];
+        }
+        if (this.statusHistory.length === 0) {
+            this.statusHistory.push({
+                status: previousStatus || 'Submitted',
+                changedAt: this.appliedAt || new Date()
+            });
+        }
+        this.statusHistory.push({
+            status: 'Withdrawn',
+            changedAt: new Date()
+        });
     }
 
     if (this.interview && ['Scheduled', 'Rescheduled'].includes(this.interview.status)) {
@@ -130,12 +160,13 @@ applicationSchema.statics.TERMINAL_STATUSES = TERMINAL_STATUSES;
 
 // Keep statusUpdatedAt correct regardless of which route changes the status.
 // Legacy records without the field are backfilled from appliedAt.
-applicationSchema.pre('save', function () {
+applicationSchema.pre('save', function (next) {
     if (this.isNew || this.isModified('status')) {
         this.statusUpdatedAt = new Date();
     } else if (!this.statusUpdatedAt) {
         this.statusUpdatedAt = this.appliedAt || new Date();
     }
+    if (typeof next === 'function') next();
 });
 
 module.exports = mongoose.model("Application", applicationSchema);

@@ -360,11 +360,15 @@ router.post('/:id/apply', isAuthenticated, authorize('candidate'), async (req, r
 
         const score = calculateCandidateMatch(candidate, internship).score;
 
+        const now = new Date();
         const newApp = await Application.create({
             internship: internship._id,
             candidate: candidate._id,
-            matchScore: score
+            matchScore: score,
+            appliedAt: now,
+            statusHistory: [{ status: 'Submitted', changedAt: now }]
         });
+
 
         // Trigger recruiter notifications (non-blocking)
         notifyNewApplication(newApp, internship);
