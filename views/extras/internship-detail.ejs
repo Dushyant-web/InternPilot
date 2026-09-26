@@ -79,9 +79,17 @@
                 </div>
             </div>
 
-            <div class="sm:text-right shrink-0">
-                <div class="text-xs text-slate-400 font-medium">Monthly Stipend</div>
-                <div class="text-2xl font-bold text-slate-900">
+            <div class="sm:text-right shrink-0 flex flex-col items-end">
+                <div class="flex items-center gap-3 mb-1">
+                    <div class="text-xs text-slate-400 font-medium">Monthly Stipend</div>
+                    <% if (typeof currentUser !== 'undefined' && currentUser && currentUser.role === 'candidate') { %>
+                        <% const isSaved = currentUser.savedInternships && currentUser.savedInternships.includes(internship._id.toString()); %>
+                        <button class="bookmark-btn text-slate-400 hover:text-indigo-600 transition-all active:scale-90" data-id="<%= internship._id %>" title="Save Internship">
+                            <i class="<%= isSaved ? 'ph-fill text-indigo-600' : 'ph-bold' %> ph-heart text-xl"></i>
+                        </button>
+                    <% } %>
+                </div>
+                <div class="text-2xl font-bold text-slate-900 mt-1">
                     ₹<%= Number(internship.monthlyStipend ?? 5000).toLocaleString('en-IN') %>
                     <span class="text-xs font-normal text-slate-500">/mo</span>
                 </div>
@@ -154,6 +162,50 @@
                 </a>
             <% } %>
         </div>
+
+        <!-- Role Description -->
+        <% if (internship.description && internship.description.trim()) { %>
+            <div class="p-5 bg-slate-50 border border-slate-100 rounded-xl space-y-2">
+                <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="ph-bold ph-article text-indigo-500 text-base"></i> About This Role
+                </h3>
+                <p class="text-sm text-slate-600 leading-relaxed whitespace-pre-line"><%= internship.description %></p>
+            </div>
+        <% } %>
+
+        <!-- Day-to-Day Responsibilities -->
+        <% if (Array.isArray(internship.responsibilities) && internship.responsibilities.length > 0) { %>
+            <div class="p-5 bg-slate-50 border border-slate-100 rounded-xl space-y-3">
+                <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="ph-bold ph-list-checks text-indigo-500 text-base"></i> Day-to-Day Responsibilities
+                </h3>
+                <ul class="space-y-2">
+                    <% internship.responsibilities.forEach(item => { %>
+                        <li class="flex items-start gap-2 text-sm text-slate-700">
+                            <i class="ph-bold ph-check-circle text-emerald-500 text-base mt-0.5 shrink-0"></i>
+                            <span><%= item %></span>
+                        </li>
+                    <% }) %>
+                </ul>
+            </div>
+        <% } %>
+
+        <!-- Eligibility Criteria -->
+        <% if (Array.isArray(internship.eligibilityCriteria) && internship.eligibilityCriteria.length > 0) { %>
+            <div class="p-5 bg-slate-50 border border-slate-100 rounded-xl space-y-3">
+                <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="ph-bold ph-user-check text-indigo-500 text-base"></i> Eligibility Criteria
+                </h3>
+                <ul class="space-y-2">
+                    <% internship.eligibilityCriteria.forEach(item => { %>
+                        <li class="flex items-start gap-2 text-sm text-slate-700">
+                            <i class="ph-bold ph-dot-outline text-indigo-400 text-base mt-0.5 shrink-0"></i>
+                            <span><%= item %></span>
+                        </li>
+                    <% }) %>
+                </ul>
+            </div>
+        <% } %>
 
         <!-- Company Profile & Credibility Card -->
         <% const compId = (typeof company !== 'undefined' && company && company._id) ? company._id : internship.companyId; %>
@@ -322,3 +374,56 @@
     </div>
 
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const bookmarkBtns = document.querySelectorAll('.bookmark-btn');
+        bookmarkBtns.forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const icon = btn.querySelector('i');
+                const internshipId = btn.getAttribute('data-id');
+                
+                // Optimistic UI update for sleek feel
+                const isCurrentlySaved = icon.classList.contains('ph-fill');
+                if (isCurrentlySaved) {
+                    icon.classList.remove('ph-fill', 'text-indigo-600');
+                    icon.classList.add('ph-bold');
+                } else {
+                    icon.classList.remove('ph-bold');
+                    icon.classList.add('ph-fill', 'text-indigo-600');
+                }
+                
+                try {
+                    const response = await fetch(`/candidate/saved-internships/${internshipId}/toggle`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await response.json();
+                    if (!data.success) {
+                        // Revert on failure
+                        if (isCurrentlySaved) {
+                            icon.classList.remove('ph-bold');
+                            icon.classList.add('ph-fill', 'text-indigo-600');
+                        } else {
+                            icon.classList.remove('ph-fill', 'text-indigo-600');
+                            icon.classList.add('ph-bold');
+                        }
+                        alert('Failed to save internship. Please try again.');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    // Revert on error
+                    if (isCurrentlySaved) {
+                        icon.classList.remove('ph-bold');
+                        icon.classList.add('ph-fill', 'text-indigo-600');
+                    } else {
+                        icon.classList.remove('ph-fill', 'text-indigo-600');
+                        icon.classList.add('ph-bold');
+                    }
+                }
+            });
+        });
+    });
+</script>

@@ -12,7 +12,7 @@ const generateSecureOTP = () => {
 const redirectIfAuthenticated = (req, res, next) => {
     if (req.isAuthenticated && req.isAuthenticated()) {
         if (req.user.role === 'admin') return res.redirect('/admin/dashboard');
-        if (req.user.role === 'company' || req.user.role === 'recruiter') return res.redirect('/company/dashboard');
+        if (['company', 'recruiter', 'hiring_manager'].includes(req.user.role)) return res.redirect('/company/dashboard');
         return res.redirect('/');
     }
     next();
@@ -76,7 +76,12 @@ router.post('/register', async (req, res) => {
         let selectedRole = 'candidate';
 
         if (role === 'admin') {
-            const SYSTEM_ADMIN_SECRET = process.env.ADMIN_SECRET || 'SUPER_SECRET_ADMIN_KEY_123';
+            const SYSTEM_ADMIN_SECRET = process.env.ADMIN_SECRET;
+
+            if (!SYSTEM_ADMIN_SECRET) {
+                req.flash('error_msg', 'Admin registration is not configured on this server.');
+                return res.redirect('/auth/register');
+            }
 
             if (!adminSecretKey || adminSecretKey !== SYSTEM_ADMIN_SECRET) {
                 req.flash('error_msg', 'Invalid Admin Security Key. Access denied.');
@@ -261,7 +266,7 @@ router.post('/login', (req, res, next) => {
 
             if (user.role === 'admin') {
                 return res.redirect('/admin/dashboard');
-            } else if (user.role === 'company' || user.role === 'recruiter') {
+            } else if (['company', 'recruiter', 'hiring_manager'].includes(user.role)) {
                 return res.redirect('/company/dashboard');
             } else {
                 return res.redirect('/');
@@ -290,7 +295,7 @@ router.get('/google/callback', (req, res, next) => {
 
             if (user.role === 'admin') {
                 return res.redirect('/admin/dashboard');
-            } else if (user.role === 'company' || user.role === 'recruiter') {
+            } else if (['company', 'recruiter', 'hiring_manager'].includes(user.role)) {
                 return res.redirect('/company/dashboard');
             } else {
                 return res.redirect('/');

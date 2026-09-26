@@ -2,10 +2,13 @@ require("dotenv").config();
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    // Do NOT exit — a single fire-and-forget promise failure (e.g. a
+    // background notification) must never take down the entire server.
 });
 
 process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception thrown:', error);
+    process.exit(1);
 });
 
 const express = require("express");
@@ -23,6 +26,8 @@ const User = require("./models/User");
 const Internship = require("./models/Internship");
 const Notification = require('./models/Notification');
 const { buildNavigationState } = require('./utils/navigation');
+const { checkPmisEligibility } = require('./utils/pmisEligibility');
+const { sanitizeHttpUrl } = require('./utils/safeUrl');
 
 const authRoutes = require("./routes/auth");
 const internshipRoutes = require("./routes/internships");
@@ -38,6 +43,9 @@ const analyticsRoutes = require('./routes/analytics');
 
 const app = express();
 const port = process.env.PORT || 8080;
+
+// Safe URL normalization is available to templates that render stored links.
+app.locals.sanitizeHttpUrl = sanitizeHttpUrl;
 
 // View engine setup
 app.engine("ejs", ejsMate);
@@ -75,6 +83,7 @@ app.use(async (req, res, next) => {
     res.locals.error_msg = req.flash("error_msg");
     res.locals.error = req.flash("error");
     res.locals.notificationUnreadCount = 0;
+    res.locals.checkPmisEligibility = checkPmisEligibility;
 
     if (req.user) {
         try {

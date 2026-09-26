@@ -37,7 +37,7 @@
                         <p class="text-3xl font-extrabold text-slate-900 leading-none">
                             <%= analysis.score %>%
                         </p>
-                        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mt-1">Match</p>
+                        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mt-1">Proficiency-weighted match</p>
                     </div>
                     <% } %>
             </div>
@@ -69,7 +69,7 @@
 
         <% if (analysis.hasRequiredSkills) { %>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
                     <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
@@ -80,13 +80,14 @@
                         </span>
                     </h2>
 
-                    <% if (analysis.matched.length> 0) { %>
+                    <% if (analysis.matchedSkillProfiles.length > 0) { %>
                         <div class="flex flex-wrap gap-2">
-                            <% analysis.matched.forEach(skill=> { %>
+                            <% analysis.matchedSkillProfiles.forEach(item => { %>
                                 <span
                                     class="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold px-2.5 py-1.5 rounded-lg">
                                     <i class="ph-bold ph-check"></i>
-                                    <%= skill %>
+                                    <%= item.profileSkill %>
+                                    <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-bold"><%= item.proficiency %></span>
                                 </span>
                                 <% }) %>
                         </div>
@@ -94,6 +95,31 @@
                             <p class="text-xs text-slate-400 italic">None of the required skills are on your profile yet.
                             </p>
                             <% } %>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+                    <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                        <i class="ph-bold ph-chart-line-up text-amber-600 text-lg"></i>
+                        Skills in Progress
+                        <span class="ml-auto text-xs font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md">
+                            <%= analysis.developing.length %>
+                        </span>
+                    </h2>
+
+                    <% if (analysis.developing.length > 0) { %>
+                        <p class="text-xs text-slate-500">These skills are on your profile at Beginner level. Build more experience to count them as a full match.</p>
+                        <div class="flex flex-wrap gap-2">
+                            <% analysis.developing.forEach(item => { %>
+                                <span class="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold px-2.5 py-1.5 rounded-lg">
+                                    <i class="ph-bold ph-arrow-up-right"></i>
+                                    <%= item.profileSkill %>
+                                    <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-bold">Beginner</span>
+                                </span>
+                            <% }) %>
+                        </div>
+                    <% } else { %>
+                        <p class="text-xs text-slate-400 italic">No required skills are marked as Beginner.</p>
+                    <% } %>
                 </div>
 
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
@@ -146,6 +172,7 @@
                                 <span class="font-semibold text-slate-700">
                                     <%= item.profileSkill %>
                                 </span>
+                                <span class="text-[10px] font-bold text-slate-500">(<%= item.proficiency %>)</span>
                                 <i class="ph-bold ph-arrows-left-right text-amber-600"></i>
                                 <span class="font-semibold text-amber-800">
                                     <%= item.required %>

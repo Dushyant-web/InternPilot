@@ -10,10 +10,61 @@ const Application = require('../models/Application');
 const User = require('../models/User');
 const { notifyCandidateWithdrawal } = require('../utils/recruiterNotifications');
 const { isAuthenticated, authorize } = require('../middleware/auth');
+const { formatRelativeTime, formatLocalizedDateTime } = require('../utils/dateFormat');
+
+/**
+ * GET /candidate/saved-internships
+ * Renders the saved internships dashboard.
+ */
+router.get('/candidate/saved-internships', isAuthenticated, authorize('candidate'), async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).populate({
+            path: 'savedInternships',
+            populate: { path: 'companyId', select: 'companyName' }
+        }).lean();
+        
+        res.render('candidate/saved-internships', {
+            internships: user.savedInternships || [],
+            currentUser: req.user
+        });
+    } catch (error) {
+        console.error('Error fetching saved internships:', error);
+        req.flash('error_msg', 'Failed to load saved internships.');
+        res.redirect('/');
+    }
+});
+
+/**
+ * POST /candidate/saved-internships/:id/toggle
+ * Toggles the saved status of an internship for the candidate.
+ */
+router.post('/candidate/saved-internships/:id/toggle', isAuthenticated, authorize('candidate'), async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        const internshipId = req.params.id;
+        
+        const index = user.savedInternships.indexOf(internshipId);
+        let isSaved = false;
+        
+        if (index === -1) {
+            user.savedInternships.push(internshipId);
+            isSaved = true;
+        } else {
+            user.savedInternships.splice(index, 1);
+        }
+        
+        await user.save();
+        res.json({ success: true, isSaved });
+    } catch (error) {
+        console.error('Error toggling saved internship:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
 
 /**
  * GET /candidate/my-applications
- * Renders the dedicated student applications view with withdrawal controls.
+ * Preserves the legacy URL while using the same canonical application-card
+ * renderer as /candidate/applications.
  */
 router.get('/candidate/my-applications', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
@@ -21,13 +72,26 @@ router.get('/candidate/my-applications', isAuthenticated, authorize('candidate')
         const candidate = await User.findById(userId);
         const applications = await Application.find({ candidate: userId })
             .populate('internship')
-            .sort({ appliedAt: -1 });
+            .sort({ statusUpdatedAt: -1, appliedAt: -1 });
 
-        res.render('candidate/my-applications', {
+        const stats = {
+            total: applications.length,
+            submitted: applications.filter(a => a.status === 'Submitted').length,
+            underReview: applications.filter(a => a.status === 'Under Review').length,
+            shortlisted: applications.filter(a => a.status === 'Shortlisted').length,
+            rejected: applications.filter(a => a.status === 'Rejected').length
+        };
+
+        res.render('candidate/candidate-tracker', {
             candidate,
             currentUser: req.user,
             applications,
-            pageTitle: 'My Applications'
+            stats,
+            searchQuery: '',
+            statusFilter: 'all',
+            pageTitle: 'My Applications',
+            formatRelativeTime,
+            formatLocalizedDateTime
         });
     } catch (error) {
         console.error('Error fetching candidate applications:', error);
@@ -110,10 +174,9 @@ async function handleApplicationWithdrawal(req, res) {
             return res.redirect('/candidate/applications');
         }
 
-        // Soft-delete strategy: update status to 'Withdrawn' with audit details
-        application.status = 'Withdrawn';
-        application.withdrawnAt = new Date();
-        application.withdrawalReason = reason || 'Withdrawn by student';
+        // Use the model's .withdraw() method to ensure statusHistory,
+        // statusUpdatedAt, and interview cancellation are all handled.
+        application.withdraw(reason || undefined);
 
         // Add audit entry in application notes
         if (Array.isArray(application.notes)) {

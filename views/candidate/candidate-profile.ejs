@@ -2,6 +2,23 @@
 
     <% const activeUser=(typeof candidate !=='undefined' && candidate) ? candidate : ((typeof user !=='undefined' &&
         user) ? user : currentUser); %>
+    <% const profileSkillEntries = (typeof skillProfiles !== 'undefined' && Array.isArray(skillProfiles) && skillProfiles.length)
+        ? skillProfiles
+        : ((activeUser && Array.isArray(activeUser.skills))
+            ? activeUser.skills.map(name => ({ name, proficiency: 'Intermediate' }))
+            : []); %>
+
+    <% const pmisStatus = (typeof eligibility !== 'undefined' && eligibility) 
+        ? eligibility 
+        : ((typeof checkPmisEligibility === 'function' && activeUser) 
+            ? checkPmisEligibility(activeUser) 
+            : {
+                status: 'incomplete',
+                badge: { label: 'Incomplete — More Info Needed', bgClass: 'bg-amber-50 text-amber-800 border-amber-200', icon: 'ph-warning-circle' },
+                reasons: [],
+                missingFields: ['Age', 'Family Income', 'Qualification', 'Enrollment Status', 'Employment Status'],
+                criteria: []
+            }); %>
 
         <div class="max-w-7xl mx-auto space-y-6">
 
@@ -27,13 +44,20 @@
                 class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div class="flex items-center gap-5">
                     <div
-                        class="w-20 h-20 bg-indigo-100 text-indigo-700 font-extrabold text-3xl rounded-full flex items-center justify-center border-2 border-indigo-200">
+                        class="w-20 h-20 bg-indigo-100 text-indigo-700 font-extrabold text-3xl rounded-full flex items-center justify-center border-2 border-indigo-200 shrink-0">
                         <%= (activeUser && activeUser.name) ? activeUser.name.charAt(0).toUpperCase() : 'U' %>
                     </div>
                     <div>
-                        <h1 class="text-2xl font-bold text-slate-800 tracking-tight">
-                            <%= activeUser ? activeUser.name : '' %>
-                        </h1>
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <h1 class="text-2xl font-bold text-slate-800 tracking-tight">
+                                <%= activeUser ? activeUser.name : '' %>
+                            </h1>
+                            <span id="headerEligibilityBadge"
+                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border <%= pmisStatus.badge.bgClass %> shadow-xs">
+                                <i class="ph-bold <%= pmisStatus.badge.icon %>"></i>
+                                <%= pmisStatus.badge.label %>
+                            </span>
+                        </div>
                         <p class="text-xs text-slate-500 font-medium flex items-center gap-1 mt-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-rose-500" fill="none"
                                 viewBox="0 0 24 24" stroke="currentColor">
@@ -50,6 +74,10 @@
                 </div>
 
                 <div class="flex items-center gap-3">
+                    <a href="/candidate/saved-internships" class="inline-flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs px-4 py-2.5 rounded-lg border border-rose-200 transition-colors cursor-pointer">
+                        <i class="ph-fill ph-bookmark-simple text-base"></i>
+                        Saved Internships
+                    </a>
                     <button id="openModalBtn" type="button"
                         class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-4 py-2.5 rounded-lg border border-slate-200 transition-colors cursor-pointer">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-600" fill="none"
@@ -61,7 +89,7 @@
                     </button>
 
                     <a href="/candidate/resume-builder"
-                        class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg">
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg text-xs">
                         Resume Builder
                     </a>
                     <a href="/internships"
@@ -69,6 +97,123 @@
                         Browse Internships
                     </a>
                 </div>
+            </div>
+
+            <!-- Dedicated PMIS Eligibility Status Card -->
+            <div id="pmisEligibilityCard"
+                class="bg-white border <%= pmisStatus.status === 'eligible' ? 'border-emerald-200' : (pmisStatus.status === 'ineligible' ? 'border-rose-200' : 'border-amber-200') %> rounded-2xl p-6 shadow-sm space-y-5 transition-all">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-10 h-10 rounded-xl <%= pmisStatus.status === 'eligible' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : (pmisStatus.status === 'ineligible' ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-amber-50 text-amber-600 border-amber-100') %> flex items-center justify-center text-xl shrink-0 font-bold border">
+                            <i class="ph-bold <%= pmisStatus.badge.icon %>"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-base font-bold text-slate-800">PMIS Eligibility Status</h2>
+                                <a href="/guidelines" target="_blank"
+                                    class="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1"
+                                    title="View official PMIS guidelines">
+                                    <i class="ph-bold ph-info"></i> Guidelines
+                                </a>
+                            </div>
+                            <p class="text-xs text-slate-500">Evaluated against the Prime Minister's Internship Scheme rules</p>
+                        </div>
+                    </div>
+                    <div class="shrink-0">
+                        <span id="cardEligibilityBadge"
+                            class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold border <%= pmisStatus.badge.bgClass %> shadow-xs">
+                            <i class="ph-bold <%= pmisStatus.badge.icon %> text-sm"></i>
+                            <span><%= pmisStatus.badge.label %></span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Status Feedback Callouts -->
+                <% if (pmisStatus.status === 'eligible') { %>
+                    <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4 flex items-start gap-3 text-xs text-emerald-800">
+                        <i class="ph-fill ph-check-circle text-emerald-600 text-lg shrink-0 mt-0.5"></i>
+                        <div class="space-y-1">
+                            <p class="font-bold text-emerald-900">You meet all eligibility criteria under the Prime Minister's Internship Scheme!</p>
+                            <p class="text-emerald-700">You are eligible to apply for scheme internships and receive the monthly stipend (₹5,000) and one-time incident grant (₹6,000).</p>
+                        </div>
+                    </div>
+                <% } else if (pmisStatus.status === 'ineligible') { %>
+                    <div class="bg-rose-50/80 border border-rose-200 rounded-xl p-4 space-y-2.5 text-xs text-rose-800">
+                        <div class="flex items-center gap-2 font-bold text-rose-900 text-sm">
+                            <i class="ph-bold ph-x-circle text-rose-600 text-base shrink-0"></i>
+                            <span>Disqualifying Criteria Identified:</span>
+                        </div>
+                        <ul class="space-y-1.5 pl-6 list-disc text-rose-700 font-medium">
+                            <% pmisStatus.reasons.forEach(reason => { %>
+                                <li><%= reason %></li>
+                            <% }) %>
+                        </ul>
+                        <% if (pmisStatus.missingFields && pmisStatus.missingFields.length > 0) { %>
+                            <div class="pt-2 border-t border-rose-200/60 text-rose-600">
+                                <span class="font-semibold">Additionally missing:</span> <%= pmisStatus.missingFields.join('; ') %>
+                            </div>
+                        <% } %>
+                        <p class="text-[11px] text-rose-600 pt-1">
+                            If any information on your profile was entered incorrectly, you can update it by clicking <button type="button" onclick="document.getElementById('openModalBtn').click()" class="underline font-bold hover:text-rose-800 cursor-pointer">Edit Profile</button>.
+                        </p>
+                    </div>
+                <% } else { %>
+                    <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-4 space-y-2.5 text-xs text-amber-800">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="flex items-center gap-2 font-bold text-amber-900 text-sm">
+                                <i class="ph-bold ph-warning-circle text-amber-600 text-base shrink-0"></i>
+                                <span>Profile Incomplete — More Information Needed</span>
+                            </div>
+                            <button type="button" onclick="document.getElementById('openModalBtn').click()"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-xs shrink-0">
+                                <i class="ph-bold ph-pencil-simple"></i> Complete Profile
+                            </button>
+                        </div>
+                        <p class="text-amber-700">Please provide the following required details on your profile to verify your PMIS scheme eligibility:</p>
+                        <ul class="space-y-1.5 pl-6 list-disc text-amber-900 font-medium">
+                            <% pmisStatus.missingFields.forEach(field => { %>
+                                <li><%= field %></li>
+                            <% }) %>
+                        </ul>
+                    </div>
+                <% } %>
+
+                <!-- Criteria Checklist Breakdown -->
+                <% if (pmisStatus.criteria && pmisStatus.criteria.length > 0) { %>
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Eligibility Criteria Breakdown</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <% pmisStatus.criteria.forEach(item => { %>
+                                <div class="border rounded-xl p-3 flex flex-col justify-between text-xs space-y-2 <%= item.status === 'pass' ? 'border-emerald-100 bg-emerald-50/30' : (item.status === 'fail' ? 'border-rose-100 bg-rose-50/30' : 'border-amber-100 bg-amber-50/30') %>">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <span class="font-bold text-slate-800"><%= item.label %></span>
+                                        <% if (item.status === 'pass') { %>
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full shrink-0">
+                                                <i class="ph-bold ph-check"></i> Eligible
+                                            </span>
+                                        <% } else if (item.status === 'fail') { %>
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full shrink-0">
+                                                <i class="ph-bold ph-x"></i> Disqualified
+                                            </span>
+                                        <% } else { %>
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full shrink-0">
+                                                <i class="ph-bold ph-warning"></i> Missing
+                                            </span>
+                                        <% } %>
+                                    </div>
+                                    <div class="text-[11px] text-slate-600">
+                                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Your Profile</span>
+                                        <span class="font-semibold text-slate-700"><%= item.value %></span>
+                                    </div>
+                                    <p class="text-[11px] <%= item.status === 'pass' ? 'text-emerald-700' : (item.status === 'fail' ? 'text-rose-700' : 'text-amber-700') %>">
+                                        <%= item.message %>
+                                    </p>
+                                </div>
+                            <% }) %>
+                        </div>
+                    </div>
+                <% } %>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -92,15 +237,15 @@
                             <div>
                                 <span class="text-slate-400 font-medium block">Age</span>
                                 <span class="font-bold text-slate-700 text-sm">
-                                    <%= (activeUser && activeUser.age) ? activeUser.age : 'N/A' %>
+                                    <%= (activeUser && activeUser.age) ? activeUser.age + ' years' : 'Not Specified' %>
                                 </span>
                             </div>
                             <div>
-                                <span class="text-slate-400 font-medium block">Family Income</span>
+                                <span class="text-slate-400 font-medium block">Annual Family Income</span>
                                 <span class="font-bold text-slate-700 text-sm">
-                                    <%= (activeUser && activeUser.familyIncome) ? '₹' +
+                                    <%= (activeUser && activeUser.familyIncome !== undefined && activeUser.familyIncome !== null && activeUser.familyIncome !== '') ? '₹' +
                                         Number(activeUser.familyIncome).toLocaleString('en-IN') + ' / year'
-                                        : '₹N/A / year' %>
+                                        : 'Not Specified' %>
                                 </span>
                             </div>
                             <div>
@@ -108,25 +253,46 @@
                                 <span class="font-bold text-slate-700 text-sm">
                                     <%= (activeUser && activeUser.education && activeUser.education.qualification) ?
                                         activeUser.education.qualification : ((activeUser && activeUser.qualification) ?
-                                        activeUser.qualification : 'N/A' ) %>
+                                        activeUser.qualification : 'Not Specified' ) %>
                                 </span>
                             </div>
                             <div>
                                 <span class="text-slate-400 font-medium block">Institution</span>
                                 <span class="font-bold text-slate-700 text-sm">
-                                    <%= (activeUser && activeUser.institution) ? activeUser.institution : 'N/A' %>
+                                    <%= (activeUser && activeUser.institution) ? activeUser.institution : 'Not Specified' %>
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 font-medium block">Formal Education Status</span>
+                                <span class="font-bold text-slate-700 text-sm">
+                                    <% const enroll = (activeUser && activeUser.enrollmentStatus) ? activeUser.enrollmentStatus : ''; %>
+                                    <%= enroll === 'not_enrolled' ? 'Not Enrolled / Completed' : (enroll === 'part_time_or_distance' ? 'Part-time / Distance' : (enroll === 'full_time' ? 'Full-time Student' : 'Not Specified')) %>
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 font-medium block">Employment Status</span>
+                                <span class="font-bold text-slate-700 text-sm">
+                                    <% const emp = (activeUser && activeUser.employmentStatus) ? activeUser.employmentStatus : ''; %>
+                                    <%= emp === 'unemployed' ? 'Unemployed / Seeking Internship' : (emp === 'part_time_or_freelance' ? 'Part-time / Freelance' : (emp === 'full_time' ? 'Full-time Employed' : 'Not Specified')) %>
                                 </span>
                             </div>
                         </div>
 
                         <div
-                            class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-600 shrink-0" fill="none"
-                                viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            Review PMIS Criteria (Age: 21–24, Family Income &lt; ₹8 Lakhs/year)
+                            class="rounded-xl p-3 text-xs flex items-center justify-between gap-3 <%= pmisStatus.status === 'eligible' ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : (pmisStatus.status === 'ineligible' ? 'bg-rose-50 border border-rose-200 text-rose-800' : 'bg-amber-50 border border-amber-200 text-amber-800') %>">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-bold <%= pmisStatus.badge.icon %> text-base shrink-0"></i>
+                                <span>
+                                    <strong>PMIS Evaluation:</strong> <%= pmisStatus.badge.label %>
+                                    <% if (pmisStatus.status !== 'eligible') { %>
+                                        — <%= (pmisStatus.reasons[0] || pmisStatus.missingFields[0] || 'See criteria card for details.') %>
+                                    <% } %>
+                                </span>
+                            </div>
+                            <a href="#pmisEligibilityCard"
+                                class="underline font-bold shrink-0 hover:opacity-80">
+                                Details
+                            </a>
                         </div>
                     </div>
 
@@ -143,13 +309,15 @@
                             Technical & Soft Skills
                         </h2>
 
-                        <% const skillsList=activeUser ? activeUser.skills : []; %>
-                            <% if (skillsList && skillsList.length> 0) { %>
+                        <% if (profileSkillEntries.length > 0) { %>
                                 <div class="flex flex-wrap gap-2">
-                                    <% skillsList.forEach(skill=> { %>
+                                    <% profileSkillEntries.forEach(skill => { %>
                                         <span
-                                            class="bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm">
-                                            <%= skill %>
+                                            class="inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm">
+                                            <%= skill.name %>
+                                            <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-bold text-indigo-800" aria-label="<%= skill.name %> proficiency: <%= skill.proficiency %>">
+                                                <%= skill.proficiency %>
+                                            </span>
                                         </span>
                                         <% }) %>
                                 </div>
@@ -428,22 +596,22 @@
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block font-semibold text-slate-700 mb-1">Age</label>
-                            <input type="number" name="age"
-                                value="<%= (activeUser && activeUser.age) ? activeUser.age : '' %>" placeholder="21-24"
+                            <input type="number" name="age" id="editAge"
+                                value="<%= (activeUser && activeUser.age && activeUser.age > 0) ? activeUser.age : '' %>" placeholder="21-24"
                                 min="15" max="60"
                                 class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
                         </div>
                         <div>
                             <label class="block font-semibold text-slate-700 mb-1">Family Income (₹/year)</label>
-                            <input type="number" name="familyIncome"
-                                value="<%= (activeUser && activeUser.familyIncome) ? activeUser.familyIncome : '' %>"
+                            <input type="number" name="familyIncome" id="editFamilyIncome"
+                                value="<%= (activeUser && activeUser.familyIncome !== undefined && activeUser.familyIncome !== null && activeUser.familyIncome !== '') ? activeUser.familyIncome : '' %>"
                                 placeholder="e.g. 350000"
                                 class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
                         </div>
                     </div>
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Highest Qualification</label>
-                        <input type="text" name="qualification"
+                        <input type="text" name="qualification" id="editQualification"
                             value="<%= (activeUser && activeUser.education && activeUser.education.qualification) ? activeUser.education.qualification : ((activeUser && activeUser.qualification) ? activeUser.qualification : '') %>"
                             placeholder="e.g. B.Tech / B.Sc"
                             class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
@@ -455,12 +623,72 @@
                             placeholder="e.g. Delhi University"
                             class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
                     </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Formal Education Enrollment</label>
+                            <select name="enrollmentStatus" id="editEnrollmentStatus"
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none bg-white">
+                                <option value="">Select Enrollment...</option>
+                                <option value="not_enrolled" <%= (activeUser && activeUser.enrollmentStatus === 'not_enrolled') ? 'selected' : '' %>>Not Enrolled / Completed</option>
+                                <option value="part_time_or_distance" <%= (activeUser && activeUser.enrollmentStatus === 'part_time_or_distance') ? 'selected' : '' %>>Part-time / Distance Learning</option>
+                                <option value="full_time" <%= (activeUser && activeUser.enrollmentStatus === 'full_time') ? 'selected' : '' %>>Full-time Formal Education (Ineligible)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Employment Status</label>
+                            <select name="employmentStatus" id="editEmploymentStatus"
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none bg-white">
+                                <option value="">Select Employment...</option>
+                                <option value="unemployed" <%= (activeUser && activeUser.employmentStatus === 'unemployed') ? 'selected' : '' %>>Unemployed / Seeking Internship</option>
+                                <option value="part_time_or_freelance" <%= (activeUser && activeUser.employmentStatus === 'part_time_or_freelance') ? 'selected' : '' %>>Part-time / Freelance</option>
+                                <option value="full_time" <%= (activeUser && activeUser.employmentStatus === 'full_time') ? 'selected' : '' %>>Full-time Regular Employment (Ineligible)</option>
+                            </select>
+                        </div>
+                    </div>
                     <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Skills (Comma Separated)</label>
-                        <input type="text" name="skills"
-                            value="<%= (activeUser && activeUser.skills) ? activeUser.skills.join(', ') : '' %>"
-                            placeholder="e.g. Java, Python, SQL"
-                            class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
+                        <div class="flex items-center justify-between gap-3 mb-1">
+                            <label class="block font-semibold text-slate-700">Skills and proficiency</label>
+                            <button type="button" id="addSkillProfileBtn"
+                                class="text-indigo-700 hover:text-indigo-800 font-bold inline-flex items-center gap-1">
+                                <i class="ph-bold ph-plus"></i> Add skill
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mb-2">Choose the level that best reflects your current ability.</p>
+                        <div id="skillProfileFields" class="space-y-2">
+                            <% const editableSkillEntries = profileSkillEntries.length ? profileSkillEntries : [{ name: '', proficiency: 'Intermediate' }]; %>
+                            <% editableSkillEntries.forEach(skill => { %>
+                                <div data-skill-profile-row class="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2 items-center">
+                                    <label class="sr-only">Skill name</label>
+                                    <input type="text" name="skillName" value="<%= skill.name %>" maxlength="80"
+                                        placeholder="e.g. JavaScript"
+                                        class="min-w-0 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
+                                    <label class="sr-only">Proficiency</label>
+                                    <select name="skillProficiency" aria-label="Proficiency for <%= skill.name || 'skill' %>"
+                                        class="px-2 py-2 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-indigo-600 outline-none">
+                                        <% ['Beginner', 'Intermediate', 'Advanced'].forEach(level => { %>
+                                            <option value="<%= level %>" <%= skill.proficiency === level ? 'selected' : '' %>><%= level %></option>
+                                        <% }) %>
+                                    </select>
+                                    <button type="button" data-remove-skill-profile aria-label="Remove <%= skill.name || 'skill' %>"
+                                        class="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50">
+                                        <i class="ph-bold ph-trash"></i>
+                                    </button>
+                                </div>
+                            <% }) %>
+                        </div>
+                    </div>
+
+                    <!-- Live PMIS Eligibility Status Preview Box in Modal -->
+                    <div id="liveEligibilityPreview"
+                        class="rounded-xl p-3 border border-slate-200 bg-slate-50 transition-all text-xs space-y-1.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-bold text-slate-700 flex items-center gap-1.5">
+                                <i class="ph-bold ph-shield-check text-indigo-600"></i>
+                                Live PMIS Status Preview
+                            </span>
+                            <span id="liveBadge" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[11px] border"></span>
+                        </div>
+                        <p id="liveFeedback" class="text-[11px] leading-relaxed text-slate-600"></p>
                     </div>
 
                     <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
@@ -713,9 +941,98 @@
                 const profileForm = document.getElementById('editProfileForm');
                 const saveBtn = document.getElementById('saveProfileBtn');
 
+                // --- Reactive PMIS Eligibility Live Preview in Profile Edit Modal ---
+                const editAgeInput = document.getElementById('editAge');
+                const editIncomeInput = document.getElementById('editFamilyIncome');
+                const editQualificationInput = document.getElementById('editQualification');
+                const editEnrollmentSelect = document.getElementById('editEnrollmentStatus');
+                const editEmploymentSelect = document.getElementById('editEmploymentStatus');
+                const livePreviewBox = document.getElementById('liveEligibilityPreview');
+                const liveBadge = document.getElementById('liveBadge');
+                const liveFeedback = document.getElementById('liveFeedback');
+
+                const updateLiveEligibility = () => {
+                    if (!livePreviewBox || !liveBadge || !liveFeedback) return;
+
+                    const ageVal = editAgeInput ? editAgeInput.value.trim() : '';
+                    const incomeVal = editIncomeInput ? editIncomeInput.value.trim() : '';
+                    const qualVal = editQualificationInput ? editQualificationInput.value.trim() : '';
+                    const enrollVal = editEnrollmentSelect ? editEnrollmentSelect.value.trim() : '';
+                    const empVal = editEmploymentSelect ? editEmploymentSelect.value.trim() : '';
+
+                    const age = ageVal !== '' ? Number(ageVal) : null;
+                    const income = incomeVal !== '' ? Number(incomeVal) : null;
+
+                    const disqualifications = [];
+                    const missing = [];
+
+                    // Disqualification checks
+                    // Values <= 0 are treated as missing, not disqualifying
+                    if (age !== null && !isNaN(age) && age > 0) {
+                        if (age < 21) disqualifications.push(`Age (${age}) is below minimum requirement of 21 years.`);
+                        if (age > 24) disqualifications.push(`Age (${age}) exceeds maximum limit of 24 years.`);
+                    } else {
+                        missing.push('Age (21–24)');
+                    }
+
+                    if (income !== null && !isNaN(income) && income >= 0) {
+                        if (income > 800000) disqualifications.push(`Annual income (₹${income.toLocaleString('en-IN')}) exceeds ₹8,00,000 ceiling.`);
+                    } else {
+                        missing.push('Family Income');
+                    }
+
+                    if (!qualVal) {
+                        missing.push('Qualification');
+                    }
+
+                    if (enrollVal === 'full_time') {
+                        disqualifications.push('Candidates enrolled in full-time formal education are not eligible.');
+                    } else if (!enrollVal) {
+                        missing.push('Enrollment Status');
+                    }
+
+                    if (empVal === 'full_time') {
+                        disqualifications.push('Candidates in full-time regular employment are not eligible.');
+                    } else if (!empVal) {
+                        missing.push('Employment Status');
+                    }
+
+                    // Reset classes
+                    livePreviewBox.className = 'rounded-xl p-3 border transition-all text-xs space-y-1.5';
+                    liveBadge.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[11px] border';
+
+                    if (disqualifications.length > 0) {
+                        livePreviewBox.classList.add('bg-rose-50/70', 'border-rose-200');
+                        liveBadge.classList.add('bg-rose-100', 'text-rose-700', 'border-rose-200');
+                        liveBadge.innerHTML = '<i class="ph-bold ph-x-circle"></i> Not Eligible';
+                        liveFeedback.className = 'text-[11px] text-rose-700 font-medium';
+                        liveFeedback.innerHTML = '<strong>Disqualifying criteria:</strong> ' + disqualifications.join(' ');
+                    } else if (missing.length > 0) {
+                        livePreviewBox.classList.add('bg-amber-50/70', 'border-amber-200');
+                        liveBadge.classList.add('bg-amber-100', 'text-amber-800', 'border-amber-200');
+                        liveBadge.innerHTML = '<i class="ph-bold ph-warning-circle"></i> Incomplete';
+                        liveFeedback.className = 'text-[11px] text-amber-800';
+                        liveFeedback.innerHTML = '<strong>Missing required fields:</strong> ' + missing.join(', ') + '. Fill these in to confirm eligibility.';
+                    } else {
+                        livePreviewBox.classList.add('bg-emerald-50/70', 'border-emerald-200');
+                        liveBadge.classList.add('bg-emerald-100', 'text-emerald-700', 'border-emerald-200');
+                        liveBadge.innerHTML = '<i class="ph-bold ph-check-circle"></i> Eligible';
+                        liveFeedback.className = 'text-[11px] text-emerald-700 font-medium';
+                        liveFeedback.innerHTML = '✓ All PMIS eligibility criteria satisfied! Save your profile to finalize.';
+                    }
+                };
+
+                [editAgeInput, editIncomeInput, editQualificationInput, editEnrollmentSelect, editEmploymentSelect].forEach(input => {
+                    if (input) {
+                        input.addEventListener('input', updateLiveEligibility);
+                        input.addEventListener('change', updateLiveEligibility);
+                    }
+                });
+
                 if (openBtn && modal) {
                     openBtn.addEventListener('click', () => {
                         modal.classList.remove('hidden');
+                        updateLiveEligibility();
                     });
                 }
 
@@ -725,6 +1042,52 @@
 
                 if (closeBtn) closeBtn.addEventListener('click', closeModal);
                 if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+                const skillProfileFields = document.getElementById('skillProfileFields');
+                const addSkillProfileBtn = document.getElementById('addSkillProfileBtn');
+
+                const addSkillProfileRow = () => {
+                    if (!skillProfileFields) return;
+                    const row = document.createElement('div');
+                    row.dataset.skillProfileRow = '';
+                    row.className = 'grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2 items-center';
+
+                    const nameInput = document.createElement('input');
+                    nameInput.type = 'text';
+                    nameInput.name = 'skillName';
+                    nameInput.maxLength = 80;
+                    nameInput.placeholder = 'e.g. JavaScript';
+                    nameInput.setAttribute('aria-label', 'Skill name');
+                    nameInput.className = 'min-w-0 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none';
+
+                    const proficiencySelect = document.createElement('select');
+                    proficiencySelect.name = 'skillProficiency';
+                    proficiencySelect.setAttribute('aria-label', 'Proficiency for new skill');
+                    proficiencySelect.className = 'px-2 py-2 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-indigo-600 outline-none';
+                    ['Beginner', 'Intermediate', 'Advanced'].forEach(level => {
+                        const option = new Option(level, level, level === 'Intermediate', level === 'Intermediate');
+                        proficiencySelect.add(option);
+                    });
+
+                    const removeButton = document.createElement('button');
+                    removeButton.type = 'button';
+                    removeButton.dataset.removeSkillProfile = '';
+                    removeButton.setAttribute('aria-label', 'Remove skill');
+                    removeButton.className = 'p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50';
+                    removeButton.innerHTML = '<i class="ph-bold ph-trash"></i>';
+
+                    row.append(nameInput, proficiencySelect, removeButton);
+                    skillProfileFields.append(row);
+                    nameInput.focus();
+                };
+
+                if (addSkillProfileBtn) addSkillProfileBtn.addEventListener('click', addSkillProfileRow);
+                if (skillProfileFields) {
+                    skillProfileFields.addEventListener('click', event => {
+                        const removeButton = event.target.closest('[data-remove-skill-profile]');
+                        if (removeButton) removeButton.closest('[data-skill-profile-row]')?.remove();
+                    });
+                }
 
                 if (profileForm && saveBtn) {
                     profileForm.addEventListener('submit', () => {

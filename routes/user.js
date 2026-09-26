@@ -675,14 +675,30 @@ router.get('/candidate/applications', isAuthenticated, authorize('candidate'), a
         const userId = req.user._id || req.user.id;
         const candidate = await User.findById(userId);
         const applications = await Application.find({ candidate: userId })
-            .populate('internship');
+            .populate('internship')
+            .sort({ appliedAt: -1, _id: -1 });
+
+        const stats = {
+            total: applications.length,
+            submitted: applications.filter(a => a.status === 'Submitted').length,
+            underReview: applications.filter(a => a.status === 'Under Review').length,
+            shortlisted: applications.filter(a => a.status === 'Shortlisted').length,
+            rejected: applications.filter(a => a.status === 'Rejected').length
+        };
+
+        const searchQuery = (req.query.search || '').trim();
+        const statusFilter = (req.query.status || 'all').trim();
 
         res.render('candidate/candidate-tracker', {
             candidate,
             applications,
+            stats,
+            searchQuery,
+            statusFilter,
             formatRelativeTime,
             formatLocalizedDateTime
         });
+
     } catch (error) {
         console.error('Error fetching tracker data:', error);
         res.status(500).send('Database Error');
@@ -724,16 +740,16 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
             .sort({ aiMatchScore: -1 });
 
         let needsRegeneration = false;
-        
+
         if (recommendations.length === 0) {
             needsRegeneration = true;
         } else {
             const firstGenTime = recommendations[0].generatedAt;
             const isFresh = firstGenTime && (new Date() - firstGenTime < 24 * 60 * 60 * 1000); // < 24h
-            
+
             // Check if mixed generation or stale
             const isMixed = recommendations.some(r => !r.generatedAt || r.generatedAt.getTime() !== firstGenTime.getTime());
-            
+
             if (!isFresh || isMixed) {
                 needsRegeneration = true;
             }
@@ -753,7 +769,7 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
             if (internship.status !== 'published') return false;
             if (internship.isPaused) return false;
             if (appliedIds.includes(internship._id.toString())) return false;
-            
+
             if (internship.applicationDeadline && internship.applicationDeadline < now) {
                 return false;
             }
@@ -765,7 +781,7 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
         if (recommendations.length === 0 && !needsRegeneration) {
             recommendations = await generateRecommendationsForUser(user);
             recommendations = await Recommendation.populate(recommendations, { path: 'internship' });
-            
+
             recommendations = recommendations.filter(rec => {
                 const internship = rec.internship;
                 if (!internship || internship.status !== 'published' || internship.isPaused) return false;
