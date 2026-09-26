@@ -610,9 +610,23 @@ router.post('/company/applications/:id/status', isAuthenticated, requireCompanyP
         }
 
         const previousStatus = application.status;
-        // The Application pre-save hook records statusUpdatedAt only when this
-        // assignment represents an actual status transition.
-        application.status = status;
+        if (previousStatus !== status) {
+            application.status = status;
+            if (!Array.isArray(application.statusHistory)) {
+                application.statusHistory = [];
+            }
+            if (application.statusHistory.length === 0) {
+                application.statusHistory.push({
+                    status: previousStatus || 'Submitted',
+                    changedAt: application.appliedAt || new Date()
+                });
+            }
+            application.statusHistory.push({
+                status,
+                changedAt: new Date()
+            });
+        }
+
         await application.save();
 
         if (previousStatus !== status) {
