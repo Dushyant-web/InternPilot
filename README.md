@@ -492,17 +492,17 @@ START2CODE is an initiative event owned and organized by the **GitHub Club under
                 </a>
             </td>
             <td align="center">
-                <a href="https://github.com/Tanmoysahacodes">
-                    <img src="https://avatars.githubusercontent.com/u/132278570?v=4" width="100;" alt="Tanmoysahacodes"/>
-                    <br />
-                    <sub><b>TANMOY SAHA</b></sub>
-                </a>
-            </td>
-            <td align="center">
                 <a href="https://github.com/huzaifa069HUZ">
                     <img src="https://avatars.githubusercontent.com/u/223731712?v=4" width="100;" alt="huzaifa069HUZ"/>
                     <br />
                     <sub><b>Huzaifa Tabish</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/Tanmoysahacodes">
+                    <img src="https://avatars.githubusercontent.com/u/132278570?v=4" width="100;" alt="Tanmoysahacodes"/>
+                    <br />
+                    <sub><b>TANMOY SAHA</b></sub>
                 </a>
             </td>
             <td align="center">
