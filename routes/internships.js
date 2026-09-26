@@ -11,13 +11,24 @@ const { parseISTEndOfDay } = require('../utils/dateUtils');
 const { calculateSkillScore, analyzeSkillGap } = require('../utils/skillMatch');
 const { notifyRelevantCandidates } = require('../utils/notifications');
 const chatRouter = require('./chat');
-const { parseInternshipQuery, buildPaginationData, buildQueryString } = require('../utils/queryHelper');
+const {
+    parseInternshipQuery,
+    buildPaginationData,
+    buildQueryString,
+    applyDurationFilter,
+    getActiveFilters,
+    clearFiltersHref,
+    uniqueSortedOptions,
+    DURATION_BUCKETS
+} = require('../utils/queryHelper');
 const { calculateCandidateMatch } = require('../utils/candidateMatcher');
 const { buildSkillProfiles } = require('../utils/skillProfiles');
 
 router.get('/', async (req, res) => {
     try {
-        const { filterObj, sortObj, state, page, limit } = parseInternshipQuery(req.query);
+        const parsed = parseInternshipQuery(req.query);
+        const { sortObj, state, page, limit } = parsed;
+        const filterObj = await applyDurationFilter(parsed.filterObj, state.duration, Internship);
 
         const totalItems = await Internship.countDocuments(filterObj);
         const pagination = buildPaginationData(totalItems, page, limit);
@@ -27,8 +38,12 @@ router.get('/', async (req, res) => {
             .skip(pagination.skip)
             .limit(pagination.limit);
 
-        const availableSectors = await Internship.distinct('sector');
+        const [availableSectors, availableSkills] = await Promise.all([
+            Internship.distinct('sector'),
+            Internship.distinct('requiredSkills', { status: { $ne: 'draft' } })
+        ]);
         const sectors = availableSectors.filter(Boolean).sort();
+        const skillOptions = uniqueSortedOptions(availableSkills);
 
         const candidate = req.user;
         const currentUser = req.user;
@@ -48,6 +63,10 @@ router.get('/', async (req, res) => {
             currentFilter: state.status,
             pagination,
             sectors,
+            skillOptions,
+            durationBuckets: DURATION_BUCKETS,
+            activeFilters: getActiveFilters(state),
+            clearFiltersUrl: clearFiltersHref(state),
             buildQueryString
         });
     } catch (error) {
@@ -119,7 +138,8 @@ router.get('/:id', async (req, res) => {
 
 router.post('/new', isAuthenticated, async (req, res) => {
     try {
-        const { title, company: companyName, location, sector, stipend, monthlyStipend, vacancies, duration, requiredSkills, minQualifications, deadline, action, description } = req.body;
+        const { title, company: companyName, location, sector, stipend, monthlyStipend, vacancies, duration, requiredSkills, minQualifications, deadline, action, description, responsibilities: responsibilitiesRaw, eligibilityCriteria: eligibilityRaw } = req.body;
+
         const isAdmin = req.user.role === 'admin';
         const isCompanyUser = ['company', 'recruiter'].includes(req.user.role);
 
@@ -161,6 +181,8 @@ router.post('/new', isAuthenticated, async (req, res) => {
         }
         resolvedCompanyName = resolvedCompanyName || req.user.name;
 
+        const parseLines = (raw) => (raw ? raw.split('\n').map(s => s.trim()).filter(Boolean) : []);
+
         const newInternship = new Internship({
             title: resolvedTitle,
             status,
@@ -170,6 +192,8 @@ router.post('/new', isAuthenticated, async (req, res) => {
             minQualifications: minQualifications || (isDraft ? '' : 'Any'),
             duration: duration || (isDraft ? '' : '12 Months'),
             description: description || '',
+            responsibilities: parseLines(responsibilitiesRaw),
+            eligibilityCriteria: parseLines(eligibilityRaw),
             location: { district, state },
             monthlyStipend: stipendNumber,
             vacancies: vacancies ? parseInt(vacancies) : 1,
@@ -177,6 +201,7 @@ router.post('/new', isAuthenticated, async (req, res) => {
             postedBy: req.user._id,
             applicationDeadline
         });
+
 
         await newInternship.save();
 
@@ -223,7 +248,9 @@ router.post('/:id/edit', isAuthenticated, async (req, res) => {
             }
         }
 
-        const { title, company: companyName, location, sector, stipend, monthlyStipend, duration, vacancies, requiredSkills, minQualifications, deadline, description } = req.body;
+        const { title, company: companyName, location, sector, stipend, monthlyStipend, duration, vacancies, requiredSkills, minQualifications, deadline, description, responsibilities: responsibilitiesRaw, eligibilityCriteria: eligibilityRaw } = req.body;
+
+        const parseLines = (raw) => (raw ? raw.split('\n').map(s => s.trim()).filter(Boolean) : []);
 
         const locationParts = location ? location.split(',') : [];
         const district = locationParts[0] ? locationParts[0].trim() : '';
@@ -254,6 +281,9 @@ router.post('/:id/edit', isAuthenticated, async (req, res) => {
         if (vacancies) internship.vacancies = parseInt(vacancies) || 1;
         if (minQualifications !== undefined) internship.minQualifications = minQualifications;
         if (description !== undefined) internship.description = description;
+        if (responsibilitiesRaw !== undefined) internship.responsibilities = parseLines(responsibilitiesRaw);
+        if (eligibilityRaw !== undefined) internship.eligibilityCriteria = parseLines(eligibilityRaw);
+
         if (requiredSkills !== undefined) {
             internship.requiredSkills = Array.isArray(requiredSkills) ? requiredSkills : requiredSkills.split(',').map(s => s.trim()).filter(Boolean);
         }

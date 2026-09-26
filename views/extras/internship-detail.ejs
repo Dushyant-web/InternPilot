@@ -155,6 +155,50 @@
             <% } %>
         </div>
 
+        <!-- Role Description -->
+        <% if (internship.description && internship.description.trim()) { %>
+            <div class="p-5 bg-slate-50 border border-slate-100 rounded-xl space-y-2">
+                <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="ph-bold ph-article text-indigo-500 text-base"></i> About This Role
+                </h3>
+                <p class="text-sm text-slate-600 leading-relaxed whitespace-pre-line"><%= internship.description %></p>
+            </div>
+        <% } %>
+
+        <!-- Day-to-Day Responsibilities -->
+        <% if (Array.isArray(internship.responsibilities) && internship.responsibilities.length > 0) { %>
+            <div class="p-5 bg-slate-50 border border-slate-100 rounded-xl space-y-3">
+                <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="ph-bold ph-list-checks text-indigo-500 text-base"></i> Day-to-Day Responsibilities
+                </h3>
+                <ul class="space-y-2">
+                    <% internship.responsibilities.forEach(item => { %>
+                        <li class="flex items-start gap-2 text-sm text-slate-700">
+                            <i class="ph-bold ph-check-circle text-emerald-500 text-base mt-0.5 shrink-0"></i>
+                            <span><%= item %></span>
+                        </li>
+                    <% }) %>
+                </ul>
+            </div>
+        <% } %>
+
+        <!-- Eligibility Criteria -->
+        <% if (Array.isArray(internship.eligibilityCriteria) && internship.eligibilityCriteria.length > 0) { %>
+            <div class="p-5 bg-slate-50 border border-slate-100 rounded-xl space-y-3">
+                <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="ph-bold ph-user-check text-indigo-500 text-base"></i> Eligibility Criteria
+                </h3>
+                <ul class="space-y-2">
+                    <% internship.eligibilityCriteria.forEach(item => { %>
+                        <li class="flex items-start gap-2 text-sm text-slate-700">
+                            <i class="ph-bold ph-dot-outline text-indigo-400 text-base mt-0.5 shrink-0"></i>
+                            <span><%= item %></span>
+                        </li>
+                    <% }) %>
+                </ul>
+            </div>
+        <% } %>
+
         <!-- Company Profile & Credibility Card -->
         <% const compId = (typeof company !== 'undefined' && company && company._id) ? company._id : internship.companyId; %>
         <% const cDetails = (typeof company !== 'undefined' && company && company.companyDetails) ? company.companyDetails : {}; %>
