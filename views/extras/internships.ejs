@@ -146,7 +146,13 @@
 
                 <div>
                     <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-1.5 flex-wrap">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <% if (typeof currentUser === 'undefined' || !currentUser || currentUser.role === 'candidate') { %>
+                                <label class="inline-flex items-center gap-1.5 cursor-pointer group/cb">
+                                    <input type="checkbox" value="<%= item._id %>" class="compare-checkbox w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer">
+                                    <span class="text-[10px] uppercase font-bold text-slate-400 group-hover/cb:text-indigo-600 transition-colors hidden sm:inline">Compare</span>
+                                </label>
+                            <% } %>
                             <span
                                 class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
                                 <%= item.sector || "General" %>
@@ -627,6 +633,80 @@
                         }
                     }
                 });
+            });
+        });
+    </script>
+
+    <!-- Compare Action Bar -->
+    <div id="compareBar" class="fixed bottom-0 left-0 right-0 bg-white border-t border-indigo-100 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] p-4 flex justify-between items-center z-50 transform translate-y-full transition-transform duration-300">
+        <div class="flex items-center gap-4 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 justify-between">
+            <div class="text-sm font-semibold text-slate-700">
+                <span id="compareCount" class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full mr-1.5">0</span> 
+                <span class="hidden sm:inline">internships selected (Max 3)</span>
+                <span class="sm:hidden">selected</span>
+            </div>
+            <div class="flex gap-3">
+                <button id="clearCompareBtn" class="text-slate-500 text-sm hover:text-slate-800 transition-colors cursor-pointer font-medium px-2 py-2">Clear</button>
+                <button id="compareSubmitBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm">
+                    Compare
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkboxes = document.querySelectorAll('.compare-checkbox');
+            const compareBar = document.getElementById('compareBar');
+            const compareCount = document.getElementById('compareCount');
+            const clearCompareBtn = document.getElementById('clearCompareBtn');
+            const compareSubmitBtn = document.getElementById('compareSubmitBtn');
+            
+            let selectedIds = new Set();
+
+            function updateUI() {
+                compareCount.textContent = selectedIds.size;
+                
+                if (selectedIds.size > 0) {
+                    compareBar.classList.remove('translate-y-full');
+                } else {
+                    compareBar.classList.add('translate-y-full');
+                }
+
+                if (selectedIds.size >= 2) {
+                    compareSubmitBtn.disabled = false;
+                } else {
+                    compareSubmitBtn.disabled = true;
+                }
+            }
+
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        if (selectedIds.size >= 3) {
+                            alert("You can only compare up to 3 internships at a time.");
+                            e.target.checked = false;
+                            return;
+                        }
+                        selectedIds.add(e.target.value);
+                    } else {
+                        selectedIds.delete(e.target.value);
+                    }
+                    updateUI();
+                });
+            });
+
+            clearCompareBtn.addEventListener('click', () => {
+                selectedIds.clear();
+                checkboxes.forEach(cb => cb.checked = false);
+                updateUI();
+            });
+
+            compareSubmitBtn.addEventListener('click', () => {
+                if (selectedIds.size >= 2 && selectedIds.size <= 3) {
+                    const ids = Array.from(selectedIds).join(',');
+                    window.location.href = `/internships/compare?ids=${ids}`;
+                }
             });
         });
     </script>
