@@ -4,6 +4,9 @@
     : ((candidate && Array.isArray(candidate.skills))
         ? candidate.skills.map(name => ({ name, proficiency: 'Intermediate' }))
         : []); %>
+<% const safeMeetingLink = application && application.interview
+    ? sanitizeHttpUrl(application.interview.meetingLink).url
+    : ''; %>
 
 <div class="max-w-5xl mx-auto space-y-6">
 
@@ -173,10 +176,10 @@
                                 <span class="font-bold text-slate-700 text-sm"><%= application.interview.mode %></span>
                             </div>
                         </div>
-                        <% if (application.interview.mode === 'Online' && application.interview.meetingLink) { %>
+                        <% if (application.interview.mode === 'Online' && safeMeetingLink) { %>
                             <div>
                                 <span class="text-slate-400 font-medium block">Meeting Link</span>
-                                <a href="<%= application.interview.meetingLink %>" target="_blank" class="font-bold text-indigo-600 hover:underline break-all"><%= application.interview.meetingLink %></a>
+                                <a href="<%= safeMeetingLink %>" target="_blank" rel="noopener noreferrer" class="font-bold text-indigo-600 hover:underline break-all"><%= safeMeetingLink %></a>
                             </div>
                         <% } else if (application.interview.mode === 'In-Person' && application.interview.location) { %>
                             <div>

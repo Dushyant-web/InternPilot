@@ -87,6 +87,11 @@ const userSchema = new mongoose.Schema({
         createdAt: { type: Date, default: Date.now }
     }],
 
+    savedInternships: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Internship'
+    }],
+
     companyDetails: {
         companyName: { type: String, trim: true },
         cin: { type: String, trim: true },

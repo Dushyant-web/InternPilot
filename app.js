@@ -41,6 +41,9 @@ const pagesRoutes = require('./routes/pages');
 const app = express();
 const port = process.env.PORT || 8080;
 
+// Safe URL normalization is available to templates that render stored links.
+app.locals.sanitizeHttpUrl = sanitizeHttpUrl;
+
 // View engine setup
 app.engine("ejs", ejsMate);
 app.set("view engine", "ejs");

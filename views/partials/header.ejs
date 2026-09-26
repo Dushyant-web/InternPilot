@@ -4,6 +4,7 @@
         opportunities: ['/internships'],
         candidateProfile: ['/candidate/profile', '/candidate/resume-builder'],
         applications: ['/candidate/applications', '/candidate/my-applications'],
+        savedInternships: ['/candidate/saved-internships'],
         recommendations: ['/recommendations'],
         notifications: ['/notifications'],
         companyNotifications: ['/company/notifications'],
@@ -114,6 +115,14 @@
                 </button>
 
                 <% if (currentUser && ['candidate', 'company', 'recruiter'].includes(currentUser.role)) { %>
+                    <% if (currentUser.role === 'candidate') { %>
+                        <a href="/candidate/saved-internships" aria-label="Saved Internships" data-nav-link data-nav-variant="icon" data-nav-prefixes="<%= navPrefixAttribute('savedInternships') %>" class="relative inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 <%= isActive('savedInternships') ? 'bg-indigo-100 font-bold text-indigo-900 ring-1 ring-indigo-700' : '' %>" <%- ariaCurrent(isActive('savedInternships')) %> title="Saved Internships">
+                            <i class="ph-bold ph-bookmark-simple text-lg" aria-hidden="true"></i>
+                            <% if (currentUser.savedInternships && currentUser.savedInternships.length > 0) { %>
+                                <span class="absolute -right-0.5 -top-0.5 h-4 min-w-4 rounded-full bg-indigo-600 px-1 text-center text-[9px] font-bold leading-4 text-white"><%= currentUser.savedInternships.length > 99 ? '99+' : currentUser.savedInternships.length %></span>
+                            <% } %>
+                        </a>
+                    <% } %>
                     <% const notifLink = currentUser.role === 'candidate' ? '/notifications' : '/company/notifications'; %>
                     <% const notificationSection = currentUser.role === 'candidate' ? 'notifications' : 'companyNotifications'; %>
                     <a href="<%= notifLink %>" aria-label="Notifications" data-nav-link data-nav-variant="icon" data-nav-prefixes="<%= navPrefixAttribute(notificationSection) %>" class="relative inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 <%= isActive(notificationSection) ? 'bg-indigo-100 font-bold text-indigo-900 ring-1 ring-indigo-700' : '' %>" <%- ariaCurrent(isActive(notificationSection)) %> title="Notifications">
