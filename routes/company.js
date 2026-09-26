@@ -15,6 +15,7 @@ const {
 const { logoUpload, uploadBufferToCloudinary } = require('../middleware/upload');
 const { sendStatusUpdateEmail, sendInterviewScheduledEmail, sendInterviewRescheduledEmail, sendInterviewCancelledEmail } = require('../utils/sendEmail');
 const { parseISTEndOfDay, parseISTDatetime } = require('../utils/dateUtils');
+const { buildApplicantViewLocals } = require('../utils/candidateFilters');
 const {
     notifyRelevantCandidates,
     notifyApplicationStatusChange,
