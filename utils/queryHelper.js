@@ -18,7 +18,8 @@ const MAX_LIST_ITEMS = 20;
 
 // Listings per page when the URL does not say. Left out of generated URLs so
 // "Clear all" really produces a bare /internships.
-const DEFAULT_LIMIT = 6;
+// Default page size of 12 satisfies issue #9 (12-20 items) and fits 1, 2, and 3-column responsive grids.
+const DEFAULT_LIMIT = 12;
 
 // Duration is free text on the listing ("12 Months", "6 weeks"), so it is
 // filtered by range rather than exact value. Each bucket is (min, max].
@@ -234,27 +235,55 @@ function parseInternshipQuery(query = {}) {
 }
 
 /**
+ * Generates an array of page numbers and ellipsis strings for pagination navigation.
+ * Uses a symmetric window algorithm with ellipses when totalPages > 7.
+ *
+ * @param {number} currentPage - Currently active page (1-indexed)
+ * @param {number} totalPages - Total number of pages
+ * @returns {Array<number|string>} Array of page numbers and '...' strings
+ */
+function getPaginationRange(currentPage, totalPages) {
+    if (totalPages <= 7) {
+        return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 4) {
+        return [1, 2, 3, 4, 5, '...', totalPages];
+    }
+    if (currentPage >= totalPages - 3) {
+        return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+}
+
+/**
  * Calculates pagination metadata.
  * @param {number} totalItems
  * @param {number} currentPage
  * @param {number} limit
  * @returns {Object} pagination object
  */
-function buildPaginationData(totalItems, currentPage, limit) {
-    const totalPages = Math.max(1, Math.ceil(totalItems / limit));
-    const page = Math.min(currentPage, totalPages);
-    const skip = (page - 1) * limit;
+function buildPaginationData(totalItems, currentPage, limit = DEFAULT_LIMIT) {
+    const validTotal = Math.max(0, parseInt(totalItems, 10) || 0);
+    const validLimit = Math.max(1, parseInt(limit, 10) || DEFAULT_LIMIT);
+    const totalPages = Math.max(1, Math.ceil(validTotal / validLimit));
+    const page = Math.max(1, Math.min(parseInt(currentPage, 10) || 1, totalPages));
+    const skip = (page - 1) * validLimit;
+    const startItem = validTotal === 0 ? 0 : skip + 1;
+    const endItem = Math.min(skip + validLimit, validTotal);
 
     return {
-        totalItems,
+        totalItems: validTotal,
         totalPages,
         currentPage: page,
-        limit,
+        limit: validLimit,
         skip,
+        startItem,
+        endItem,
         hasNextPage: page < totalPages,
         hasPrevPage: page > 1,
         nextPage: page + 1,
-        prevPage: page - 1
+        prevPage: page - 1,
+        pages: getPaginationRange(page, totalPages)
     };
 }
 
@@ -279,14 +308,12 @@ function buildQueryString(currentParams = {}, overrides = {}) {
             val !== undefined &&
             val !== null &&
             val !== '' &&
-            val !== 1 &&
+            !(key === 'page' && Number(val) <= 1) &&
             !(key === 'sort' && val === 'latest') &&
             !(key === 'sector' && val === 'all') &&
             !(key === 'status' && val === 'all') &&
             !(key === 'limit' && Number(val) === DEFAULT_LIMIT)
         ) {
-            // Omit page if 1
-            if (key === 'page' && Number(val) <= 1) return;
             params.set(key, val);
         }
     });
@@ -420,8 +447,10 @@ function uniqueSortedOptions(values = []) {
 }
 
 module.exports = {
+    DEFAULT_LIMIT,
     escapeRegex,
     parseInternshipQuery,
+    getPaginationRange,
     buildPaginationData,
     buildQueryString,
     DURATION_BUCKETS,

@@ -131,7 +131,8 @@ test('buildQueryString joins list values and skips empty lists', () => {
 test('the default page size stays out of generated URLs', () => {
     const { state } = parseInternshipQuery({});
     assert.equal(clearFiltersHref(state), '/internships', 'clear all gives a bare URL');
-    assert.ok(buildQueryString({ limit: 12 }, {}).includes('limit=12'), 'a non-default size is kept');
+    assert.equal(buildQueryString({ limit: 12 }, {}), '/internships', 'the default size is omitted');
+    assert.ok(buildQueryString({ limit: 24 }, {}).includes('limit=24'), 'a non-default size is kept');
 });
 
 test('state survives a round trip through the URL', () => {
