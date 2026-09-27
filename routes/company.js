@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
+const Certificate = require('../models/Certificate');
 const { isAuthenticated, requireCompanyRole } = require('../middleware/auth');
 const {
     TEAM_MEMBER_ROLES,
@@ -1109,11 +1110,17 @@ router.get('/company/applications/:id/candidate', isAuthenticated, requireCompan
 
         const internship = application.internship;
 
+        const certificate = await Certificate.findOne({
+            application: application._id,
+            status: 'Issued'
+        });
+
         res.render('company/candidate-profile-view', {
             user: req.user,
             application,
             candidate: application.candidate,
             internship,
+            certificate,
             permissions: req.companyPermissions,
             skillProfiles: buildSkillProfiles(application.candidate)
         });
