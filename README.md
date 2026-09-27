@@ -259,7 +259,9 @@ Create a `.env` file in the root directory.
 PORT=8080
 
 # MongoDB Configuration
-MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/internpilot
+# Transactions are required for company verification and listing moderation.
+# Use MongoDB Atlas, a replica set, or a sharded cluster (not standalone mongod).
+ATLASDB_URL=mongodb+srv://username:password@cluster.mongodb.net/internpilot
 
 # Express Session
 SESSION_SECRET=your_session_secret

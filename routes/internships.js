@@ -10,8 +10,11 @@ const { isAuthenticated, authorize } = require('../middleware/auth');
 const {
     companyName,
     companyInternshipQuery,
-    requireCompanyPermission
+    requireCompanyPermission,
+    requireVerifiedCompany,
+    denyUnverifiedCompany
 } = require('../middleware/companyAccess');
+const { isCompanyVerified } = require('../utils/companyVerification');
 const { parseISTEndOfDay } = require('../utils/dateUtils');
 const { calculateSkillScore, analyzeSkillGap } = require('../utils/skillMatch');
 const { notifyRelevantCandidates } = require('../utils/notifications');
@@ -262,7 +265,7 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-router.post('/new', isAuthenticated, requireCompanyPermission('internship:create'), async (req, res) => {
+router.post('/new', isAuthenticated, requireCompanyPermission('internship:create'), requireVerifiedCompany({ allowDraft: true }), async (req, res) => {
     try {
         // The company name and ID are always resolved from the authenticated
         // company umbrella; a recruiter must never be able to submit a name
@@ -650,7 +653,7 @@ router.post('/:id/pause', isAuthenticated, requireCompanyPermission('internship:
     }
 });
 
-router.post('/:id/resume', isAuthenticated, requireCompanyPermission('internship:edit'), async (req, res) => {
+router.post('/:id/resume', isAuthenticated, requireCompanyPermission('internship:edit'), requireVerifiedCompany(), async (req, res) => {
     try {
         const { authorized, error, statusCode, internship } = await verifyInternshipManager(req);
         if (!authorized) {
@@ -706,6 +709,9 @@ router.post('/:id/toggle-pause', isAuthenticated, requireCompanyPermission('inte
         }
 
         const willPause = !(internship.status === 'paused' || internship.isPaused);
+        if (!willPause && !isCompanyVerified(req.company)) {
+            return denyUnverifiedCompany(req, res);
+        }
         if (willPause) {
             internship.status = 'paused';
             internship.isPaused = true;
