@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const MockInterviewSession = require('../models/MockInterviewSession');
 const User = require('../models/User');
 const { isAuthenticated, authorize } = require('../middleware/auth');
@@ -83,6 +84,22 @@ router.post('/interview/setup', isAuthenticated, authorize('candidate'), async (
 
         const { role, experienceLevel, interviewType, mode, resumeReference } = req.body;
 
+        if (!role || typeof role !== 'string' || !role.trim() ||
+            !['Entry', 'Mid', 'Senior'].includes(experienceLevel) ||
+            !['Technical', 'Behavioral', 'System Design', 'Resume Deep-Dive'].includes(interviewType) ||
+            !['Timed', 'Self-Paced'].includes(mode)) {
+            return res.status(400).json({ error: 'Please provide valid role, experience level, interview type, and mode.' });
+        }
+
+        let validResumeReference = null;
+        if (resumeReference && mongoose.Types.ObjectId.isValid(resumeReference)) {
+            const user = await User.findById(req.user._id).select('resumeVersions');
+            const hasResume = (user?.resumeVersions || []).some(r => r && r._id && r._id.toString() === resumeReference.toString());
+            if (hasResume) {
+                validResumeReference = resumeReference;
+            }
+        }
+
         // Abandon existing in-progress sessions
         await MockInterviewSession.updateMany(
             { candidate: req.user._id, status: 'In Progress' },
@@ -91,11 +108,11 @@ router.post('/interview/setup', isAuthenticated, authorize('candidate'), async (
 
         const session = new MockInterviewSession({
             candidate: req.user._id,
-            role,
+            role: role.trim(),
             experienceLevel,
             interviewType,
             mode,
-            resumeReference: resumeReference || null,
+            resumeReference: validResumeReference,
             status: 'In Progress'
         });
         await session.save();
@@ -110,6 +127,9 @@ router.post('/interview/setup', isAuthenticated, authorize('candidate'), async (
 // Render Room
 router.get('/interview/session/:id', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(404).send('Session not found');
+        }
         const session = await MockInterviewSession.findOne({ _id: req.params.id, candidate: req.user._id });
         if (!session) return res.status(404).send('Session not found');
         
@@ -123,6 +143,9 @@ router.get('/interview/session/:id', isAuthenticated, authorize('candidate'), as
 // Submit Answer & Get Next Turn
 router.post('/interview/session/:id/turn', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
         const { answer, durationSeconds } = req.body;
         const session = await MockInterviewSession.findOne({ _id: req.params.id, candidate: req.user._id });
         
@@ -148,7 +171,8 @@ router.post('/interview/session/:id/turn', isAuthenticated, authorize('candidate
         let resumeContext = '';
         if (session.resumeReference) {
             const user = await User.findById(req.user._id).select('resumeVersions');
-            const resume = user.resumeVersions.find(r => r._id.toString() === session.resumeReference.toString());
+            const resumeVersions = (user && user.resumeVersions) || [];
+            const resume = resumeVersions.find(r => r && r._id && r._id.toString() === session.resumeReference.toString());
             if (resume && resume.text) {
                 resumeContext = `\n=== RESUME START ===\n${resume.text}\n=== RESUME END ===\n`;
             }
@@ -218,6 +242,9 @@ Do NOT output any internal chain-of-thought or reasoning.`;
 // Request Hint
 router.post('/interview/session/:id/hint', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
         const session = await MockInterviewSession.findOne({ _id: req.params.id, candidate: req.user._id });
         if (!session || session.status !== 'In Progress' || session.transcript.length === 0) {
             return res.status(400).json({ error: 'Invalid session state for hint' });
@@ -252,6 +279,9 @@ Provide a brief, encouraging hint to help them structure their answer. Do NOT gi
 // Reframe Question
 router.post('/interview/session/:id/reframe', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
         const session = await MockInterviewSession.findOne({ _id: req.params.id, candidate: req.user._id });
         if (!session || session.status !== 'In Progress' || session.transcript.length === 0) {
             return res.status(400).json({ error: 'Invalid session state for reframe' });
@@ -286,6 +316,9 @@ router.post('/interview/session/:id/reframe', isAuthenticated, authorize('candid
 // Complete & Generate Report
 router.post('/interview/session/:id/complete', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
         const session = await MockInterviewSession.findOne({ _id: req.params.id, candidate: req.user._id });
         if (!session) return res.status(404).json({ error: 'Session not found' });
         
@@ -353,6 +386,9 @@ ${transcriptText}`;
 
 router.get('/interview/session/:id/report', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(404).send('Report not available');
+        }
         const session = await MockInterviewSession.findOne({ _id: req.params.id, candidate: req.user._id });
         if (!session || session.status !== 'Completed') return res.status(404).send('Report not available');
         

@@ -10,12 +10,24 @@ class AIClient {
         if (this.apiKey) {
             this.client = new GoogleGenAI({ apiKey: this.apiKey });
         }
-        this.defaultModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+        this.defaultModel = 'gemini-2.5-flash';
         this.fallbackModel = 'gemini-2.5-flash';
     }
 
+    getClient() {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            return null;
+        }
+        if (!this.client || this.apiKey !== apiKey) {
+            this.apiKey = apiKey;
+            this.client = new GoogleGenAI({ apiKey });
+        }
+        return this.client;
+    }
+
     isTransientError(err) {
-        return err.status === 503 || (err.message && /high demand|temporar|503|overloaded/i.test(err.message));
+        return err && (err.status === 503 || (err.message && /high demand|temporar|503|overloaded/i.test(err.message)));
     }
 
     /**
@@ -23,11 +35,13 @@ class AIClient {
      * Includes exactly 1 repair/retry attempt if parsing fails or fields are missing.
      */
     async generateJsonWithRetry(prompt, responseSchema, requiredFields = [], attempt = 1, previousError = null) {
-        if (!this.client) {
+        const client = this.getClient();
+        if (!client) {
             throw new Error('GEMINI_API_KEY is not configured in environment variables.');
         }
 
-        let modelToUse = this.defaultModel;
+        const modelToUse = process.env.GEMINI_MODEL || this.defaultModel;
+        const fallbackModel = process.env.GEMINI_FALLBACK_MODEL || this.fallbackModel;
         
         let finalPrompt = prompt;
         if (attempt > 1 && previousError) {
@@ -35,7 +49,7 @@ class AIClient {
         }
 
         try {
-            const response = await this.client.models.generateContent({
+            const response = await client.models.generateContent({
                 model: modelToUse,
                 contents: [{ role: 'user', parts: [{ text: finalPrompt }] }],
                 config: {
@@ -60,10 +74,10 @@ class AIClient {
         } catch (err) {
             // Handle 503 Fallback natively on attempt 1
             if (attempt === 1 && this.isTransientError(err)) {
-                console.warn(`[AIClient] ${modelToUse} is experiencing high demand. Failing over to ${this.fallbackModel}...`);
+                console.warn(`[AIClient] ${modelToUse} is experiencing high demand. Failing over to ${fallbackModel}...`);
                 try {
-                    const fallbackResponse = await this.client.models.generateContent({
-                        model: this.fallbackModel,
+                    const fallbackResponse = await client.models.generateContent({
+                        model: fallbackModel,
                         contents: [{ role: 'user', parts: [{ text: prompt }] }],
                         config: {
                             responseMimeType: "application/json",
@@ -79,7 +93,7 @@ class AIClient {
                     return parsedFallback;
                 } catch (fallbackErr) {
                     // If fallback also fails structurally, do the 1 retry
-                    if (fallbackErr.name === 'SyntaxError' || fallbackErr.message.includes('Missing required field')) {
+                    if (fallbackErr.name === 'SyntaxError' || (fallbackErr.message && fallbackErr.message.includes('Missing required field'))) {
                         return this.generateJsonWithRetry(prompt, responseSchema, requiredFields, 2, fallbackErr.message);
                     }
                     throw fallbackErr;
@@ -87,7 +101,7 @@ class AIClient {
             }
 
             // Repair/Retry for validation or parse errors
-            if (attempt === 1 && (err.name === 'SyntaxError' || err.message.includes('Missing required field'))) {
+            if (attempt === 1 && (err.name === 'SyntaxError' || (err.message && err.message.includes('Missing required field')))) {
                 console.warn(`[AIClient] Validation failed, triggering repair retry. Error: ${err.message}`);
                 return this.generateJsonWithRetry(prompt, responseSchema, requiredFields, 2, err.message);
             }

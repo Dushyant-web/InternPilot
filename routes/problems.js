@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const ResumeProblemSet = require('../models/ResumeProblemSet');
 const User = require('../models/User');
 const { isAuthenticated, authorize } = require('../middleware/auth');
@@ -51,7 +52,7 @@ router.get('/problems', isAuthenticated, authorize('candidate'), async (req, res
     try {
         const problemSets = await ResumeProblemSet.find({ candidate: req.user._id }).sort({ createdAt: -1 });
         const user = await User.findById(req.user._id).select('resumeVersions').lean();
-        res.render('problems/hub', { problemSets, resumeVersions: user.resumeVersions, pageTitle: 'Problem Generator' });
+        res.render('problems/hub', { problemSets, resumeVersions: (user && user.resumeVersions) || [], pageTitle: 'Problem Generator' });
     } catch (err) {
         console.error(err);
         res.status(500).send('Server Error');
@@ -62,8 +63,13 @@ router.get('/problems', isAuthenticated, authorize('candidate'), async (req, res
 router.post('/problems/extract', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
         const { resumeVersionId } = req.body;
+        if (!resumeVersionId || !mongoose.Types.ObjectId.isValid(resumeVersionId)) {
+            return res.status(400).json({ error: 'Valid resume selection required.' });
+        }
+
         const user = await User.findById(req.user._id).select('resumeVersions').lean();
-        const resume = user.resumeVersions.find(r => r._id.toString() === resumeVersionId); console.log('Requested ID:', resumeVersionId); console.log('Found resume:', !!resume); if(resume) console.log('Resume text length:', resume.text ? resume.text.length : 0);
+        const resumeVersions = (user && user.resumeVersions) || [];
+        const resume = resumeVersions.find(r => r && r._id && r._id.toString() === resumeVersionId.toString());
         
         if (!resume || !resume.text) {
             return res.status(400).json({ error: 'Valid resume text not found' });
@@ -103,9 +109,13 @@ router.post('/problems/generate', isAuthenticated, authorize('candidate'), async
         }
 
         const { resumeVersionId, projectFocused } = req.body;
+        if (!resumeVersionId || !mongoose.Types.ObjectId.isValid(resumeVersionId)) {
+            return res.status(400).json({ error: 'Valid resume selection required.' });
+        }
         
         const user = await User.findById(req.user._id).select('resumeVersions').lean();
-        const resume = user.resumeVersions.find(r => r._id.toString() === resumeVersionId); console.log('Requested ID:', resumeVersionId); console.log('Found resume:', !!resume); if(resume) console.log('Resume text length:', resume.text ? resume.text.length : 0);
+        const resumeVersions = (user && user.resumeVersions) || [];
+        const resume = resumeVersions.find(r => r && r._id && r._id.toString() === resumeVersionId.toString());
         
         if (!resume || !resume.text) {
             return res.status(400).json({ error: 'Valid resume text not found' });
@@ -149,6 +159,9 @@ ${resume.text}
 // View Problem Set Workspace
 router.get('/problems/set/:id', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(404).send('Problem set not found');
+        }
         const problemSet = await ResumeProblemSet.findOne({ _id: req.params.id, candidate: req.user._id });
         if (!problemSet) return res.status(404).send('Problem set not found');
         
@@ -162,6 +175,9 @@ router.get('/problems/set/:id', isAuthenticated, authorize('candidate'), async (
 // Submit Solution to a Problem
 router.post('/problems/set/:setId/submit/:problemId', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.setId)) {
+            return res.status(404).json({ error: 'Problem set not found' });
+        }
         const { solution } = req.body;
         const problemSet = await ResumeProblemSet.findOne({ _id: req.params.setId, candidate: req.user._id });
         if (!problemSet) return res.status(404).json({ error: 'Problem set not found' });
@@ -181,5 +197,6 @@ router.post('/problems/set/:setId/submit/:problemId', isAuthenticated, authorize
 });
 
 module.exports = router;
+
 
 

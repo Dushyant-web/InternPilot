@@ -22,6 +22,7 @@ const { recordResumeParse } = require('../utils/resumeParse');
 const { formatRelativeTime, formatLocalizedDateTime } = require('../utils/dateFormat');
 const { buildSkillProfiles, parseSkillProfiles, skillNames } = require('../utils/skillProfiles');
 const { sanitizeHttpUrl } = require('../utils/safeUrl');
+const { filterAndSortApplications } = require('../utils/applicationSearch');
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -253,7 +254,8 @@ router.get('/candidate/profile', isAuthenticated, authorize('candidate'), async 
 
         res.render('candidate/candidate-profile', {
             user: freshUser,
-            candidate: freshUser
+            candidate: freshUser,
+            skillProfiles: buildSkillProfiles(freshUser)
         });
     } catch (error) {
         console.error('Error fetching candidate profile:', error);
@@ -277,11 +279,18 @@ router.get('/candidate/resume-builder', isAuthenticated, authorize('candidate'),
 
 router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
-        const { location, age, familyIncome, qualification, institution, skills } = req.body;
+        const {
+            location,
+            age,
+            familyIncome,
+            qualification,
+            institution,
+            enrollmentStatus,
+            employmentStatus
+        } = req.body;
 
-        const skillsArray = skills
-            ? skills.split(',').map(s => s.trim()).filter(Boolean)
-            : [];
+        const parsedSkillProfiles = parseSkillProfiles(req.body);
+        const skillsArray = skillNames(null, parsedSkillProfiles);
 
         const userId = req.user._id || req.user.id;
 
@@ -290,24 +299,35 @@ router.post('/candidate/profile/edit', isAuthenticated, authorize('candidate'), 
         if (location) {
             const parts = location.split(',').map(s => s.trim());
             district = parts[0] || '';
-            state = parts[1] || '';
+            state = parts.slice(1).join(', ') || '';
         }
+
+        const parsedAge = (age !== undefined && age !== null && age !== '' && !isNaN(Number(age)))
+            ? Number(age)
+            : null;
+        const parsedIncome = (familyIncome !== undefined && familyIncome !== null && familyIncome !== '' && !isNaN(Number(familyIncome)))
+            ? Number(familyIncome)
+            : null;
 
         await User.findByIdAndUpdate(
             userId,
             {
                 $set: {
-                    age: age ? Number(age) : null,
-                    familyIncome: familyIncome ? Number(familyIncome) : null,
+                    age: parsedAge,
+                    familyIncome: parsedIncome,
                     institution: institution || '',
                     'education.institutionName': institution || '',
                     skills: skillsArray,
+                    skillProfiles: parsedSkillProfiles,
                     'location.district': district,
                     'location.state': state,
-                    'education.qualification': qualification || ''
+                    'education.qualification': qualification || '',
+                    qualification: qualification || '',
+                    enrollmentStatus: (enrollmentStatus || '').trim(),
+                    employmentStatus: (employmentStatus || '').trim()
                 }
             },
-            { new: true, runValidators: false }
+            { returnDocument: 'after', runValidators: false }
         );
 
         // Wipe recommendations cache to force AI regeneration with new skills
@@ -1013,14 +1033,16 @@ router.get('/candidate/applications', isAuthenticated, authorize('candidate'), a
             .populate('internship')
             .sort(sortObj);
 
+        const applicationSearch = filterAndSortApplications(applications, req.query);
+
         res.render('candidate/candidate-tracker', {
             candidate,
             currentUser: req.user,
-            applications,
+            applications: applicationSearch.applications,
             stats,
-            searchQuery,
-            statusFilter,
-            sortOrder,
+            searchQuery: applicationSearch.search,
+            statusFilter: applicationSearch.status,
+            sort: applicationSearch.sort,
             totalApplications: allApplications.length,
             pageTitle: 'My Applications',
             sanitizeHttpUrl,
