@@ -20,6 +20,8 @@ const { calculateSkillScore } = require('../utils/skillMatch');
 const { detectProfileConflicts } = require('../utils/conflictDetector');
 const { recordResumeParse } = require('../utils/resumeParse');
 const { formatRelativeTime, formatLocalizedDateTime } = require('../utils/dateFormat');
+const { buildSkillProfiles, parseSkillProfiles, skillNames } = require('../utils/skillProfiles');
+const { sanitizeHttpUrl } = require('../utils/safeUrl');
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -1009,11 +1011,14 @@ router.get('/candidate/applications', isAuthenticated, authorize('candidate'), a
 
         res.render('candidate/candidate-tracker', {
             candidate,
+            currentUser: req.user,
             applications,
             stats,
             searchQuery,
             statusFilter,
             sortOrder,
+            totalApplications: allApplications.length,
+            pageTitle: 'My Applications',
             sanitizeHttpUrl,
             formatRelativeTime,
             formatLocalizedDateTime
