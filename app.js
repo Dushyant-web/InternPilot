@@ -60,16 +60,10 @@ app.use(express.json());
 app.use(methodOverride("_method"));
 app.use(express.static(path.join(__dirname, "public")));
 
-// Session configuration
-app.use(session({
-    secret: process.env.SESSION_SECRET || "supersecretkey",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        httpOnly: true,
-        maxAge: 1000 * 60 * 60 * 24 * 7
-    }
-}));
+// Session configuration. Sessions are kept in MongoDB so a restart or deploy
+// doesn't sign everyone out, and they last 7 days from the last visit (#179).
+if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
+app.use(session(require('./utils/sessionStore').buildSessionOptions()));
 
 // Passport & Flash middleware
 app.use(passport.initialize());
