@@ -252,13 +252,18 @@ ${text}
 router.get('/candidate/profile', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
         const userId = req.user._id || req.user.id;
-        const freshUser = await User.findById(userId);
+        const [freshUser, activeApplicationsCount] = await Promise.all([
+            User.findById(userId),
+            Application.countDocuments({ candidate: userId, status: { $nin: ['Withdrawn', 'withdrawn', 'Rejected'] } })
+        ]);
 
         res.render('candidate/candidate-profile', {
             user: freshUser,
             candidate: freshUser,
             skillProfiles: buildSkillProfiles(freshUser),
-            profileCompletion: calculateProfileCompletion(freshUser)
+            profileCompletion: calculateProfileCompletion(freshUser),
+            activeApplicationsCount,
+            savedInternshipsCount: (freshUser && Array.isArray(freshUser.savedInternships)) ? freshUser.savedInternships.length : 0
         });
     } catch (error) {
         console.error('Error fetching candidate profile:', error);
