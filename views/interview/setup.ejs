@@ -1,0 +1,92 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="max-w-3xl mx-auto py-8 px-4">
+    <h1 class="text-2xl font-bold mb-6">Configure Mock Interview</h1>
+    
+    <div class="bg-white shadow rounded-lg p-6">
+        <form id="setupForm" onsubmit="handleSetup(event)">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Role</label>
+                <input type="text" id="role" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" placeholder="e.g. Frontend Engineer">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Experience Level</label>
+                <select id="experienceLevel" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                    <option value="Entry">Entry Level</option>
+                    <option value="Mid">Mid Level</option>
+                    <option value="Senior">Senior Level</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Interview Type</label>
+                <select id="interviewType" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                    <option value="Technical">Technical</option>
+                    <option value="Behavioral">Behavioral</option>
+                    <option value="System Design">System Design</option>
+                    <option value="Resume Deep-Dive">Resume Deep-Dive</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Mode</label>
+                <select id="mode" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                    <option value="Self-Paced">Self-Paced (Take your time)</option>
+                    <option value="Timed">Timed (Realistic constraints)</option>
+                </select>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700">Reference Resume (Optional)</label>
+                <select id="resumeReference" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                    <option value="">None</option>
+                    <% resumeVersions.forEach(resume => { %>
+                        <option value="<%= resume._id %>"><%= resume.originalName || 'Resume ' + new Date(resume.uploadedAt).toLocaleDateString() %></option>
+                    <% }); %>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">If selected, the AI will ask questions tailored to your experience.</p>
+            </div>
+
+            <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700">Start Interview</button>
+            <div id="setupError" class="text-red-500 text-sm mt-3 hidden"></div>
+        </form>
+    </div>
+</div>
+
+<script>
+async function handleSetup(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    btn.disabled = true;
+    btn.innerText = 'Initializing...';
+    
+    const payload = {
+        role: document.getElementById('role').value,
+        experienceLevel: document.getElementById('experienceLevel').value,
+        interviewType: document.getElementById('interviewType').value,
+        mode: document.getElementById('mode').value,
+        resumeReference: document.getElementById('resumeReference').value || null
+    };
+
+    try {
+        const res = await fetch('/interview/setup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (data.error) throw new Error(data.error);
+        window.location.href = `/interview/session/${data.sessionId}`;
+    } catch (err) {
+        document.getElementById('setupError').innerText = err.message;
+        document.getElementById('setupError').classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerText = 'Start Interview';
+    }
+}
+</script>
+
+
+

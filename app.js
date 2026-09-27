@@ -151,6 +151,8 @@ app.use('/admin', adminRoutes);
 app.use('/', chatRoutes);
 app.use('/', notificationRoutes);
 app.use('/', activityRoutes);
+app.use('/', require('./routes/interview'));
+app.use('/', require('./routes/problems'));
 app.use('/api', activityRoutes);
 app.use('/api/v1', analyticsRoutes);
 

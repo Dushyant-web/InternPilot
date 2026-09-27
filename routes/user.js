@@ -78,13 +78,14 @@ function escapeRegExp(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function resumeVersionPayload({ label, fileUrl, fileName, createdAt = new Date() }) {
+function resumeVersionPayload({ label, fileUrl, fileName, text, createdAt = new Date() }) {
     const normalizedLabel = typeof label === 'string' ? label.trim().slice(0, 100) : '';
     const normalizedFileName = typeof fileName === 'string' ? fileName.trim().slice(0, 180) : '';
     return {
         label: normalizedLabel || normalizedFileName || 'Resume version',
         fileUrl,
         fileName: normalizedFileName,
+        text: text || '',
         isDefault: true,
         createdAt
     };
@@ -404,18 +405,18 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
             resumeUrl = `/uploads/resumes/${uniqueFileName}`;
         }
 
-        let text = '';
+        let text = ''; console.log('File size received:', req.file.buffer.length);
         try {
             const isPdf = req.file.mimetype === 'application/pdf' ||
                           req.file.mimetype === 'application/x-pdf' ||
                           (req.file.originalname || '').toLowerCase().endsWith('.pdf');
             if (isPdf) {
-                text = await extractPdfText(req.file.buffer);
+                text = await extractPdfText(req.file.buffer); console.log('Extracted text length:', text.length);
             } else {
                 text = await extractDocxText(req.file.buffer);
             }
         } catch (extractError) {
-            console.warn('Text extraction warning:', extractError.message);
+            console.warn('Text extraction warning:', extractError); console.log('Buffer size:', req.file.buffer.length);
         }
 
         const skillBank = [
@@ -443,6 +444,7 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
         await recordResumeParse(req, {
             resumeUrl,
             fileName: resumeOriginalName,
+            text: typeof text !== 'undefined' ? text : req.body.resumeText,
             text,
             skills: extractedSkills,
             qualification: extractedQualification
@@ -509,6 +511,7 @@ router.post('/candidate/parse-resume', isAuthenticated, authorize('candidate'), 
             label: resumeVersionLabel,
             fileUrl: resumeUrl,
             fileName: resumeOriginalName,
+            text: typeof text !== 'undefined' ? text : req.body.resumeText,
             createdAt: resumeUploadedAt
         }));
         await Recommendation.deleteMany({ candidate: userId });
@@ -628,6 +631,7 @@ router.post('/candidate/profile/confirm-update', isAuthenticated, authorize('can
                 label: resumeVersionLabel,
                 fileUrl: resumeUrl,
                 fileName: resumeOriginalName,
+            text: typeof text !== 'undefined' ? text : req.body.resumeText,
                 createdAt: updateDoc.$set.resumeUploadedAt
             }));
         }
@@ -1157,3 +1161,5 @@ router.get('/recommendations/:userId', isAuthenticated, authorize('candidate'), 
 router.analyzeResumeQuality = analyzeResumeQuality;
 
 module.exports = router;
+
+
