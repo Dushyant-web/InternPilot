@@ -574,6 +574,64 @@ router.get('/company/internships/:id/applicants', isAuthenticated, requireCompan
     }
 });
 
+const handleCandidateComparison = async (req, res) => {
+    try {
+        const internshipId = req.params.id;
+
+        if (!mongoose.Types.ObjectId.isValid(internshipId)) {
+            if (req.flash) req.flash('error_msg', 'Invalid internship identifier.');
+            return res.redirect('/company/dashboard');
+        }
+
+        const internship = await Internship.findOne({ _id: internshipId, ...companyInternshipQuery(req.company) });
+        if (!internship) {
+            if (req.flash) req.flash('error_msg', 'Internship posting not found.');
+            return res.redirect('/company/dashboard');
+        }
+
+        let rawAppIds = req.query.appIds || req.body.appIds || req.query.applications || req.body.applications;
+        let appIds = [];
+
+        if (Array.isArray(rawAppIds)) {
+            appIds = rawAppIds;
+        } else if (typeof rawAppIds === 'string') {
+            appIds = rawAppIds.split(',').map(id => id.trim()).filter(Boolean);
+        }
+
+        const validAppIds = Array.from(new Set(appIds)).filter(id => mongoose.Types.ObjectId.isValid(id));
+
+        if (validAppIds.length < 2 || validAppIds.length > 4) {
+            if (req.flash) req.flash('error_msg', 'Please select between 2 and 4 candidates to compare.');
+            return res.redirect(`/company/internships/${internshipId}/applicants`);
+        }
+
+        const applications = await Application.find({
+            _id: { $in: validAppIds },
+            internship: internshipId
+        })
+        .populate('candidate')
+        .populate('notes.createdBy');
+
+        if (!applications || applications.length < 2) {
+            if (req.flash) req.flash('error_msg', 'Selected candidates could not be loaded for comparison.');
+            return res.redirect(`/company/internships/${internshipId}/applicants`);
+        }
+
+        res.render('company/candidate-comparison', {
+            user: req.user,
+            internship,
+            applications,
+            permissions: req.companyPermissions
+        });
+    } catch (error) {
+        console.error('Error loading candidate comparison:', error);
+        res.status(500).send('Database Error');
+    }
+};
+
+router.get('/company/internships/:id/compare', isAuthenticated, requireCompanyPermission('applications:view'), handleCandidateComparison);
+router.post('/company/internships/:id/compare', isAuthenticated, requireCompanyPermission('applications:view'), handleCandidateComparison);
+
 router.post('/company/applications/:id/notes', isAuthenticated, requireCompanyPermission('applications:review'), async (req, res) => {
     try {
         const { text } = req.body;
@@ -599,7 +657,8 @@ router.post('/company/applications/:id/notes', isAuthenticated, requireCompanyPe
         await application.save();
 
         if (req.flash) req.flash('success_msg', 'Note added successfully!');
-        res.redirect(`/company/internships/${internshipId}/applicants`);
+        const referrer = req.get('Referrer');
+        res.redirect(referrer || `/company/internships/${internshipId}/applicants`);
     } catch (error) {
         console.error('Error adding note:', error);
         res.status(500).send('Database Error');
@@ -640,7 +699,8 @@ router.post('/company/applications/:id/notes/:noteId/edit', isAuthenticated, req
         await application.save();
 
         if (req.flash) req.flash('success_msg', 'Note updated successfully!');
-        res.redirect(`/company/internships/${internshipId}/applicants`);
+        const referrer = req.get('Referrer');
+        res.redirect(referrer || `/company/internships/${internshipId}/applicants`);
     } catch (error) {
         console.error('Error updating note:', error);
         res.status(500).send('Database Error');
@@ -674,7 +734,8 @@ router.post('/company/applications/:id/notes/:noteId/delete', isAuthenticated, r
         await application.save();
 
         if (req.flash) req.flash('success_msg', 'Note deleted successfully!');
-        res.redirect(`/company/internships/${internshipId}/applicants`);
+        const referrer = req.get('Referrer');
+        res.redirect(referrer || `/company/internships/${internshipId}/applicants`);
     } catch (error) {
         console.error('Error deleting note:', error);
         res.status(500).send('Database Error');
