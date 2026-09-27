@@ -221,12 +221,16 @@ function appendToTranscript(role, text) {
     const wrapper = document.createElement('div');
     wrapper.className = role === 'ai' ? "flex gap-3 mb-4" : "flex gap-3 flex-row-reverse mb-4";
     
-    wrapper.innerHTML = `
-        <div class="w-8 h-8 rounded-full ${role==='ai'?'bg-blue-600':'bg-green-600'} flex items-center justify-center text-white font-bold flex-shrink-0">${role==='ai'?'AI':'You'}</div>
-        <div class="${role==='ai'?'bg-blue-100 rounded-tl-none':'bg-green-100 rounded-tr-none'} p-3 rounded-lg max-w-[85%] text-gray-800">
-            ${text}
-        </div>
-    `;
+    const avatar = document.createElement('div');
+    avatar.className = `w-8 h-8 rounded-full ${role === 'ai' ? 'bg-blue-600' : 'bg-green-600'} flex items-center justify-center text-white font-bold flex-shrink-0`;
+    avatar.textContent = role === 'ai' ? 'AI' : 'You';
+
+    const bubble = document.createElement('div');
+    bubble.className = `${role === 'ai' ? 'bg-blue-100 rounded-tl-none' : 'bg-green-100 rounded-tr-none'} p-3 rounded-lg max-w-[85%] text-gray-800 whitespace-pre-wrap`;
+    bubble.textContent = text;
+
+    wrapper.appendChild(avatar);
+    wrapper.appendChild(bubble);
     area.appendChild(wrapper);
     area.scrollTop = area.scrollHeight;
 }
@@ -266,6 +270,7 @@ async function submitAnswer(forced = false) {
         
         if (data.question) {
             appendToTranscript('ai', data.question);
+            speakText(data.question);
         }
         
         // Update Turn Counter in UI

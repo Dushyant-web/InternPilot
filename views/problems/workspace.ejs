@@ -83,7 +83,7 @@
                                 <span id="status_<%= problem._id %>" class="text-sm text-gray-500">
                                     <%= problem.submittedAt ? 'Last saved: ' + new Date(problem.submittedAt).toLocaleString() : 'Not saved yet' %>
                                 </span>
-                                <button onclick="saveSolution('<%= problem._id %>')" class="bg-gray-800 text-white px-5 py-2.5 rounded-lg hover:bg-gray-900 font-medium transition-colors">Save Code Progress</button>
+                                <button onclick="saveSolution('<%= problem._id %>', this)" class="bg-gray-800 text-white px-5 py-2.5 rounded-lg hover:bg-gray-900 font-medium transition-colors">Save Code Progress</button>
                             </div>
                         </div>
 
@@ -151,7 +151,9 @@
     function stopRecording(problemId) {
         if(mediaRecorders[problemId]) {
             mediaRecorders[problemId].stop();
-            videoStreams[problemId].getTracks().forEach(track => track.stop());
+            if (videoStreams[problemId]) {
+                videoStreams[problemId].getTracks().forEach(track => track.stop());
+            }
             
             const preview = document.getElementById(`preview_${problemId}`);
             preview.muted = false;
@@ -191,12 +193,14 @@
         }
     }
 
-    async function saveSolution(problemId) {
+    async function saveSolution(problemId, btnElement) {
         const solution = editors[problemId] ? editors[problemId].getValue() : '';
         document.getElementById(`solution_${problemId}`).value = solution;
-        const btn = event.target;
-        btn.disabled = true;
-        btn.innerText = 'Saving...';
+        const btn = btnElement || (typeof event !== 'undefined' ? event.target : null);
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = 'Saving...';
+        }
         
         try {
             const res = await fetch(`/problems/set/<%= problemSet._id %>/submit/${problemId}`, {
@@ -211,8 +215,10 @@
         } catch (err) {
             alert('Failed to save: ' + err.message);
         } finally {
-            btn.disabled = false;
-            btn.innerText = 'Save Code Progress';
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = 'Save Code Progress';
+            }
         }
     }
 
