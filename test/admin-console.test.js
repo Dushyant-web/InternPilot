@@ -617,3 +617,18 @@ test('deleted accounts are not linked from the audit log', () => {
     assert.match(html, /Deleted an account/);
     assert.doesNotMatch(html, /href="\/admin\/users\//);
 });
+
+test('the user list links straight to the delete panel, only for accounts that can be deleted', () => {
+    const candidateId = id();
+    const html = render('admin-console/users.ejs', {
+        page: 1, pages: 1, total: 2,
+        items: [
+            { _id: candidateId, name: 'Asha', email: 'a@x.in', role: 'candidate', roleLabel: 'Candidate', deletable: true, joinedLabel: '' },
+            { _id: id(), name: 'Owner', email: 'o@x.in', role: 'company', roleLabel: 'Company', deletable: false, joinedLabel: '' }
+        ],
+        filters: { q: '', role: '', status: '' },
+        roles: directory.ROLES
+    });
+    assert.equal((html.match(/data-delete-link/g) || []).length, 1);
+    assert.match(html, new RegExp(`href="/admin/users/${candidateId}#dangerZone"`));
+});

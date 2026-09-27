@@ -22,7 +22,7 @@ const searchPattern = q => {
 const pageOf = value => Math.max(1, Math.min(1000, parseInt(value, 10) || 1));
 const companyIdOf = user => user.companyId || (user.role === 'company' ? user._id : null);
 
-async function listUsers({ q, role, status, page } = {}) {
+async function listUsers({ q, role, status, page } = {}, admin = null) {
     const query = {};
     if (ROLES[role]) query.role = role;
     const pattern = searchPattern(q);
@@ -48,6 +48,8 @@ async function listUsers({ q, role, status, page } = {}) {
             ...u,
             roleLabel: ROLES[u.role] || u.role,
             suspended: suspended.has(String(u._id)),
+            // Deleting still goes through the confirmation panel on the user page.
+            deletable: Boolean(admin) && !deletionBlocker(admin, u),
             joinedLabel: u.createdAt ? formatLocalizedDateTime(u.createdAt) : ''
         })),
         page: current,

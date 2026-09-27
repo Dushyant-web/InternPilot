@@ -73,7 +73,7 @@ router.get('/admin/users', ...adminOnly, section('users'), async (req, res, next
             status: String(req.query.status || ''),
             page: req.query.page
         };
-        const result = await directory.listUsers(filters);
+        const result = await directory.listUsers(filters, req.user);
         res.render('admin-console/users', { ...result, filters, roles: directory.ROLES });
     } catch (err) {
         next(err);
