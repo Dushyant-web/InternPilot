@@ -12,7 +12,7 @@ const Internship = require('../models/Internship');
 const SavedSearch = require('../models/SavedSearch');
 const { notifyCandidateWithdrawal } = require('../utils/recruiterNotifications');
 const { isAuthenticated, authorize } = require('../middleware/auth');
-const { formatRelativeTime, formatLocalizedDateTime } = require('../utils/dateFormat');
+const { formatRelativeTime, formatLocalizedDateTime, formatDeadlineUrgency } = require('../utils/dateFormat');
 const { filterAndSortApplications } = require('../utils/applicationSearch');
 const {
     normalizeSavedSearchCriteria,
@@ -127,7 +127,7 @@ async function getPublishedListingsForSavedSearches() {
 
 /**
  * GET /candidate/saved-internships
- * Renders the saved internships dashboard.
+ * Renders the saved internships dashboard with search, sector filtering, and deadline indicators.
  */
 router.get('/candidate/saved-internships', isAuthenticated, authorize('candidate'), async (req, res) => {
     try {
@@ -135,10 +135,52 @@ router.get('/candidate/saved-internships', isAuthenticated, authorize('candidate
             path: 'savedInternships',
             populate: { path: 'companyId', select: 'companyName' }
         }).lean();
-        
+
+        const rawSaved = (user && user.savedInternships ? user.savedInternships : []).filter(Boolean);
+
+        // Fetch applications submitted by this candidate for any of the saved internships
+        const internshipIds = rawSaved.map(item => item._id);
+        const applications = internshipIds.length > 0
+            ? await Application.find({
+                candidate: req.user._id,
+                internship: { $in: internshipIds }
+            }).select('internship status appliedAt').lean()
+            : [];
+
+        const applicationMap = new Map();
+        applications.forEach(app => {
+            if (app.internship) {
+                applicationMap.set(String(app.internship), app);
+            }
+        });
+
+        const now = new Date();
+        const enrichedInternships = rawSaved.map(item => {
+            const app = applicationMap.get(String(item._id));
+            const deadlineInfo = formatDeadlineUrgency(item.applicationDeadline, now);
+            return {
+                ...item,
+                hasApplied: Boolean(app),
+                applicationStatus: app ? app.status : null,
+                appliedAt: app ? app.appliedAt : null,
+                deadlineInfo
+            };
+        });
+
+        const sectors = Array.from(new Set(
+            enrichedInternships
+                .map(item => item.sector && item.sector.trim())
+                .filter(Boolean)
+        )).sort((a, b) => a.localeCompare(b));
+
         res.render('candidate/saved-internships', {
-            internships: user.savedInternships || [],
-            currentUser: req.user
+            internships: enrichedInternships,
+            currentUser: req.user,
+            sectors,
+            searchQuery: req.query.q || '',
+            selectedSector: req.query.sector || '',
+            selectedStatus: req.query.status || '',
+            formatDeadlineUrgency
         });
     } catch (error) {
         console.error('Error fetching saved internships:', error);
