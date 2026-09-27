@@ -50,7 +50,7 @@
 
     const activeSearchQuery = typeof searchQuery === 'string' ? searchQuery : '';
     const activeStatusFilter = typeof statusFilter === 'string' ? statusFilter : 'all';
-    const activeSort = typeof sortOrder === 'string' ? sortOrder : 'applied_desc';
+    const activeSort = typeof sort === 'string' ? sort : 'applied_desc';
     const totalCount = (typeof stats !== 'undefined' && stats && Number.isFinite(Number(stats.total)))
         ? Number(stats.total)
         : safeApplications.length;

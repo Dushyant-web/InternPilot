@@ -6,6 +6,8 @@ const NAVIGATION_SECTIONS = Object.freeze({
     savedInternships: ['/candidate/saved-internships'],
     savedSearches: ['/candidate/saved-searches'],
     recommendations: ['/recommendations'],
+    interview: ['/interview'],
+    problems: ['/problems'],
     notifications: ['/notifications'],
     companyNotifications: ['/company/notifications'],
     companyDashboard: ['/company/dashboard', '/company/internships', '/company/applications'],

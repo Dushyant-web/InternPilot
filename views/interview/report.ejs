@@ -17,11 +17,18 @@
             
             <div class="bg-white p-6 rounded-lg shadow col-span-2">
                 <h2 class="text-xl font-semibold text-gray-700 mb-4">Dimension Scores</h2>
+                <%
+                    const dimensionEntries = session.evaluation && session.evaluation.dimensionScores
+                        ? (typeof session.evaluation.dimensionScores.entries === 'function'
+                            ? Array.from(session.evaluation.dimensionScores.entries())
+                            : Object.entries(session.evaluation.dimensionScores))
+                        : [];
+                %>
                 <div class="space-y-3">
-                    <% for (const [key, value] of session.evaluation.dimensionScores.entries()) { %>
+                    <% for (const [key, value] of dimensionEntries) { %>
                         <div>
                             <div class="flex justify-between text-sm font-medium mb-1 capitalize">
-                                <span><%= key.replace(/([A-Z])/g, ' $1').trim() %></span>
+                                <span><%= String(key).replace(/([A-Z])/g, ' $1').trim() %></span>
                                 <span><%= value %>/100</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2.5">
@@ -40,18 +47,18 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-semibold text-green-700 mb-4"><i class="fa fa-check-circle"></i> Strengths</h2>
+                <h2 class="text-xl font-semibold text-green-700 mb-4 flex items-center gap-2"><i class="ph-bold ph-check-circle text-green-600"></i> Strengths</h2>
                 <ul class="list-disc pl-5 space-y-2 text-gray-600">
-                    <% session.evaluation.strengths.forEach(s => { %>
+                    <% (session.evaluation.strengths || []).forEach(s => { %>
                         <li><%= s %></li>
                     <% }) %>
                 </ul>
             </div>
             
             <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-semibold text-red-700 mb-4"><i class="fa fa-arrow-up"></i> Areas for Improvement</h2>
+                <h2 class="text-xl font-semibold text-red-700 mb-4 flex items-center gap-2"><i class="ph-bold ph-arrow-up text-red-600"></i> Areas for Improvement</h2>
                 <ul class="list-disc pl-5 space-y-2 text-gray-600">
-                    <% session.evaluation.improvements.forEach(i => { %>
+                    <% (session.evaluation.improvements || []).forEach(i => { %>
                         <li><%= i %></li>
                     <% }) %>
                 </ul>
