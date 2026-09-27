@@ -34,12 +34,13 @@
     <!-- Chat / Transcript Panel -->
     <div class="w-full md:w-2/3 flex flex-col bg-white rounded-lg shadow overflow-hidden">
         <div id="transcriptArea" class="flex-1 p-4 overflow-y-auto bg-gray-50 flex flex-col gap-4">
-            <% if (session.transcript.length === 0) { %>
+            <% const transcript = Array.isArray(session.transcript) ? session.transcript : []; %>
+            <% if (transcript.length === 0) { %>
                 <div class="text-center text-gray-500 mt-10" id="welcomeMsg">
                     The AI is preparing your first question...
                 </div>
             <% } else { %>
-                <% session.transcript.forEach((t, i) => { %>
+                <% transcript.forEach((t, i) => { %>
                     <!-- Question -->
                     <div class="flex gap-3">
                         <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold flex-shrink-0">AI</div>
@@ -180,7 +181,7 @@ async function toggleVideo() {
 // Speech to text logic
 let recognition = null;
 if ('webkitSpeechRecognition' in window) {
-    recognition = new webkitSpeechRecognition();
+    recognition = new window.webkitSpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
     
@@ -200,7 +201,6 @@ if ('webkitSpeechRecognition' in window) {
 let isRecording = false;
 function toggleMic() {
     if (!recognition) return alert('Speech recognition not supported in this browser.');
-    const icon = document.getElementById('micIcon');
     const btn = document.getElementById('micBtn');
     
     if (isRecording) {
@@ -209,10 +209,14 @@ function toggleMic() {
         btn.classList.remove('bg-red-500', 'text-white');
         btn.classList.add('bg-gray-200');
     } else {
-        recognition.start();
-        isRecording = true;
-        btn.classList.remove('bg-gray-200');
-        btn.classList.add('bg-red-500', 'text-white');
+        try {
+            recognition.start();
+            isRecording = true;
+            btn.classList.remove('bg-gray-200');
+            btn.classList.add('bg-red-500', 'text-white');
+        } catch (error) {
+            isRecording = false;
+        }
     }
 }
 
@@ -242,18 +246,11 @@ async function submitAnswer(forced = false) {
     if (forced && !answer) answer = "[Time expired, no answer provided]";
     if (!answer && !isInitial) return;
     
-    if (!isInitial) appendToTranscript('user', answer);
-    input.value = '';
-    
     if (turnTimer) clearInterval(turnTimer);
     
     const duration = Math.floor((Date.now() - startTime) / 1000);
     document.getElementById('typingIndicator').classList.remove('hidden');
     document.getElementById('submitBtn').disabled = true;
-
-    if (isInitial && document.getElementById('welcomeMsg')) {
-        document.getElementById('welcomeMsg').remove();
-    }
 
     try {
         const res = await fetch(`/interview/session/${sessionId}/turn`, {
@@ -262,6 +259,13 @@ async function submitAnswer(forced = false) {
             body: JSON.stringify({ answer, durationSeconds: duration })
         });
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to submit answer.');
+
+        if (!isInitial) appendToTranscript('user', answer);
+        input.value = '';
+        if (isInitial && document.getElementById('welcomeMsg')) {
+            document.getElementById('welcomeMsg').remove();
+        }
         
         if (data.action === 'finish') {
             window.location.href = `/interview/session/${sessionId}/report`;
@@ -284,7 +288,7 @@ async function submitAnswer(forced = false) {
         startTimer();
         
     } catch (err) {
-        alert('Failed to submit answer.');
+        alert(err.message || 'Failed to submit answer.');
     } finally {
         document.getElementById('typingIndicator').classList.add('hidden');
         document.getElementById('submitBtn').disabled = false;
@@ -295,26 +299,34 @@ async function requestHint() {
     try {
         const res = await fetch(`/interview/session/${sessionId}/hint`, { method: 'POST' });
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to request a hint.');
         if (data.hint) appendToTranscript('ai', `💡 Hint: ${data.hint}`);
-        if (data.error) alert(data.error);
-    } catch (err) {}
+    } catch (err) { alert(err.message || 'Failed to request a hint.'); }
 }
 
 async function requestReframe() {
     try {
         const res = await fetch(`/interview/session/${sessionId}/reframe`, { method: 'POST' });
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to reframe the question.');
         if (data.reframed_question) appendToTranscript('ai', `🔄 Reframed: ${data.reframed_question}`);
-        if (data.error) alert(data.error);
-    } catch (err) {}
+    } catch (err) { alert(err.message || 'Failed to reframe the question.'); }
 }
 
 async function completeInterview() {
     if(confirm('Are you sure you want to end the interview now?')) {
         document.getElementById('submitBtn').innerText = 'Ending...';
         document.getElementById('submitBtn').disabled = true;
-        await fetch(`/interview/session/${sessionId}/complete`, { method: 'POST' });
-        window.location.href = `/interview/session/${sessionId}/report`;
+        try {
+            const res = await fetch(`/interview/session/${sessionId}/complete`, { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.error || 'Failed to complete the interview.');
+            window.location.href = `/interview/session/${sessionId}/report`;
+        } catch (err) {
+            alert(err.message || 'Failed to complete the interview.');
+            document.getElementById('submitBtn').innerText = 'Submit';
+            document.getElementById('submitBtn').disabled = false;
+        }
     }
 }
 

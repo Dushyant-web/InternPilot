@@ -1,6 +1,8 @@
 <% layout('layouts/boilerplate') %>
 
 <div class="max-w-5xl mx-auto py-8 px-4">
+    <% const evaluation = session.evaluation || {}; %>
+    <% const transcript = Array.isArray(session.transcript) ? session.transcript : []; %>
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-900">Interview Evaluation Report</h1>
         <a href="/interview" class="text-blue-600 hover:underline">Back to Hub</a>
@@ -10,29 +12,36 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white p-6 rounded-lg shadow col-span-1 flex flex-col items-center justify-center">
                 <h2 class="text-xl font-semibold text-gray-700 mb-2">Overall Score</h2>
-                <div class="text-5xl font-bold <%= session.evaluation.overallScore >= 80 ? 'text-green-600' : (session.evaluation.overallScore >= 60 ? 'text-yellow-500' : 'text-red-500') %>">
-                    <%= session.evaluation.overallScore %>/100
+                <% const overallScore = Number.isFinite(Number(evaluation.overallScore))
+                    ? Math.max(0, Math.min(100, Number(evaluation.overallScore)))
+                    : 0; %>
+                <div class="text-5xl font-bold <%= overallScore >= 80 ? 'text-green-600' : (overallScore >= 60 ? 'text-yellow-500' : 'text-red-500') %>">
+                    <%= overallScore %>/100
                 </div>
             </div>
             
             <div class="bg-white p-6 rounded-lg shadow col-span-2">
                 <h2 class="text-xl font-semibold text-gray-700 mb-4">Dimension Scores</h2>
                 <%
-                    const dimensionEntries = session.evaluation && session.evaluation.dimensionScores
-                        ? (typeof session.evaluation.dimensionScores.entries === 'function'
-                            ? Array.from(session.evaluation.dimensionScores.entries())
-                            : Object.entries(session.evaluation.dimensionScores))
+                    const dimensionScores = evaluation.dimensionScores;
+                    const dimensionEntries = dimensionScores
+                        ? (typeof dimensionScores.entries === 'function'
+                            ? Array.from(dimensionScores.entries())
+                            : Object.entries(dimensionScores))
                         : [];
                 %>
                 <div class="space-y-3">
                     <% for (const [key, value] of dimensionEntries) { %>
+                        <% const dimensionScore = Number.isFinite(Number(value))
+                            ? Math.max(0, Math.min(100, Number(value)))
+                            : 0; %>
                         <div>
                             <div class="flex justify-between text-sm font-medium mb-1 capitalize">
                                 <span><%= String(key).replace(/([A-Z])/g, ' $1').trim() %></span>
-                                <span><%= value %>/100</span>
+                                <span><%= dimensionScore %>/100</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2.5">
-                                <div class="bg-blue-600 h-2.5 rounded-full" style="width: <%= value %>%"></div>
+                                <div class="bg-blue-600 h-2.5 rounded-full" style="width: <%= dimensionScore %>%"></div>
                             </div>
                         </div>
                     <% } %>
@@ -42,14 +51,14 @@
 
         <div class="bg-white p-6 rounded-lg shadow mb-8">
             <h2 class="text-xl font-semibold text-gray-700 mb-2">Summary Feedback</h2>
-            <p class="text-gray-600"><%= session.evaluation.feedback %></p>
+            <p class="text-gray-600"><%= evaluation.feedback || 'No summary feedback is available.' %></p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div class="bg-white p-6 rounded-lg shadow">
                 <h2 class="text-xl font-semibold text-green-700 mb-4 flex items-center gap-2"><i class="ph-bold ph-check-circle text-green-600"></i> Strengths</h2>
                 <ul class="list-disc pl-5 space-y-2 text-gray-600">
-                    <% (session.evaluation.strengths || []).forEach(s => { %>
+                    <% (Array.isArray(evaluation.strengths) ? evaluation.strengths : []).forEach(s => { %>
                         <li><%= s %></li>
                     <% }) %>
                 </ul>
@@ -58,7 +67,7 @@
             <div class="bg-white p-6 rounded-lg shadow">
                 <h2 class="text-xl font-semibold text-red-700 mb-4 flex items-center gap-2"><i class="ph-bold ph-arrow-up text-red-600"></i> Areas for Improvement</h2>
                 <ul class="list-disc pl-5 space-y-2 text-gray-600">
-                    <% (session.evaluation.improvements || []).forEach(i => { %>
+                    <% (Array.isArray(evaluation.improvements) ? evaluation.improvements : []).forEach(i => { %>
                         <li><%= i %></li>
                     <% }) %>
                 </ul>
@@ -73,7 +82,7 @@
     <div class="bg-white p-6 rounded-lg shadow">
         <h2 class="text-xl font-semibold text-gray-700 mb-4">Interview Transcript</h2>
         <div class="space-y-4">
-            <% session.transcript.forEach((t, i) => { %>
+            <% transcript.forEach((t, i) => { %>
                 <div class="border-b pb-4 last:border-0">
                     <p class="font-semibold text-gray-800 mb-1">Q<%= i+1 %>: <%= t.question %></p>
                     <p class="text-gray-600 pl-4 border-l-4 border-gray-200">
