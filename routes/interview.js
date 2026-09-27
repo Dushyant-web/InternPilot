@@ -5,6 +5,10 @@ const MockInterviewSession = require('../models/MockInterviewSession');
 const User = require('../models/User');
 const { isAuthenticated, authorize } = require('../middleware/auth');
 const aiClient = require('../utils/aiClient');
+const { rateLimit } = require('../utils/security/rateLimiter');
+
+// A per-user burst limit on the AI endpoints, on top of the daily/turn caps (#194).
+const aiLimiter = rateLimit({ name: 'ai', windowMs: 60 * 1000, max: 12, by: 'user', json: true, message: 'You are sending AI requests too quickly.' });
 
 const MAX_SESSIONS_PER_DAY = 3;
 const MAX_TURNS = 10;
@@ -72,7 +76,7 @@ router.get('/interview/setup', isAuthenticated, authorize('candidate'), async (r
 });
 
 // Create Session
-router.post('/interview/setup', isAuthenticated, authorize('candidate'), async (req, res) => {
+router.post('/interview/setup', isAuthenticated, authorize('candidate'), aiLimiter, async (req, res) => {
     try {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -141,7 +145,7 @@ router.get('/interview/session/:id', isAuthenticated, authorize('candidate'), as
 });
 
 // Submit Answer & Get Next Turn
-router.post('/interview/session/:id/turn', isAuthenticated, authorize('candidate'), async (req, res) => {
+router.post('/interview/session/:id/turn', isAuthenticated, authorize('candidate'), aiLimiter, async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
             return res.status(404).json({ error: 'Session not found' });
@@ -240,7 +244,7 @@ Do NOT output any internal chain-of-thought or reasoning.`;
 });
 
 // Request Hint
-router.post('/interview/session/:id/hint', isAuthenticated, authorize('candidate'), async (req, res) => {
+router.post('/interview/session/:id/hint', isAuthenticated, authorize('candidate'), aiLimiter, async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
             return res.status(404).json({ error: 'Session not found' });
@@ -277,7 +281,7 @@ Provide a brief, encouraging hint to help them structure their answer. Do NOT gi
 });
 
 // Reframe Question
-router.post('/interview/session/:id/reframe', isAuthenticated, authorize('candidate'), async (req, res) => {
+router.post('/interview/session/:id/reframe', isAuthenticated, authorize('candidate'), aiLimiter, async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
             return res.status(404).json({ error: 'Session not found' });

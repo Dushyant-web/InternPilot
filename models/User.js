@@ -154,6 +154,9 @@ const userSchema = new mongoose.Schema({
     otp: { type: String },
     otpExpires: { type: Date },
     lastOtpSentAt: { type: Date },
+    // Wrong-code attempts for the current OTP. Reset on success or a new code;
+    // once it hits the limit the code is cleared so it must be re-requested (#194).
+    otpAttempts: { type: Number, default: 0 },
 
     createdAt: { type: Date, default: Date.now }
 }, { toJSON: { virtuals: true }, toObject: { virtuals: true } });

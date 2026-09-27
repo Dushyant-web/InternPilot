@@ -46,6 +46,9 @@ const analyticsRoutes = require('./routes/analytics');
 const app = express();
 const port = process.env.PORT || 8080;
 
+// Don't advertise the framework to attackers.
+app.disable('x-powered-by');
+
 // Safe URL normalization is available to templates that render stored links.
 app.locals.sanitizeHttpUrl = sanitizeHttpUrl;
 
@@ -54,9 +57,14 @@ app.engine("ejs", ejsMate);
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
+// Security headers on every response, static files included (#194).
+app.use(require('./middleware/securityHeaders')());
+
 // Middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+// Remove any MongoDB operator keys ($... / dotted) from parsed input (#194).
+app.use(require('./middleware/sanitizeRequest'));
 app.use(methodOverride("_method"));
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -69,6 +77,11 @@ app.use(session(require('./utils/sessionStore').buildSessionOptions()));
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
+
+// Reject state-changing requests that come from another site (#194). Runs
+// after flash/session so it can flash a message, and before any route acts.
+app.use(require('./middleware/csrfOrigin'));
+
 app.use(require('./routes/adminConsole'));
 
 // Local variables middleware

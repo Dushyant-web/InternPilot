@@ -6,6 +6,11 @@ const User = require('../models/User');
 const Internship = require('../models/Internship');
 const { isAuthenticated, authorize } = require('../middleware/auth');
 const { buildSkillProfiles } = require('../utils/skillProfiles');
+const { rateLimit } = require('../utils/security/rateLimiter');
+
+// A per-user burst limit on the AI endpoint so one account can't hammer it and
+// exhaust the shared Gemini quota (#194, related to #73).
+const aiLimiter = rateLimit({ name: 'ai', windowMs: 60 * 1000, max: 12, by: 'user', json: true, message: 'You are sending AI requests too quickly.' });
 
 /**
  * In-memory cache for active internships list to avoid MongoDB cloud network delay on every message.
@@ -211,7 +216,7 @@ const generateAIReply = async (systemPrompt, userMessage) => {
     throw new Error('No AI provider API key configured (neither NVIDIA_API_KEY nor GEMINI_API_KEY is available).');
 };
 
-router.post('/candidate/chat-query', isAuthenticated, authorize('candidate'), async (req, res) => {
+router.post('/candidate/chat-query', isAuthenticated, authorize('candidate'), aiLimiter, async (req, res) => {
     try {
         const { message } = req.body;
         if (!message || typeof message !== 'string' || !message.trim()) {

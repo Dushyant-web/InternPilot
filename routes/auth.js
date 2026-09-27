@@ -4,10 +4,24 @@ const passport = require('passport');
 const crypto = require('crypto');
 const User = require('../models/User');
 const { sendOTPEmail } = require('../utils/sendEmail');
+const { rateLimit } = require('../utils/security/rateLimiter');
+const { validatePassword } = require('../utils/security/passwordPolicy');
 
 const generateSecureOTP = () => {
     return crypto.randomInt(100000, 1000000).toString();
 };
+
+// How many wrong codes before the OTP is thrown away and must be re-requested.
+const OTP_MAX_ATTEMPTS = 5;
+
+// A broad per-IP cap on every auth POST (sign-in, sign-up, codes, reset), plus a
+// tighter per-account cap on sign-in so a single account can't be brute forced
+// even from many IPs (#194). Counters live in MongoDB and expire on their own.
+const authIpLimiter = rateLimit({ name: 'auth-ip', windowMs: 15 * 60 * 1000, max: 50, by: 'ip', message: 'Too many attempts.', redirectTo: () => '/auth/login' });
+const loginLimiter = rateLimit({ name: 'login', windowMs: 15 * 60 * 1000, max: 10, by: 'ip+email', message: 'Too many sign-in attempts.', redirectTo: () => '/auth/login' });
+
+// Limit every POST on this router by IP without touching the GET page renders.
+router.use((req, res, next) => (req.method === 'POST' ? authIpLimiter(req, res, next) : next()));
 
 const redirectIfAuthenticated = (req, res, next) => {
     if (req.isAuthenticated && req.isAuthenticated()) {
@@ -33,6 +47,15 @@ router.post('/register', async (req, res) => {
             console.error('ERROR: Email field is empty or missing in req.body!');
             req.flash('error_msg', 'Email address is required.');
             return res.redirect('/auth/register');
+        }
+
+        // Enforce the password policy wherever a password is supplied (#194).
+        if (password) {
+            const pwError = validatePassword(password, normalizedEmail);
+            if (pwError) {
+                req.flash('error_msg', pwError);
+                return res.redirect('/auth/register');
+            }
         }
 
         const existing = await User.findOne({ email: normalizedEmail });
@@ -61,6 +84,7 @@ router.post('/register', async (req, res) => {
                 existing.otp = otp;
                 existing.otpExpires = now + 10 * 60 * 1000;
                 existing.lastOtpSentAt = now;
+                existing.otpAttempts = 0;
 
                 if (password) existing.password = password; // Update password if provided
 
@@ -166,8 +190,27 @@ router.post('/verify-otp', async (req, res) => {
         console.log(`Verifying OTP for ${email}...`);
         const user = await User.findOne({ email });
 
-        if (!user || user.otp !== otp || !user.otpExpires || user.otpExpires < Date.now()) {
-            req.flash('error_msg', 'Invalid or expired OTP code.');
+        // A missing user or an expired code both give the same generic reply.
+        if (!user || !user.otp || !user.otpExpires || user.otpExpires < Date.now()) {
+            req.flash('error_msg', 'Invalid or expired OTP code. Please request a new one.');
+            return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
+        }
+
+        // Wrong code: count the attempt, and throw the code away after too many,
+        // so a 6-digit code can't be guessed within its 10-minute life (#194).
+        if (user.otp !== otp) {
+            user.otpAttempts = (user.otpAttempts || 0) + 1;
+            if (user.otpAttempts >= OTP_MAX_ATTEMPTS) {
+                user.otp = undefined;
+                user.otpExpires = undefined;
+                user.otpAttempts = 0;
+                await user.save();
+                req.flash('error_msg', 'Too many incorrect codes. Please request a new verification code.');
+                return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
+            }
+            await user.save();
+            const left = OTP_MAX_ATTEMPTS - user.otpAttempts;
+            req.flash('error_msg', `Invalid OTP code. ${left} attempt${left === 1 ? '' : 's'} left before you need a new code.`);
             return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
         }
 
@@ -175,6 +218,7 @@ router.post('/verify-otp', async (req, res) => {
         user.otp = undefined;
         user.otpExpires = undefined;
         user.lastOtpSentAt = undefined;
+        user.otpAttempts = 0;
         await user.save();
 
         console.log(`User ${email} verified successfully.`);
@@ -217,7 +261,8 @@ router.post('/resend-otp', async (req, res) => {
                 $set: {
                     otp,
                     otpExpires,
-                    lastOtpSentAt: now
+                    lastOtpSentAt: now,
+                    otpAttempts: 0
                 }
             },
             { new: true }
@@ -227,8 +272,9 @@ router.post('/resend-otp', async (req, res) => {
             const user = await User.findOne({ email });
 
             if (!user) {
-                req.flash('error_msg', 'User not found. Please register first.');
-                return res.redirect('/auth/register');
+                // Don't reveal whether this email has an account (#194).
+                req.flash('success_msg', 'If your email is awaiting verification, a new code has been sent.');
+                return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
             }
 
             if (user.isEmailVerified) {
@@ -253,7 +299,7 @@ router.post('/resend-otp', async (req, res) => {
     }
 });
 
-router.post('/login', (req, res, next) => {
+router.post('/login', loginLimiter, (req, res, next) => {
     passport.authenticate('local', async (err, user, info) => {
         if (err) return next(err);
         if (!user) {
@@ -330,37 +376,31 @@ router.post('/forgot-password', async (req, res) => {
             return res.redirect('/auth/forgot-password');
         }
 
+        // Always reply the same way so this form can't reveal which emails have
+        // accounts (#194). A code is only really generated and sent when the
+        // account exists and isn't within its resend cooldown.
+        const GENERIC_MESSAGE = 'If an account exists for that email, a password reset code has been sent.';
         const user = await User.findOne({ email });
-        if (!user) {
-            req.flash('error_msg', 'No account found with that email address.');
-            return res.redirect('/auth/forgot-password');
-        }
-
-        const now = Date.now();
-        const COOLDOWN_SECONDS = 60;
-        if (user.lastOtpSentAt) {
-            const elapsedSeconds = Math.floor((now - new Date(user.lastOtpSentAt).getTime()) / 1000);
-            if (elapsedSeconds < COOLDOWN_SECONDS) {
-                const remainingSeconds = COOLDOWN_SECONDS - elapsedSeconds;
-                req.flash('error_msg', `Please wait ${remainingSeconds}s before requesting a new code.`);
-                return res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
+        if (user) {
+            const now = Date.now();
+            const COOLDOWN_SECONDS = 60;
+            const elapsed = user.lastOtpSentAt ? Math.floor((now - new Date(user.lastOtpSentAt).getTime()) / 1000) : Infinity;
+            if (elapsed >= COOLDOWN_SECONDS) {
+                const otp = generateSecureOTP();
+                user.otp = otp;
+                user.otpExpires = new Date(now + 10 * 60 * 1000);
+                user.lastOtpSentAt = new Date(now);
+                user.otpAttempts = 0;
+                await user.save();
+                try {
+                    await sendOTPEmail(email, otp);
+                } catch (emailErr) {
+                    console.error('Failed to send reset OTP email:', emailErr);
+                }
             }
         }
 
-        const otp = generateSecureOTP();
-        user.otp = otp;
-        user.otpExpires = new Date(now + 10 * 60 * 1000);
-        user.lastOtpSentAt = new Date(now);
-        await user.save();
-
-        try {
-            await sendOTPEmail(email, otp);
-            req.flash('success_msg', 'Password reset code sent to your email.');
-        } catch (emailErr) {
-            console.error('Failed to send reset OTP email:', emailErr);
-            req.flash('error_msg', 'Could not send verification code. Please check your email configuration.');
-        }
-
+        req.flash('success_msg', GENERIC_MESSAGE);
         res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
     } catch (err) {
         console.error('Forgot password error:', err);
@@ -391,14 +431,33 @@ router.post('/reset-password', async (req, res) => {
             return res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
         }
 
-        if (newPassword.length < 6) {
-            req.flash('error_msg', 'Password must be at least 6 characters long.');
+        const pwError = validatePassword(newPassword, email);
+        if (pwError) {
+            req.flash('error_msg', pwError);
             return res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
         }
 
         const user = await User.findOne({ email });
-        if (!user || user.otp !== otp || !user.otpExpires || new Date(user.otpExpires).getTime() < Date.now()) {
-            req.flash('error_msg', 'Invalid or expired OTP code.');
+        if (!user || !user.otp || !user.otpExpires || new Date(user.otpExpires).getTime() < Date.now()) {
+            req.flash('error_msg', 'Invalid or expired OTP code. Please request a new one.');
+            return res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
+        }
+
+        // Same guessing protection as verification: too many wrong codes throws
+        // the reset code away, so it can't be brute forced in its lifetime (#194).
+        if (user.otp !== otp) {
+            user.otpAttempts = (user.otpAttempts || 0) + 1;
+            if (user.otpAttempts >= OTP_MAX_ATTEMPTS) {
+                user.otp = undefined;
+                user.otpExpires = undefined;
+                user.otpAttempts = 0;
+                await user.save();
+                req.flash('error_msg', 'Too many incorrect codes. Please request a new reset code.');
+                return res.redirect('/auth/forgot-password');
+            }
+            await user.save();
+            const left = OTP_MAX_ATTEMPTS - user.otpAttempts;
+            req.flash('error_msg', `Invalid OTP code. ${left} attempt${left === 1 ? '' : 's'} left before you need a new code.`);
             return res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
         }
 
@@ -407,6 +466,7 @@ router.post('/reset-password', async (req, res) => {
         user.otp = undefined;
         user.otpExpires = undefined;
         user.lastOtpSentAt = undefined;
+        user.otpAttempts = 0;
         await user.save();
 
         req.flash('success_msg', 'Password reset successfully! You can now log in.');

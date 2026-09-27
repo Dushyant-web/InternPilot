@@ -5,8 +5,12 @@ const ResumeProblemSet = require('../models/ResumeProblemSet');
 const User = require('../models/User');
 const { isAuthenticated, authorize } = require('../middleware/auth');
 const aiClient = require('../utils/aiClient');
+const { rateLimit } = require('../utils/security/rateLimiter');
 
 const MAX_GENERATIONS_PER_DAY = 5;
+
+// A per-user burst limit on the AI endpoints, on top of the daily cap (#194).
+const aiLimiter = rateLimit({ name: 'ai', windowMs: 60 * 1000, max: 12, by: 'user', json: true, message: 'You are sending AI requests too quickly.' });
 
 const extractionSchema = {
     type: "OBJECT",
@@ -60,7 +64,7 @@ router.get('/problems', isAuthenticated, authorize('candidate'), async (req, res
 });
 
 // Extract Resume Preview
-router.post('/problems/extract', isAuthenticated, authorize('candidate'), async (req, res) => {
+router.post('/problems/extract', isAuthenticated, authorize('candidate'), aiLimiter, async (req, res) => {
     try {
         const { resumeVersionId } = req.body;
         if (!resumeVersionId || !mongoose.Types.ObjectId.isValid(resumeVersionId)) {
@@ -98,7 +102,7 @@ ${resume.text}
 });
 
 // Generate Problems from Selection
-router.post('/problems/generate', isAuthenticated, authorize('candidate'), async (req, res) => {
+router.post('/problems/generate', isAuthenticated, authorize('candidate'), aiLimiter, async (req, res) => {
     try {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
