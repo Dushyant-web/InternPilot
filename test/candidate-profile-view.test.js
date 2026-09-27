@@ -73,13 +73,19 @@ test('reviewers get status dropdown with Interview and Hired options', () => {
     assert.match(html, /<option value="Hired"/);
 });
 
-test('candidates in Interview status keep an active status dropdown for reviewers', () => {
+test('candidates in Interview status are never stuck: reviewers can move them on', () => {
+    // A reviewer moves an Interview candidate forward either with the status
+    // dropdown or with a formal offer (#178), whichever the lifecycle offers
+    // (see #176). Either way there must be a way forward.
     const interviewApp = { ...application, status: 'Interview' };
-    const html = render({ application: interviewApp, permissions: ['applications:view', 'applications:review'] });
-    assert.ok(html.includes(`action="/company/applications/${interviewApp._id}/status"`));
-    assert.match(html, /<option value="Interview"\s+selected/);
-    assert.match(html, /<option value="Hired"/);
-    assert.match(html, /<option value="Rejected"/);
+    const statusAction = `action="/company/applications/${interviewApp._id}/status"`;
+    const offerAction = `action="/company/applications/${interviewApp._id}/offers"`;
+
+    const reviewer = render({ application: interviewApp, permissions: ['applications:view', 'applications:review'] });
+    assert.ok(reviewer.includes(statusAction) || reviewer.includes(offerAction), 'a reviewer has a way to move the candidate forward');
+
+    const viewer = render({ application: interviewApp, permissions: ['applications:view'] });
+    assert.ok(!viewer.includes(statusAction) && !viewer.includes(offerAction), 'view-only members cannot change it');
 });
 
 test('the company status update route allows Interview and Hired', () => {
