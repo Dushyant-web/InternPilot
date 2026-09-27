@@ -4,15 +4,18 @@ const { GoogleGenAI } = require('@google/genai');
 
 const User = require('../models/User');
 const Internship = require('../models/Internship');
+const cache = require('../utils/cache');
 const { isAuthenticated, authorize } = require('../middleware/auth');
 const { buildSkillProfiles } = require('../utils/skillProfiles');
 
 /**
- * In-memory cache for active internships list to avoid MongoDB cloud network delay on every message.
+ * The active internships list is cached for 60 seconds to avoid a MongoDB round trip on every
+ * message. With Redis, every instance shares it, so invalidating it on one clears it everywhere.
  */
-let cachedInternships = null;
-let lastInternshipsFetchTime = 0;
-const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+const CHAT_CACHE_KEY = 'chat:active-internships';
+const CHAT_CACHE_SECONDS = 60;
+// The last list this instance saw, served if the database is briefly unreachable.
+let lastChatInternships = [];
 const CHAT_SEARCH_FIELDS = ['title', 'companyName', 'sector', 'requiredSkills', 'description', 'responsibilities'];
 const CHAT_STOP_WORDS = new Set([
     'a', 'an', 'and', 'any', 'are', 'at', 'based', 'company', 'companies', 'does', 'find', 'for',
@@ -87,27 +90,25 @@ const getMessageInternships = async message => {
     }
 };
 
+// Callers don't wait: the cache never throws, and clearing it takes a moment with Redis.
 const invalidateChatCache = () => {
-    cachedInternships = null;
-    lastInternshipsFetchTime = 0;
+    lastChatInternships = [];
+    return cache.del(CHAT_CACHE_KEY);
 };
 
 const getCachedInternships = async () => {
-    const now = Date.now();
-    if (!cachedInternships || now - lastInternshipsFetchTime > CACHE_TTL_MS) {
-        try {
-            cachedInternships = await Internship.find(activeChatFilter())
+    try {
+        lastChatInternships = await cache.getOrSet(CHAT_CACHE_KEY, CHAT_CACHE_SECONDS, () =>
+            Internship.find(activeChatFilter())
                 .select('title companyName location requiredSkills monthlyStipend minQualifications sector')
                 .sort({ createdAt: -1 })
                 .limit(15)
-                .lean();
-            lastInternshipsFetchTime = now;
-        } catch (err) {
-            console.error('Failed to fetch internships for chat cache:', err);
-            return cachedInternships || [];
-        }
+                .lean()
+        );
+    } catch (err) {
+        console.error('Failed to fetch internships for chat cache:', err);
     }
-    return cachedInternships || [];
+    return lastChatInternships || [];
 };
 
 /**

@@ -1,4 +1,4 @@
-const cron = require('node-cron');
+const cron = require('./runOnceCron'); // node-cron, but each run happens on one instance only
 const Internship = require('../models/Internship');
 const Notification = require('../models/Notification');
 const { parseISTEndOfDay } = require('./dateUtils');

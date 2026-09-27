@@ -84,7 +84,8 @@ ${resume.text}
 
         let extraction;
         try {
-            extraction = await aiClient.generateJsonWithRetry(prompt, extractionSchema, ['skills', 'projects', 'achievements']);
+            // The same resume always extracts the same way, so a repeat is served from the cache.
+            extraction = await aiClient.generateJsonCached(prompt, extractionSchema, ['skills', 'projects', 'achievements']);
         } catch (aiErr) {
             console.error('AI Extraction Error:', aiErr);
             return res.status(500).json({ error: 'Failed to extract resume data.' });

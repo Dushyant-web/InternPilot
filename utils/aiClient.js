@@ -1,4 +1,8 @@
 const { GoogleGenAI } = require('@google/genai');
+const cache = require('./cache');
+
+// How long generateJsonCached reuses an answer.
+const AI_CACHE_SECONDS = 24 * 60 * 60;
 
 /**
  * Shared AI Client for Issue #146 (Mock Interview & Problem Generator)
@@ -12,6 +16,7 @@ class AIClient {
         }
         this.defaultModel = 'gemini-2.5-flash';
         this.fallbackModel = 'gemini-2.5-flash';
+        this.cache = cache;
     }
 
     getClient() {
@@ -108,6 +113,18 @@ class AIClient {
 
             throw err;
         }
+    }
+
+    /**
+     * generateJsonWithRetry, reusing the answer for the same model, prompt and schema for a day.
+     * Only for calls whose answer can't change for the same input, such as extracting data from
+     * a resume; interview turns and new problem sets should stay fresh. Failed calls are never
+     * cached, and keys are hashes, so no prompt text ends up in key names.
+     */
+    async generateJsonCached(prompt, responseSchema, requiredFields = [], { ttlSeconds = AI_CACHE_SECONDS } = {}) {
+        const model = process.env.GEMINI_MODEL || this.defaultModel;
+        const key = `ai:${cache.hashKey(model, prompt, responseSchema, requiredFields)}`;
+        return this.cache.getOrSet(key, ttlSeconds, () => this.generateJsonWithRetry(prompt, responseSchema, requiredFields));
     }
 }
 
