@@ -27,6 +27,7 @@ const Internship = require("./models/Internship");
 const Notification = require('./models/Notification');
 const { buildNavigationState } = require('./utils/navigation');
 const { checkPmisEligibility } = require('./utils/pmisEligibility');
+const { calculateProfileCompletion } = require('./utils/profileCompletion');
 const { sanitizeHttpUrl } = require('./utils/safeUrl');
 
 const authRoutes = require("./routes/auth");
@@ -84,6 +85,7 @@ app.use(async (req, res, next) => {
     res.locals.error = req.flash("error");
     res.locals.notificationUnreadCount = 0;
     res.locals.checkPmisEligibility = checkPmisEligibility;
+    res.locals.calculateProfileCompletion = calculateProfileCompletion;
 
     if (req.user) {
         try {
