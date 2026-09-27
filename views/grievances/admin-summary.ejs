@@ -1,0 +1,15 @@
+<%
+    // Admin dashboard card (#161). The counts come from routes/grievances.js.
+    const s = typeof summary !== 'undefined' && summary ? summary : { active: 0, overdue: 0 };
+%>
+<a href="/admin/grievances" id="grievanceDeskCard"
+    class="flex flex-wrap items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border <%= s.overdue ? 'border-rose-200' : 'border-gray-100' %> hover:shadow-md transition-shadow">
+    <div>
+        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Grievance desk</h3>
+        <p class="text-3xl font-extrabold text-gray-900 mt-2">
+            <%= s.active %> <span class="text-sm font-semibold text-gray-500">open</span>
+            <% if (s.overdue) { %><span class="text-sm font-bold text-rose-600 ml-2"><%= s.overdue %> overdue</span><% } %>
+        </p>
+    </div>
+    <span class="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600">Open desk <i class="ph-bold ph-arrow-right" aria-hidden="true"></i></span>
+</a>

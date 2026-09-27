@@ -1,0 +1,51 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="max-w-3xl mx-auto space-y-5">
+    <div class="flex items-end justify-between gap-3 border-b border-slate-200 pb-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">My grievances</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Track every grievance you've raised and see each update from the grievance team.</p>
+        </div>
+        <% if (canRaise) { %>
+            <a href="/grievances/new"
+                class="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg transition-colors">
+                <i class="ph-bold ph-plus" aria-hidden="true"></i> Raise a grievance
+            </a>
+        <% } %>
+    </div>
+
+    <% if (!grievances.length) { %>
+        <div class="bg-white border border-slate-200 rounded-xl p-10 text-center shadow-sm">
+            <i class="ph-bold ph-shield-check text-4xl text-slate-300 mb-2" aria-hidden="true"></i>
+            <h2 class="text-base font-bold text-slate-800">No grievances yet</h2>
+            <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                If something goes wrong with an application, a stipend or a listing, you can raise it here. See the
+                <a href="/grievance" class="text-indigo-600 font-semibold hover:underline">redressal policy</a> for how it works.
+            </p>
+        </div>
+    <% } else { %>
+        <ul class="bg-white border border-slate-200 rounded-xl shadow-sm divide-y divide-slate-100 overflow-hidden">
+            <% grievances.forEach(g => { %>
+                <li>
+                    <a href="/grievances/<%= g.ticket %>" class="block px-4 py-3.5 hover:bg-slate-50 transition-colors" data-ticket="<%= g.ticket %>">
+                        <span class="flex items-center justify-between gap-3">
+                            <span class="font-mono text-[11px] font-semibold text-slate-500"><%= g.ticket %></span>
+                            <span class="flex items-center gap-1.5">
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-600 border-slate-200"><%= g.tierLabel %></span>
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border <%= g.statusBadge %>"><%= g.statusLabel %></span>
+                            </span>
+                        </span>
+                        <span class="block text-sm font-semibold text-slate-900 mt-1 truncate"><%= g.subject %></span>
+                        <span class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 mt-1">
+                            <span><%= g.categoryLabel %></span>
+                            <span>Raised <%= g.createdLabel %></span>
+                            <% if (g.active) { %>
+                                <span class="<%= g.overdue ? 'text-rose-600 font-semibold' : '' %>" data-due><%= g.timeLeft %></span>
+                            <% } %>
+                        </span>
+                    </a>
+                </li>
+            <% }) %>
+        </ul>
+    <% } %>
+</div>
