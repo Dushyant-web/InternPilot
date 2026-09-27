@@ -68,7 +68,7 @@ function startCompanyReverification(company, { submittedBy, at = new Date() } = 
     return company;
 }
 
-async function unpublishCompanyListings(companyId) {
+async function unpublishCompanyListings(companyId, { session } = {}) {
     return Internship.updateMany(
         {
             $or: [
@@ -82,7 +82,8 @@ async function unpublishCompanyListings(companyId) {
                 status: 'closed',
                 isPaused: false
             }
-        }
+        },
+        session ? { session } : undefined
     );
 }
 

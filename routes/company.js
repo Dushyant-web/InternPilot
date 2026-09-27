@@ -263,16 +263,29 @@ router.post('/company/verification/documents', isAuthenticated, requireCompanyRo
             };
         }));
 
-        const wasVerified = isCompanyVerified(company);
-        if (!company.companyDetails) company.companyDetails = {};
-        const existingDocuments = Array.isArray(company.companyDetails.verificationDocuments)
-            ? company.companyDetails.verificationDocuments
-            : [];
-        company.companyDetails.verificationDocuments = [...existingDocuments, ...uploadedDocuments];
-        startCompanyReverification(company, { submittedBy: req.user._id });
-        await company.save();
+        const session = await mongoose.startSession();
+        try {
+            await session.withTransaction(async () => {
+                const transactionalCompany = await User.findById(req.user._id).session(session);
+                if (!transactionalCompany || transactionalCompany.role !== 'company') {
+                    throw new Error('Company account not found.');
+                }
 
-        if (wasVerified) await unpublishCompanyListings(company._id);
+                if (!transactionalCompany.companyDetails) transactionalCompany.companyDetails = {};
+                const existingDocuments = Array.isArray(transactionalCompany.companyDetails.verificationDocuments)
+                    ? transactionalCompany.companyDetails.verificationDocuments
+                    : [];
+                transactionalCompany.companyDetails.verificationDocuments = [...existingDocuments, ...uploadedDocuments];
+                startCompanyReverification(transactionalCompany, { submittedBy: req.user._id });
+                await transactionalCompany.save({ session });
+
+                // Always retry cleanup: a prior failed attempt may have left
+                // a pending company with listings that still appear public.
+                await unpublishCompanyListings(transactionalCompany._id, { session });
+            });
+        } finally {
+            await session.endSession();
+        }
 
         if (req.flash) req.flash('success_msg', 'Verification documents submitted for admin review.');
         return res.redirect('/company/profile');
