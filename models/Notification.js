@@ -28,6 +28,7 @@ const notificationSchema = new mongoose.Schema({
             'interview_scheduled', 
             'interview_rescheduled', 
             'interview_cancelled',
+            'certificate_issued',
             'offer_issued',
             'offer_accepted',
             'offer_declined',
