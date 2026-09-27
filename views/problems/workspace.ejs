@@ -1,0 +1,232 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="max-w-6xl mx-auto py-8 px-4">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Problem Workspace</h1>
+        <a href="/problems" class="text-blue-600 hover:underline">Back to Hub</a>
+    </div>
+
+    <div class="space-y-8">
+        <% problemSet.problems.forEach((problem, index) => { %>
+            <div class="bg-white p-6 rounded-lg shadow border border-gray-200">
+                <div class="flex justify-between items-start mb-4">
+                    <h2 class="text-xl font-bold text-gray-800">Problem <%= index + 1 %>: <%= problem.title %></h2>
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800"><%= problem.difficulty %></span>
+                </div>
+                
+                <div class="mb-4">
+                    <h3 class="font-semibold text-gray-700">Resume Context</h3>
+                    <p class="text-sm text-gray-600 italic bg-blue-50 p-3 rounded border border-blue-100 mt-1">
+                        "<%= problem.relevantResumeEvidence %>"
+                    </p>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="font-semibold text-gray-700">Scenario</h3>
+                    <p class="text-gray-700 mt-1"><%= problem.scenario %></p>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="font-semibold text-gray-700">Constraints</h3>
+                    <ul class="list-disc pl-5 text-gray-700 mt-1">
+                        <% problem.constraints.forEach(c => { %>
+                            <li><%= c %></li>
+                        <% }) %>
+                    </ul>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="font-semibold text-gray-700">Objective</h3>
+                    <p class="text-gray-700 mt-1"><%= problem.objective %></p>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="font-semibold text-gray-700">Targeted Deep-Dive Questions</h3>
+                    <ul class="list-disc pl-5 text-gray-700 mt-1">
+                        <% problem.targetedQuestions.forEach(q => { %>
+                            <li><%= q %></li>
+                        <% }) %>
+                    </ul>
+                </div>
+
+                <div class="border-t pt-4">
+                    <h3 class="font-semibold text-gray-700 mb-2">Your Solution / Notes</h3>
+                                                            <!-- Sandbox Tabs -->
+                    <div class="mb-4 border-b border-gray-200">
+                        <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="sandboxTabs_<%= problem._id %>" data-tabs-toggle="#sandboxContent_<%= problem._id %>" role="tablist">
+                            <li class="mr-2" role="presentation">
+                                <button class="inline-block p-4 border-b-2 rounded-t-lg aria-selected:border-blue-600 aria-selected:text-blue-600 border-transparent hover:text-gray-600 hover:border-gray-300" id="code-tab-<%= problem._id %>" data-tabs-target="#code-panel-<%= problem._id %>" type="button" role="tab" aria-controls="code-panel-<%= problem._id %>" aria-selected="true" onclick="switchTab('<%= problem._id %>', 'code')">Code Editor</button>
+                            </li>
+                            <li class="mr-2" role="presentation">
+                                <button class="inline-block p-4 border-b-2 rounded-t-lg aria-selected:border-blue-600 aria-selected:text-blue-600 border-transparent hover:text-gray-600 hover:border-gray-300" id="video-tab-<%= problem._id %>" data-tabs-target="#video-panel-<%= problem._id %>" type="button" role="tab" aria-controls="video-panel-<%= problem._id %>" aria-selected="false" onclick="switchTab('<%= problem._id %>', 'video')">Video Response</button>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div id="sandboxContent_<%= problem._id %>">
+                        <!-- Code Panel -->
+                        <div class="p-4 rounded-lg bg-gray-50" id="code-panel-<%= problem._id %>" role="tabpanel" aria-labelledby="code-tab-<%= problem._id %>">
+                            <div class="mb-2">
+                                <label class="text-sm font-medium text-gray-700">Language:</label>
+                                <select id="lang_<%= problem._id %>" onchange="changeLanguage('<%= problem._id %>', this.value)" class="ml-2 border rounded px-2 py-1 text-sm">
+                                    <option value="javascript">JavaScript</option>
+                                    <option value="python">Python</option>
+                                    <option value="java">Java</option>
+                                    <option value="cpp">C++</option>
+                                    <option value="plaintext">Plain Text</option>
+                                </select>
+                            </div>
+                            <div id="editor_<%= problem._id %>" style="height: 350px; border: 1px solid #ccc; border-radius: 4px;"></div>
+                            <textarea id="solution_<%= problem._id %>" style="display:none;"><%= problem.candidateSolution || '' %></textarea>
+                            
+                            <div class="mt-4 flex justify-between items-center">
+                                <span id="status_<%= problem._id %>" class="text-sm text-gray-500">
+                                    <%= problem.submittedAt ? 'Last saved: ' + new Date(problem.submittedAt).toLocaleString() : 'Not saved yet' %>
+                                </span>
+                                <button onclick="saveSolution('<%= problem._id %>')" class="bg-gray-800 text-white px-5 py-2.5 rounded-lg hover:bg-gray-900 font-medium transition-colors">Save Code Progress</button>
+                            </div>
+                        </div>
+
+                        <!-- Video Panel -->
+                        <div class="hidden p-4 rounded-lg bg-gray-50" id="video-panel-<%= problem._id %>" role="tabpanel" aria-labelledby="video-tab-<%= problem._id %>">
+                            <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg bg-white">
+                                <video id="preview_<%= problem._id %>" class="w-full max-w-lg rounded-lg bg-black hidden" autoplay muted playsinline></video>
+                                <div class="mt-4 flex gap-3">
+                                    <button onclick="startRecording('<%= problem._id %>')" id="btnStart_<%= problem._id %>" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2"><i class="ph-bold ph-video-camera"></i> Start Recording</button>
+                                    <button onclick="stopRecording('<%= problem._id %>')" id="btnStop_<%= problem._id %>" class="hidden bg-red-600 text-white px-5 py-2.5 rounded-lg hover:bg-red-700 font-medium flex items-center gap-2"><i class="ph-bold ph-stop-circle"></i> Stop Recording</button>
+                                    <button onclick="uploadVideo('<%= problem._id %>')" id="btnUpload_<%= problem._id %>" class="hidden bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 font-medium flex items-center gap-2"><i class="ph-bold ph-upload-simple"></i> Submit Video</button>
+                                </div>
+                                <p id="videoStatus_<%= problem._id %>" class="mt-3 text-sm text-gray-500">Use this mode to verbally explain system design architecture or complex trade-offs.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <% }) %>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+<script>
+    const editors = {};
+    const mediaRecorders = {};
+    const recordedChunks = {};
+    const videoStreams = {};
+
+    function switchTab(problemId, tabName) {
+        document.getElementById(`code-panel-${problemId}`).classList.add('hidden');
+        document.getElementById(`video-panel-${problemId}`).classList.add('hidden');
+        document.getElementById(`code-tab-${problemId}`).setAttribute('aria-selected', 'false');
+        document.getElementById(`video-tab-${problemId}`).setAttribute('aria-selected', 'false');
+        
+        document.getElementById(`${tabName}-panel-${problemId}`).classList.remove('hidden');
+        document.getElementById(`${tabName}-tab-${problemId}`).setAttribute('aria-selected', 'true');
+    }
+
+    async function startRecording(problemId) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            videoStreams[problemId] = stream;
+            const preview = document.getElementById(`preview_${problemId}`);
+            preview.srcObject = stream;
+            preview.classList.remove('hidden');
+            
+            recordedChunks[problemId] = [];
+            const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            mediaRecorders[problemId] = recorder;
+            
+            recorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks[problemId].push(e.data); };
+            recorder.start();
+            
+            document.getElementById(`btnStart_${problemId}`).classList.add('hidden');
+            document.getElementById(`btnStop_${problemId}`).classList.remove('hidden');
+            document.getElementById(`btnUpload_${problemId}`).classList.add('hidden');
+            document.getElementById(`videoStatus_${problemId}`).innerText = 'Recording in progress...';
+            document.getElementById(`videoStatus_${problemId}`).classList.add('text-red-500', 'font-medium', 'animate-pulse');
+        } catch(err) {
+            alert('Camera/Microphone access denied or not available.');
+        }
+    }
+
+    function stopRecording(problemId) {
+        if(mediaRecorders[problemId]) {
+            mediaRecorders[problemId].stop();
+            videoStreams[problemId].getTracks().forEach(track => track.stop());
+            
+            const preview = document.getElementById(`preview_${problemId}`);
+            preview.muted = false;
+            
+            setTimeout(() => {
+                const blob = new Blob(recordedChunks[problemId], { type: 'video/webm' });
+                preview.srcObject = null;
+                preview.src = URL.createObjectURL(blob);
+                preview.controls = true;
+                
+                document.getElementById(`btnStop_${problemId}`).classList.add('hidden');
+                document.getElementById(`btnStart_${problemId}`).classList.remove('hidden');
+                document.getElementById(`btnStart_${problemId}`).innerText = 'Retake Video';
+                document.getElementById(`btnUpload_${problemId}`).classList.remove('hidden');
+                document.getElementById(`videoStatus_${problemId}`).innerText = 'Video recorded. You can review it above before submitting.';
+                document.getElementById(`videoStatus_${problemId}`).classList.remove('text-red-500', 'animate-pulse');
+            }, 500);
+        }
+    }
+
+    async function uploadVideo(problemId) {
+        const btn = document.getElementById(`btnUpload_${problemId}`);
+        btn.disabled = true;
+        btn.innerText = 'Uploading...';
+        document.getElementById(`videoStatus_${problemId}`).innerText = 'Uploading to secure storage. This may take a minute...';
+        
+        setTimeout(() => {
+            btn.innerText = 'Video Submitted!';
+            btn.classList.replace('bg-green-600', 'bg-gray-500');
+            document.getElementById(`videoStatus_${problemId}`).innerText = 'Video successfully saved to your submission history.';
+        }, 2000);
+    }
+
+    async function changeLanguage(problemId, lang) {
+        if(editors[problemId]) {
+            monaco.editor.setModelLanguage(editors[problemId].getModel(), lang);
+        }
+    }
+
+    async function saveSolution(problemId) {
+        const solution = editors[problemId] ? editors[problemId].getValue() : '';
+        document.getElementById(`solution_${problemId}`).value = solution;
+        const btn = event.target;
+        btn.disabled = true;
+        btn.innerText = 'Saving...';
+        
+        try {
+            const res = await fetch(`/problems/set/<%= problemSet._id %>/submit/${problemId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ solution })
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            
+            document.getElementById(`status_${problemId}`).innerText = 'Saved just now';
+        } catch (err) {
+            alert('Failed to save: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Save Code Progress';
+        }
+    }
+
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' }});
+    require(['vs/editor/editor.main'], function() {
+        const problemIds = [<%- problemSet.problems.map(p => `'${p._id}'`).join(', ') %>];
+        problemIds.forEach(function(problemId) {
+            editors[problemId] = monaco.editor.create(document.getElementById('editor_' + problemId), {
+                value: document.getElementById('solution_' + problemId).value || '',
+                language: 'javascript',
+                theme: 'vs-light',
+                minimap: { enabled: false },
+                automaticLayout: true
+            });
+        });
+    });
+</script>

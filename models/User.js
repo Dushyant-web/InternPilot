@@ -51,6 +51,7 @@ const userSchema = new mongoose.Schema({
         label: { type: String, required: true, trim: true, maxlength: 100 },
         fileUrl: { type: String, required: true, trim: true },
         fileName: { type: String, default: '', trim: true, maxlength: 180 },
+        text: { type: String, default: '' },
         isDefault: { type: Boolean, default: false },
         createdAt: { type: Date, default: Date.now }
     }],
