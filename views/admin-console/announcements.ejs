@@ -1,0 +1,96 @@
+<% layout('layouts/boilerplate') %>
+<%
+    const stateClass = {
+        live: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        scheduled: 'bg-sky-50 text-sky-700 border-sky-200',
+        expired: 'bg-slate-100 text-slate-500 border-slate-200',
+        ended: 'bg-slate-100 text-slate-500 border-slate-200'
+    };
+%>
+
+<div class="max-w-7xl mx-auto lg:grid lg:grid-cols-[210px_minmax(0,1fr)] gap-6">
+    <%- include('_nav') %>
+
+    <div class="min-w-0 space-y-5">
+        <div class="border-b border-slate-200 pb-4">
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Announcements</h1>
+            <p class="text-xs text-slate-500 mt-0.5">A banner at the top of every page for the audience you pick, for as long as you choose. Visitors can dismiss it.</p>
+        </div>
+
+        <form action="/admin/announcements" method="POST" class="bg-white border border-slate-200 rounded-xl shadow-sm p-5 space-y-4" id="announcementForm">
+            <h2 class="text-sm font-bold text-slate-900">New announcement</h2>
+            <% if (errors.length) { %>
+                <div class="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-xs" role="alert">
+                    <ul class="list-disc pl-4 space-y-0.5"><% errors.forEach(e => { %><li><%= e %></li><% }) %></ul>
+                </div>
+            <% } %>
+            <div class="grid md:grid-cols-2 gap-4">
+                <label class="text-xs font-semibold text-slate-700 flex flex-col gap-1 md:col-span-2">Title
+                    <input name="title" required minlength="5" maxlength="<%= limits.title %>" value="<%= values.title || '' %>" placeholder="e.g. Applications for Round 2 close on 15 October"
+                        class="px-3 py-2 text-sm font-normal border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                </label>
+                <label class="text-xs font-semibold text-slate-700 flex flex-col gap-1 md:col-span-2">Message
+                    <textarea name="message" rows="3" required minlength="10" maxlength="<%= limits.message %>"
+                        class="px-3 py-2 text-sm font-normal border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"><%= values.message || '' %></textarea>
+                </label>
+                <label class="text-xs font-semibold text-slate-700 flex flex-col gap-1">Who sees it
+                    <select name="audience" class="px-2 py-2 text-xs font-normal border border-slate-200 rounded-lg bg-white">
+                        <% Object.entries(audiences).forEach(([key, label]) => { %>
+                            <option value="<%= key %>" <%= (values.audience || 'everyone') === key ? 'selected' : '' %>><%= label %></option>
+                        <% }) %>
+                    </select>
+                </label>
+                <label class="text-xs font-semibold text-slate-700 flex flex-col gap-1">Tone
+                    <select name="tone" class="px-2 py-2 text-xs font-normal border border-slate-200 rounded-lg bg-white">
+                        <% Object.entries(tones).forEach(([key, tone]) => { %>
+                            <option value="<%= key %>" <%= (values.tone || 'info') === key ? 'selected' : '' %>><%= tone.label %></option>
+                        <% }) %>
+                    </select>
+                </label>
+                <label class="text-xs font-semibold text-slate-700 flex flex-col gap-1">Starts <span class="font-normal text-slate-400">(India time, empty for now)</span>
+                    <input type="datetime-local" name="startsAt" value="<%= values.startsAt || '' %>" class="px-2 py-1.5 text-xs font-normal border border-slate-200 rounded-lg">
+                </label>
+                <label class="text-xs font-semibold text-slate-700 flex flex-col gap-1">Ends <span class="font-normal text-slate-400">(empty to run until you end it, max <%= limits.maxDays %> days)</span>
+                    <input type="datetime-local" name="endsAt" value="<%= values.endsAt || '' %>" class="px-2 py-1.5 text-xs font-normal border border-slate-200 rounded-lg">
+                </label>
+            </div>
+            <label class="flex items-start gap-2 text-xs text-slate-600">
+                <input type="checkbox" name="notify" value="1" <%= values.notify === '1' ? 'checked' : '' %> class="mt-0.5 accent-indigo-600">
+                <span>Also send it as an in-app notification now <span class="text-slate-400">(only for announcements that start now)</span></span>
+            </label>
+            <div class="flex justify-end">
+                <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg">Post announcement</button>
+            </div>
+        </form>
+
+        <section class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden" aria-labelledby="pastTitle">
+            <h2 id="pastTitle" class="text-sm font-bold text-slate-900 p-5 pb-3">All announcements</h2>
+            <% if (!items.length) { %>
+                <p class="text-xs text-slate-500 px-5 pb-5">Nothing posted yet.</p>
+            <% } else { %>
+                <ul class="divide-y divide-slate-100">
+                    <% items.forEach(a => { %>
+                        <li class="px-5 py-3 flex flex-wrap items-start justify-between gap-3" data-announcement="<%= a._id %>" data-state="<%= a.state.key %>">
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-slate-900 break-words"><%= a.title %></p>
+                                <p class="text-xs text-slate-600 mt-0.5 break-words"><%= a.message %></p>
+                                <p class="text-[11px] text-slate-400 mt-1">
+                                    <%= a.audienceLabel %> · <%= a.toneLabel %> · from <%= a.startsLabel %><%= a.endsLabel ? ' to ' + a.endsLabel : '' %>
+                                    <%= a.notified ? ' · ' + a.notified + ' notified' : '' %> · by <%= (a.createdBy && a.createdBy.name) || 'Admin' %>
+                                </p>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <span class="px-2 py-0.5 rounded-full border text-[10px] font-semibold <%= stateClass[a.state.key] %>"><%= a.state.label %></span>
+                                <% if (a.state.key === 'live' || a.state.key === 'scheduled') { %>
+                                    <form action="/admin/announcements/<%= a._id %>/end" method="POST">
+                                        <button type="submit" class="px-2.5 py-1 border border-slate-200 hover:bg-slate-50 text-slate-700 text-[11px] font-semibold rounded-lg">End now</button>
+                                    </form>
+                                <% } %>
+                            </div>
+                        </li>
+                    <% }) %>
+                </ul>
+            <% } %>
+        </section>
+    </div>
+</div>
