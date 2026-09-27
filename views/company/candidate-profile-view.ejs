@@ -103,11 +103,12 @@
                     </div>
                     <div>
                         <span class="text-slate-400 font-medium block mb-1">Application Status</span>
-                        <% const isReadOnlyStatus = ['Withdrawn', 'withdrawn', 'Interview'].includes(application.status); %>
+                        <% const isReadOnlyStatus = ['Withdrawn', 'withdrawn'].includes(application.status); %>
                         <% if (!isReadOnlyStatus && canReviewApplications) { %>
                             <form action="/company/applications/<%= application._id %>/status"
                                 method="POST" class="inline-block">
                                 <select name="status" onchange="this.form.submit()" class="px-3 py-1.5 text-xs font-semibold rounded-lg border shadow-sm cursor-pointer outline-none transition-colors <%=
+                                application.status === 'Hired' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                 application.status === 'Shortlisted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                 application.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
                                 application.status === 'Under Review' ? 'bg-amber-50 text-amber-700 border-amber-200' :
@@ -116,11 +117,14 @@
                                     <option value="Submitted" <%= application.status === 'Submitted' ? 'selected' : '' %>>Submitted</option>
                                     <option value="Under Review" <%= application.status === 'Under Review' ? 'selected' : '' %>>Under Review</option>
                                     <option value="Shortlisted" <%= application.status === 'Shortlisted' ? 'selected' : '' %>>Shortlisted</option>
+                                    <option value="Interview" <%= application.status === 'Interview' ? 'selected' : '' %>>Interview</option>
+                                    <option value="Hired" <%= application.status === 'Hired' ? 'selected' : '' %>>Hired</option>
                                     <option value="Rejected" <%= application.status === 'Rejected' ? 'selected' : '' %>>Rejected</option>
                                 </select>
                             </form>
                         <% } else { %>
                             <span class="inline-block px-3 py-1.5 text-xs font-semibold rounded-lg border <%=
+                                application.status === 'Hired' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                 application.status === 'Shortlisted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                 application.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
                                 application.status === 'Under Review' ? 'bg-amber-50 text-amber-700 border-amber-200' :

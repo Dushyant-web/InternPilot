@@ -602,7 +602,7 @@ router.post('/company/applications/:id/status', isAuthenticated, requireCompanyP
         const { status } = req.body;
         const applicationId = req.params.id;
 
-        const allowedStatuses = ['Submitted', 'Under Review', 'Shortlisted', 'Rejected'];
+        const allowedStatuses = ['Submitted', 'Under Review', 'Shortlisted', 'Interview', 'Hired', 'Rejected'];
         if (!status || !allowedStatuses.includes(status)) {
             if (req.flash) req.flash('error_msg', 'Invalid application status provided.');
             return res.redirect('/company/dashboard');
