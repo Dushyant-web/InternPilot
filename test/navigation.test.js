@@ -83,26 +83,30 @@ test('header synchronizes history-based navigation and supports keyboard dismiss
     assert.match(headerTemplate, /aria-current/);
 });
 
-test('header includes circular brand logo mark with proper hierarchy, styling and alt text', () => {
+test('header renders unified InternPilot brand typography and aligns PMIS badge alongside subtitle', () => {
     const html = renderHeader('/');
-    
-    assert.match(html, /src="\/images\/internpilot-logo\.svg"/);
-    assert.match(html, /alt="InternPilot Logo"/);
-    assert.match(html, /header-brand-logo/);
-    assert.match(html, /object-contain/);
 
-    const emblemIdx = html.indexOf('/images/emblem.jpg');
-    const logoIdx = html.indexOf('/images/internpilot-logo.svg');
-    const textIdx = html.indexOf('Intern</span>Pilot');
-    const pmisIdx = html.indexOf('>PMIS<');
-
-    assert.ok(emblemIdx !== -1, 'Emblem exists');
-    assert.ok(logoIdx !== -1, 'Logo mark exists');
-    assert.ok(textIdx !== -1, 'InternPilot text exists');
-    assert.ok(pmisIdx !== -1, 'PMIS badge exists');
-
-    assert.ok(emblemIdx < logoIdx, 'Emblem is before Logo mark');
-    assert.ok(logoIdx < textIdx, 'Logo mark is before InternPilot text');
-    assert.ok(textIdx < pmisIdx, 'InternPilot text is before PMIS badge');
+    assert.doesNotMatch(html, /<span class="text-indigo-700">Intern<\/span>Pilot/);
+    assert.match(html, /InternPilot\s*<\/a>/);
+    assert.match(html, /PMIS<\/span>\s*<p[^>]*class="[^"]*whitespace-nowrap[^"]*"[^>]*>Prime Minister's Internship Scheme Portal<\/p>/);
 });
 
+test('header provides dynamic profile container sizing and full-name tooltip without rigid 100px truncation', () => {
+    const candidate = { _id: 'candidate-id', name: 'SOMSUBHRA CHATTERJEE', role: 'candidate' };
+    const html = renderHeader('/', candidate);
+
+    assert.doesNotMatch(html, /max-w-\[100px\]/);
+    assert.match(html, /max-w-\[160px\]/);
+    assert.match(html, /title="SOMSUBHRA CHATTERJEE"/);
+    assert.match(html, /SOMSUBHRA CHATTERJEE/);
+});
+
+test('header groups quick action controls with consistent spacing and clear visual hierarchy', () => {
+    const candidate = { _id: 'candidate-id', name: 'Candidate User', role: 'candidate', savedInternships: [] };
+    const html = renderHeader('/', candidate);
+
+    assert.match(html, /href="\/candidate\/saved-internships"/);
+    assert.match(html, /href="\/candidate\/saved-searches"/);
+    assert.match(html, /href="\/notifications"/);
+    assert.match(html, /class="[^"]*gap-1 sm:gap-1\.5[^"]*"/);
+});
