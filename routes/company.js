@@ -326,8 +326,11 @@ router.get(['/company/:id/profile', '/company/profile/:id'], async (req, res) =>
 
         // Fetch all active/published internships by this company
         const internships = await Internship.find({
-            companyId: company._id,
-            status: 'published'
+            $or: [
+                { companyId: company._id },
+                { postedBy: company._id }
+            ],
+            status: { $in: ['published', 'active', null] }
         }).sort({ _id: -1 });
 
         const isCompanyOwnerOrRecruiter = req.user && (
@@ -337,10 +340,28 @@ router.get(['/company/:id/profile', '/company/profile/:id'], async (req, res) =>
              (req.user.companyId || req.user._id).toString() === company._id.toString())
         );
 
+        // Fetch verified reviews and statistics
+        const Review = require('../models/Review');
+        const { calculateCompanyReviewStats, checkReviewEligibility } = require('../utils/reviews');
+        const reviewStats = await calculateCompanyReviewStats(company._id);
+        const reviews = await Review.find({ company: company._id, status: 'Published' })
+            .populate('candidate', 'name avatar')
+            .populate('internship', 'title')
+            .sort({ createdAt: -1 })
+            .limit(10);
+
+        let eligibility = { isEligible: false, existingReview: null };
+        if (req.user && req.user.role === 'candidate') {
+            eligibility = await checkReviewEligibility(req.user._id, company._id);
+        }
+
         res.render('company/public-profile', {
             company,
             companyDetails: company.companyDetails || {},
             internships,
+            reviewStats,
+            reviews,
+            eligibility,
             currentUser: req.user,
             isCompanyOwnerOrRecruiter
         });
