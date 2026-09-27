@@ -116,6 +116,10 @@ async function main() {
 // count is available to the header on all pages, the homepage included.
 app.use(require('./routes/messages'));
 
+// Admin console, announcement banners and sign-in suspensions. Mounted before
+// the page routes because the suspension check and banners apply to every page.
+app.use(require('./routes/adminConsole'));
+
 // Resume parser details (#20) for the candidate profile page.
 app.use(require('./routes/resumeParse'));
 
