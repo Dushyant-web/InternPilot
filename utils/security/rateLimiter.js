@@ -62,7 +62,7 @@ async function hit(key, windowMs, max, connection = mongoose.connection) {
  *   name       label used in the counter key (e.g. 'login')
  *   windowMs   size of the window
  *   max        allowed hits per window per key
- *   by         'ip' | 'user' | 'ip+user' | 'ip+email' | function(req) -> string
+ *   by         'ip' | 'user' | 'email' | 'ip+user' | 'ip+email' | function(req) -> string
  *   json       respond with 429 JSON instead of a flash + redirect
  *   message    shown to the user when limited
  *   redirectTo function(req) -> path used for the flash + redirect response
@@ -82,6 +82,8 @@ function rateLimit({
         const user = req.user?._id ? String(req.user._id) : '';
         switch (by) {
             case 'user': return user || clientIp(req);
+            // One bucket per account across all IPs; falls back to the IP when no email was sent.
+            case 'email': return email ? `email:${email}` : clientIp(req);
             case 'ip+user': return `${clientIp(req)}|${user}`;
             case 'ip+email': return `${clientIp(req)}|${email}`;
             case 'ip':

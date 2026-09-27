@@ -1,10 +1,11 @@
 // Strips MongoDB operator keys from request input so user-supplied objects can't
 // smuggle query operators into a Mongoose call (NoSQL injection). Any key that
-// starts with "$" or contains "." is removed in place, which keeps the request
-// objects the same reference the rest of the app already uses.
+// starts with "$" or contains "." is removed, as are prototype keys.
 //
-// This does not touch values, only dangerous keys, so ordinary text (including a
-// price like "$500" in a value) is untouched.
+// Only keys are touched, never values, so ordinary text (including a price like
+// "$500") is left alone.
+
+const DANGEROUS = new Set(['__proto__', 'constructor', 'prototype']);
 
 function scrub(value, seen) {
     if (!value || typeof value !== 'object') return;
@@ -16,7 +17,7 @@ function scrub(value, seen) {
         return;
     }
     for (const key of Object.keys(value)) {
-        if (key.startsWith('$') || key.includes('.')) {
+        if (key.startsWith('$') || key.includes('.') || DANGEROUS.has(key)) {
             delete value[key];
             continue;
         }
@@ -26,15 +27,17 @@ function scrub(value, seen) {
 
 function sanitizeRequest(req, res, next) {
     const seen = new WeakSet();
-    // req.query is a getter on newer Express; scrub in place only if writable.
-    for (const part of [req.body, req.params]) scrub(part, seen);
-    try {
-        scrub(req.query, seen);
-    } catch (err) {
-        // Some Express versions expose req.query as a read-only getter; the
-        // route handlers already treat query values as strings, so skipping it
-        // here is safe rather than throwing.
-    }
+    scrub(req.body, seen);
+    scrub(req.params, seen);
+
+    // In Express 5 `req.query` is a getter that parses the URL again on every
+    // read, so scrubbing its result would only clean a throwaway copy. Parse it
+    // once, clean it, and pin the cleaned object on the request so every later
+    // read (and every route handler) sees the sanitized version.
+    const query = req.query;
+    scrub(query, seen);
+    Object.defineProperty(req, 'query', { value: query, writable: true, configurable: true, enumerable: true });
+
     next();
 }
 

@@ -6,19 +6,25 @@ const User = require('../models/User');
 const { sendOTPEmail } = require('../utils/sendEmail');
 const { rateLimit } = require('../utils/security/rateLimiter');
 const { validatePassword } = require('../utils/security/passwordPolicy');
+const { consumeOtp } = require('../utils/security/otpGuard');
 
 const generateSecureOTP = () => {
     return crypto.randomInt(100000, 1000000).toString();
 };
 
-// How many wrong codes before the OTP is thrown away and must be re-requested.
-const OTP_MAX_ATTEMPTS = 5;
+// One reply for every failed code check, whether or not the email has an
+// account, so these forms can't be used to discover accounts (#194).
+const VERIFY_CODE_FAILED = 'That code is invalid or has expired. Request a new code, or log in if your account is already verified.';
+const RESET_CODE_FAILED = 'That code is invalid or has expired. Request a new code and try again.';
+const RESEND_REPLY = "If this email is waiting to be verified, we've sent a new code. You can ask for another one after a minute.";
 
-// A broad per-IP cap on every auth POST (sign-in, sign-up, codes, reset), plus a
-// tighter per-account cap on sign-in so a single account can't be brute forced
-// even from many IPs (#194). Counters live in MongoDB and expire on their own.
+// Sign-in limits (#194), counted in MongoDB and expiring on their own:
+// - every auth POST is capped per IP,
+// - sign-in is capped per IP and email, for one person mistyping,
+// - and per email across all IPs, so one account can't be brute forced from many.
 const authIpLimiter = rateLimit({ name: 'auth-ip', windowMs: 15 * 60 * 1000, max: 50, by: 'ip', message: 'Too many attempts.', redirectTo: () => '/auth/login' });
 const loginLimiter = rateLimit({ name: 'login', windowMs: 15 * 60 * 1000, max: 10, by: 'ip+email', message: 'Too many sign-in attempts.', redirectTo: () => '/auth/login' });
+const loginAccountLimiter = rateLimit({ name: 'login-account', windowMs: 15 * 60 * 1000, max: 30, by: 'email', message: 'Too many sign-in attempts.', redirectTo: () => '/auth/login' });
 
 // Limit every POST on this router by IP without touching the GET page renders.
 router.use((req, res, next) => (req.method === 'POST' ? authIpLimiter(req, res, next) : next()));
@@ -226,48 +232,13 @@ router.post('/verify-otp', async (req, res) => {
         }
 
         console.log(`Verifying OTP for ${email}...`);
-        const user = await User.findOne({ email });
-
-        if (!user) {
-            req.flash('error_msg', 'No account found for this email address. Please register.');
-            return res.redirect('/auth/register');
-        }
-
-        if (user.isEmailVerified) {
-            req.flash('success_msg', 'Account is already verified. Please log in.');
-            return res.redirect('/auth/login');
-        }
-
-        const isExpired = !user.otpExpires || new Date(user.otpExpires).getTime() < Date.now();
-        if (!user.otp || isExpired) {
-            req.flash('error_msg', 'Invalid or expired OTP code. Please request a new one.');
+        // Wrong, expired, used-up and unknown all get the same reply, and at
+        // most five guesses per code are ever compared, even in parallel (#194).
+        const result = await consumeOtp(User, email, otp, { onSuccess: { isEmailVerified: true } });
+        if (!result.ok) {
+            req.flash('error_msg', VERIFY_CODE_FAILED);
             return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
         }
-
-        // Wrong code: count the attempt, and throw the code away after too many,
-        // so a 6-digit code can't be guessed within its 10-minute life (#194).
-        if (user.otp !== otp) {
-            user.otpAttempts = (user.otpAttempts || 0) + 1;
-            if (user.otpAttempts >= OTP_MAX_ATTEMPTS) {
-                user.otp = undefined;
-                user.otpExpires = undefined;
-                user.otpAttempts = 0;
-                await user.save();
-                req.flash('error_msg', 'Too many incorrect codes. Please request a new verification code.');
-                return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
-            }
-            await user.save();
-            const left = OTP_MAX_ATTEMPTS - user.otpAttempts;
-            req.flash('error_msg', `Invalid OTP code. ${left} attempt${left === 1 ? '' : 's'} left before you need a new code.`);
-            return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
-        }
-
-        user.isEmailVerified = true;
-        user.otp = undefined;
-        user.otpExpires = undefined;
-        user.lastOtpSentAt = undefined;
-        user.otpAttempts = 0;
-        await user.save();
 
         console.log(`User ${email} verified successfully.`);
         req.flash('success_msg', 'Account verified successfully! You can now log in.');
@@ -316,29 +287,19 @@ router.post('/resend-otp', async (req, res) => {
             { new: true }
         );
 
-        if (!updatedUser) {
-            const user = await User.findOne({ email });
-
-            if (!user) {
-                // Don't reveal whether this email has an account (#194).
-                req.flash('success_msg', 'If your email is awaiting verification, a new code has been sent.');
-                return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
+        // A code is only sent to an unverified account outside its cooldown, but
+        // the reply is the same in every case: unknown email, already verified,
+        // cooldown or sent. It never reveals the account's state (#194).
+        if (updatedUser) {
+            try {
+                await sendOTPEmail(email, otp);
+            } catch (emailErr) {
+                // Logged, not shown: an error here would reveal the account exists.
+                console.error('Resend OTP email failed:', emailErr.message);
             }
-
-            if (user.isEmailVerified) {
-                req.flash('error_msg', 'Account is already verified. Please log in.');
-                return res.redirect('/auth/login');
-            }
-
-            const elapsedSeconds = Math.floor((now - new Date(user.lastOtpSentAt).getTime()) / 1000);
-            const remainingSeconds = Math.max(1, COOLDOWN_SECONDS - elapsedSeconds);
-            req.flash('error_msg', `Please wait ${remainingSeconds}s before requesting a new code.`);
-            return res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
         }
 
-        await sendOTPEmail(email, otp);
-
-        req.flash('success_msg', 'A new verification code has been sent to your email.');
+        req.flash('success_msg', RESEND_REPLY);
         res.redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
     } catch (err) {
         console.error('Resend OTP error:', err);
@@ -347,7 +308,7 @@ router.post('/resend-otp', async (req, res) => {
     }
 });
 
-router.post('/login', loginLimiter, (req, res, next) => {
+router.post('/login', loginAccountLimiter, loginLimiter, (req, res, next) => {
     passport.authenticate('local', async (err, user, info) => {
         if (err) return next(err);
         if (!user) {
@@ -485,37 +446,17 @@ router.post('/reset-password', async (req, res) => {
             return res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
         }
 
-        const user = await User.findOne({ email });
-        if (!user || !user.otp || !user.otpExpires || new Date(user.otpExpires).getTime() < Date.now()) {
-            req.flash('error_msg', 'Invalid or expired OTP code. Please request a new one.');
+        // Same guessing protection as verification (#194). The code is consumed
+        // atomically first, then the password is set through save() so the
+        // model's pre-save hook hashes it.
+        const result = await consumeOtp(User, email, otp, { onSuccess: { isEmailVerified: true } });
+        if (!result.ok) {
+            req.flash('error_msg', RESET_CODE_FAILED);
             return res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
         }
 
-        // Same guessing protection as verification: too many wrong codes throws
-        // the reset code away, so it can't be brute forced in its lifetime (#194).
-        if (user.otp !== otp) {
-            user.otpAttempts = (user.otpAttempts || 0) + 1;
-            if (user.otpAttempts >= OTP_MAX_ATTEMPTS) {
-                user.otp = undefined;
-                user.otpExpires = undefined;
-                user.otpAttempts = 0;
-                await user.save();
-                req.flash('error_msg', 'Too many incorrect codes. Please request a new reset code.');
-                return res.redirect('/auth/forgot-password');
-            }
-            await user.save();
-            const left = OTP_MAX_ATTEMPTS - user.otpAttempts;
-            req.flash('error_msg', `Invalid OTP code. ${left} attempt${left === 1 ? '' : 's'} left before you need a new code.`);
-            return res.redirect(`/auth/reset-password?email=${encodeURIComponent(email)}`);
-        }
-
-        user.password = newPassword;
-        user.isEmailVerified = true;
-        user.otp = undefined;
-        user.otpExpires = undefined;
-        user.lastOtpSentAt = undefined;
-        user.otpAttempts = 0;
-        await user.save();
+        result.user.password = newPassword;
+        await result.user.save();
 
         req.flash('success_msg', 'Password reset successfully! You can now log in.');
         res.redirect('/auth/login');
