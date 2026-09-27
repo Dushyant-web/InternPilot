@@ -118,15 +118,17 @@ test('unpublishing a rejected or suspended company closes active and paused list
     t.after(() => { Internship.updateMany = originalUpdateMany; });
 
     let captured;
-    Internship.updateMany = async (filter, update) => {
-        captured = { filter, update };
+    const session = { id: 'transaction-session' };
+    Internship.updateMany = async (filter, update, options) => {
+        captured = { filter, update, options };
         return { modifiedCount: 2 };
     };
 
-    const result = await unpublishCompanyListings('company-id');
+    const result = await unpublishCompanyListings('company-id', { session });
     assert.equal(result.modifiedCount, 2);
     assert.deepEqual(captured.filter.status, { $in: ['published', 'paused'] });
     assert.deepEqual(captured.update, { $set: { status: 'closed', isPaused: false } });
+    assert.deepEqual(captured.options, { session });
 });
 
 test('verification routes and publication safeguards are registered', () => {

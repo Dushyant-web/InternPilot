@@ -49,23 +49,34 @@ async function reviewCompany(req, res, status) {
         return redirectWithReviewError(req, res, 'A review reason is required when rejecting or suspending a company.');
     }
 
-    const company = await User.findOne({ _id: req.params.id, role: 'company' });
-    if (!company) return redirectWithReviewError(req, res, 'Company not found.');
+    let outcome = null;
+    const session = await mongoose.startSession();
+    try {
+        await session.withTransaction(async () => {
+            const company = await User.findOne({ _id: req.params.id, role: 'company' }).session(session);
+            if (!company) return;
 
-    applyCompanyVerificationDecision(company, status, {
-        reviewerId: req.user._id,
-        reason
-    });
-    await company.save();
+            applyCompanyVerificationDecision(company, status, {
+                reviewerId: req.user._id,
+                reason
+            });
+            await company.save({ session });
 
-    let unpublishedCount = 0;
-    if (status === 'rejected' || status === 'suspended') {
-        const result = await unpublishCompanyListings(company._id);
-        unpublishedCount = result.modifiedCount || result.nModified || 0;
+            let unpublishedCount = 0;
+            if (status === 'rejected' || status === 'suspended') {
+                const result = await unpublishCompanyListings(company._id, { session });
+                unpublishedCount = result.modifiedCount || result.nModified || 0;
+            }
+            outcome = { unpublishedCount };
+        });
+    } finally {
+        await session.endSession();
     }
 
+    if (!outcome) return redirectWithReviewError(req, res, 'Company not found.');
+
     const label = status === 'approved' ? 'approved' : status;
-    const suffix = unpublishedCount ? ` ${unpublishedCount} listing(s) were closed.` : '';
+    const suffix = outcome.unpublishedCount ? ` ${outcome.unpublishedCount} listing(s) were closed.` : '';
     if (req.flash) req.flash('success_msg', `Company ${label} successfully.${suffix}`);
     return res.redirect('/admin/dashboard');
 }
