@@ -28,7 +28,11 @@ const notificationSchema = new mongoose.Schema({
             'interview_scheduled', 
             'interview_rescheduled', 
             'interview_cancelled',
-            'certificate_issued'
+            'certificate_issued',
+            'offer_issued',
+            'offer_accepted',
+            'offer_declined',
+            'offer_expired'
         ],
         required: true
     },
@@ -49,7 +53,8 @@ const notificationSchema = new mongoose.Schema({
         savedSearchId: { type: mongoose.Schema.Types.ObjectId, ref: 'SavedSearch' },
         digestKey: { type: String },
         internshipCount: { type: Number },
-        searchNames: [{ type: String }]
+        searchNames: [{ type: String }],
+        offerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Offer' }
     },
     isRead: { type: Boolean, default: false, index: true }
 }, { timestamps: true });

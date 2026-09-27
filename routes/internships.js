@@ -53,6 +53,10 @@ function applicationAvailabilityError(internship) {
     if (internship.status === 'paused' || internship.isPaused) {
         return 'Applications for this position are temporarily paused.';
     }
+    const capacity = Number(internship.vacancies) > 0 ? Number(internship.vacancies) : 1;
+    if (Number(internship.filledSeats || 0) >= capacity) {
+        return 'All positions for this internship have been filled.';
+    }
     if (internship.applicationDeadline && new Date() > new Date(internship.applicationDeadline)) {
         return 'The deadline to apply for this internship has passed.';
     }

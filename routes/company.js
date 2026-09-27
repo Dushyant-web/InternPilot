@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
 const Certificate = require('../models/Certificate');
+const InternshipDocument = require('../models/InternshipDocument');
 const { isAuthenticated, requireCompanyRole } = require('../middleware/auth');
 const {
     TEAM_MEMBER_ROLES,
@@ -33,6 +34,7 @@ const { buildRecruiterOverview } = require('../utils/dashboardStats');
 const { calculateCandidateMatch } = require('../utils/candidateMatcher');
 const { buildSkillProfiles } = require('../utils/skillProfiles');
 const { ApplicationKitValidationError, parseApplicationQuestions } = require('../utils/applicationKit');
+const { DOCUMENT_TYPES, generateInternshipDocument } = require('../utils/internshipDocuments');
 const {
     companyVerificationStatus,
     isCompanyVerified,
@@ -722,8 +724,8 @@ router.post('/company/applications/:id/status', isAuthenticated, requireCompanyP
 
         const internship = application.internship;
 
-        if (application.status === 'Withdrawn' || application.status === 'withdrawn') {
-            if (req.flash) req.flash('error_msg', 'Cannot modify status: This candidate has already withdrawn their application.');
+        if (['Withdrawn', 'withdrawn', 'Hired', 'Offer Declined'].includes(application.status)) {
+            if (req.flash) req.flash('error_msg', 'Cannot modify status after this application has reached a final outcome.');
             const referrer = req.get('Referrer');
             return res.redirect(referrer || `/company/internships/${internship._id}/applicants`);
         }
@@ -786,6 +788,88 @@ router.post('/company/applications/:id/status', isAuthenticated, requireCompanyP
     } catch (error) {
         console.error('Error updating status:', error);
         res.status(500).send('Database Error');
+    }
+});
+
+router.post('/company/applications/:id/certificates/issues', isAuthenticated, requireCompanyPermission('applications:review'), async (req, res) => {
+    const fallbackPath = `/company/applications/${req.params.id}/candidate`;
+    const wantsJson = Boolean(req.xhr || req.is('json') || req.headers.accept?.includes('application/json'));
+    const respond = (status, message, payload = {}) => {
+        if (wantsJson) return res.status(status).json({ success: status < 400, ...payload, ...(status >= 400 ? { error: message } : { message }) });
+        if (req.flash) req.flash(status >= 400 ? 'error_msg' : 'success_msg', message);
+        return res.redirect(fallbackPath);
+    };
+
+    try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return respond(400, 'Application not found.');
+        }
+
+        const application = await Application.findById(req.params.id)
+            .populate('candidate')
+            .populate('internship');
+        if (!application || !application.candidate || !application.internship || !belongsToCompany(application.internship, req.company)) {
+            return respond(404, 'Application not found.');
+        }
+        if (application.status !== 'Hired') {
+            return respond(409, 'Documents can only be issued for hired candidates.');
+        }
+
+        const alreadyIssued = await InternshipDocument.find({ application: application._id }).select('type');
+        const existingTypes = new Set(alreadyIssued.map(document => document.type));
+        const missingTypes = DOCUMENT_TYPES.filter(type => !existingTypes.has(type));
+        const issuedAt = new Date();
+
+        if (missingTypes.length) {
+            const candidateName = application.candidate.name || 'Candidate';
+            const issuingCompanyName = req.company.companyDetails?.companyName || req.company.name || application.internship.companyName;
+            const generatedDocuments = await Promise.all(missingTypes.map(type =>
+                generateInternshipDocument({
+                    type,
+                    candidateName,
+                    companyName: issuingCompanyName,
+                    internshipTitle: application.internship.title,
+                    issuedAt
+                })
+            ));
+            const records = generatedDocuments.map((generated, index) => ({
+                application: application._id,
+                internship: application.internship._id,
+                candidate: application.candidate._id,
+                company: req.company._id,
+                issuedBy: req.user._id,
+                type: missingTypes[index],
+                issuedAt,
+                ...generated
+            }));
+
+            try {
+                await InternshipDocument.insertMany(records);
+            } catch (error) {
+                if (error?.code !== 11000) throw error;
+            }
+        }
+
+        const issuedDocuments = await InternshipDocument.find({ application: application._id })
+            .select('type fileName issuedAt')
+            .lean();
+        if (!DOCUMENT_TYPES.every(type => issuedDocuments.some(document => document.type === type))) {
+            throw new Error('Both internship documents could not be saved.');
+        }
+
+        const responseDocuments = issuedDocuments.map(document => ({
+            type: document.type,
+            fileName: document.fileName,
+            issuedAt: document.issuedAt,
+            downloadUrl: `/candidate/applications/${application._id}/certificates/${document.type}`
+        }));
+        return respond(200, missingTypes.length ? 'Internship certificate and recommendation letter issued.' : 'Both documents have already been issued.', {
+            applicationId: String(application._id),
+            documents: responseDocuments
+        });
+    } catch (error) {
+        console.error('Error issuing internship documents:', error);
+        return respond(500, 'Unable to issue internship documents. Please try again.');
     }
 });
 
@@ -1259,8 +1343,8 @@ router.post('/company/applications/:id/interview/schedule', isAuthenticated, req
             return res.redirect('/company/dashboard');
         }
 
-        if (application.status === 'Rejected' || application.status === 'rejected') {
-            if (req.flash) req.flash('error_msg', 'Cannot schedule interview for a rejected application.');
+        if (['Rejected', 'rejected', 'Withdrawn', 'withdrawn', 'Hired', 'Offer Declined'].includes(application.status)) {
+            if (req.flash) req.flash('error_msg', 'Cannot schedule an interview after this application has reached a final outcome.');
             return res.redirect(`/company/applications/${req.params.id}/candidate`);
         }
 
@@ -1347,6 +1431,11 @@ router.post('/company/applications/:id/interview/reschedule', isAuthenticated, r
 
         const internship = application.internship;
         if (!belongsToCompany(internship, req.company)) return res.redirect('/company/dashboard');
+
+        if (['Rejected', 'rejected', 'Withdrawn', 'withdrawn', 'Hired', 'Offer Declined'].includes(application.status)) {
+            if (req.flash) req.flash('error_msg', 'Cannot reschedule an interview after this application has reached a final outcome.');
+            return res.redirect(`/company/applications/${req.params.id}/candidate`);
+        }
 
         if (!application.interview || !application.interview.status || application.interview.status === 'Cancelled') {
             if (req.flash) req.flash('error_msg', 'No active interview to reschedule.');
