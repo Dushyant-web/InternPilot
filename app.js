@@ -19,6 +19,7 @@ const path = require("path");
 const session = require("express-session");
 const flash = require("connect-flash");
 const passport = require("passport");
+const { requireTransactionSupport } = require('./utils/database');
 
 require("./config/passport");
 
@@ -110,13 +111,9 @@ app.use(async (req, res, next) => {
     return next();
 });
 
-// Database connection
-main()
-    .then(() => console.log("MongoDB Connected Successfully"))
-    .catch(err => console.log(err));
-
 async function main() {
     await mongoose.connect(process.env.ATLASDB_URL);
+    await requireTransactionSupport(mongoose.connection);
 }
 
 // In-app messaging (#136). Mounted before every page route so its unread
@@ -198,9 +195,22 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Initialize background scheduler
-require('./utils/scheduler');
+async function startServer() {
+    try {
+        await main();
+        console.log("MongoDB Connected Successfully");
 
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-});
+        // Start scheduled work only after the database meets the same
+        // transaction requirements as the moderation workflow.
+        require('./utils/scheduler');
+        app.listen(port, () => {
+            console.log(`Server running on port ${port}`);
+        });
+    } catch (err) {
+        console.error('Database startup failed:', err);
+        await mongoose.disconnect().catch(() => {});
+        process.exitCode = 1;
+    }
+}
+
+startServer();
