@@ -38,6 +38,8 @@
             </div>
         </div>
 
+        <% if (typeof grievanceSummary !== 'undefined' && grievanceSummary) { %><%- include('../grievances/admin-summary', { summary: grievanceSummary }) %><% } %>
+
         <div class="bg-white shadow-sm rounded-xl border border-gray-100 overflow-hidden">
             <div class="p-6 border-b border-gray-100">
                 <h2 class="text-xl font-bold text-gray-800">Pending Company Verification Requests</h2>

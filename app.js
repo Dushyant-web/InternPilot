@@ -126,6 +126,9 @@ app.use(require('./routes/messages'));
 // Resume parser details (#20) for the candidate profile page.
 app.use(require('./routes/resumeParse'));
 
+// Grievance redressal (#161): raising, tracking and the admin desk.
+app.use(require('./routes/grievances'));
+
 // Homepage Route (Renders views/extras/index.ejs)
 app.get('/', async (req, res) => {
     try {
