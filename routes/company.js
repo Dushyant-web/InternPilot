@@ -618,8 +618,8 @@ router.post('/company/applications/:id/status', isAuthenticated, requireCompanyP
 
         const internship = application.internship;
 
-        if (application.status === 'Withdrawn' || application.status === 'withdrawn') {
-            if (req.flash) req.flash('error_msg', 'Cannot modify status: This candidate has already withdrawn their application.');
+        if (['Withdrawn', 'withdrawn', 'Hired', 'Offer Declined'].includes(application.status)) {
+            if (req.flash) req.flash('error_msg', 'Cannot modify status after this application has reached a final outcome.');
             const referrer = req.get('Referrer');
             return res.redirect(referrer || `/company/internships/${internship._id}/applicants`);
         }
@@ -1142,8 +1142,8 @@ router.post('/company/applications/:id/interview/schedule', isAuthenticated, req
             return res.redirect('/company/dashboard');
         }
 
-        if (application.status === 'Rejected' || application.status === 'rejected') {
-            if (req.flash) req.flash('error_msg', 'Cannot schedule interview for a rejected application.');
+        if (['Rejected', 'rejected', 'Withdrawn', 'withdrawn', 'Hired', 'Offer Declined'].includes(application.status)) {
+            if (req.flash) req.flash('error_msg', 'Cannot schedule an interview after this application has reached a final outcome.');
             return res.redirect(`/company/applications/${req.params.id}/candidate`);
         }
 
@@ -1230,6 +1230,11 @@ router.post('/company/applications/:id/interview/reschedule', isAuthenticated, r
 
         const internship = application.internship;
         if (!belongsToCompany(internship, req.company)) return res.redirect('/company/dashboard');
+
+        if (['Rejected', 'rejected', 'Withdrawn', 'withdrawn', 'Hired', 'Offer Declined'].includes(application.status)) {
+            if (req.flash) req.flash('error_msg', 'Cannot reschedule an interview after this application has reached a final outcome.');
+            return res.redirect(`/company/applications/${req.params.id}/candidate`);
+        }
 
         if (!application.interview || !application.interview.status || application.interview.status === 'Cancelled') {
             if (req.flash) req.flash('error_msg', 'No active interview to reschedule.');

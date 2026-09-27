@@ -74,7 +74,8 @@
                     const isWithdrawn = ['Withdrawn', 'withdrawn'].includes(app.status);
                     const isRejected = ['Rejected', 'rejected'].includes(app.status);
                     const isHired = ['Hired', 'hired', 'Accepted', 'accepted'].includes(app.status);
-                    const canWithdraw = !isWithdrawn && !isRejected && !isHired;
+                    const isOfferDeclined = ['Offer Declined', 'offer declined'].includes(app.status);
+                    const canWithdraw = !isWithdrawn && !isRejected && !isHired && !isOfferDeclined;
                     const internshipTitle = (app.internship && app.internship.title) ? app.internship.title : 'Internship Posting';
                     const companyName = (app.internship && (app.internship.companyName || app.internship.company)) ? (app.internship.companyName || app.internship.company) : 'Company';
                     const statusUpdatedAt = app.statusUpdatedAt || app.appliedAt;
@@ -171,6 +172,11 @@
                                     <span class="w-2 h-2 rounded-full bg-rose-500"></span>
                                     Rejected
                                 </span>
+                            <% } else if (isOfferDeclined) { %>
+                                <span class="inline-flex items-center gap-1.5 text-xs font-medium text-rose-800 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-lg">
+                                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                                    Offer Declined
+                                </span>
                             <% } else { %>
                                 <span class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg">
                                     <%= app.status %>
@@ -206,6 +212,10 @@
                             <% } else if (isRejected) { %>
                                 <span class="text-xs text-slate-400 italic px-2">
                                     Position finalized
+                                </span>
+                            <% } else if (isOfferDeclined) { %>
+                                <span class="text-xs text-slate-400 italic px-2">
+                                    Offer declined
                                 </span>
                             <% } %>
 
