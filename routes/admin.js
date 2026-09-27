@@ -3,19 +3,82 @@ const mongoose = require('mongoose');
 const router = express.Router();
 const User = require('../models/User');
 const { isAuthenticated, authorize } = require('../middleware/auth');
+const {
+    applyCompanyVerificationDecision,
+    normalizeVerificationReason,
+    unpublishCompanyListings
+} = require('../utils/companyVerification');
+
+const pendingCompanyQuery = {
+    role: 'company',
+    $or: [
+        { 'companyDetails.verificationStatus': 'pending' },
+        {
+            'companyDetails.verificationStatus': { $exists: false },
+            $or: [
+                { 'companyDetails.isVerified': false },
+                { 'companyDetails.isVerified': { $exists: false } }
+            ]
+        }
+    ]
+};
+
+const approvedCompanyQuery = {
+    role: 'company',
+    $or: [
+        { 'companyDetails.verificationStatus': 'approved' },
+        {
+            'companyDetails.verificationStatus': { $exists: false },
+            'companyDetails.isVerified': true
+        }
+    ]
+};
+
+function redirectWithReviewError(req, res, message) {
+    if (req.flash) req.flash('error_msg', message);
+    return res.redirect('/admin/dashboard');
+}
+
+async function reviewCompany(req, res, status) {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return redirectWithReviewError(req, res, 'Invalid company ID.');
+    }
+
+    const reason = normalizeVerificationReason(req.body?.reason);
+    if (['rejected', 'suspended'].includes(status) && !reason) {
+        return redirectWithReviewError(req, res, 'A review reason is required when rejecting or suspending a company.');
+    }
+
+    const company = await User.findOne({ _id: req.params.id, role: 'company' });
+    if (!company) return redirectWithReviewError(req, res, 'Company not found.');
+
+    applyCompanyVerificationDecision(company, status, {
+        reviewerId: req.user._id,
+        reason
+    });
+    await company.save();
+
+    let unpublishedCount = 0;
+    if (status === 'rejected' || status === 'suspended') {
+        const result = await unpublishCompanyListings(company._id);
+        unpublishedCount = result.modifiedCount || result.nModified || 0;
+    }
+
+    const label = status === 'approved' ? 'approved' : status;
+    const suffix = unpublishedCount ? ` ${unpublishedCount} listing(s) were closed.` : '';
+    if (req.flash) req.flash('success_msg', `Company ${label} successfully.${suffix}`);
+    return res.redirect('/admin/dashboard');
+}
 
 router.get('/dashboard', isAuthenticated, authorize('admin'), async (req, res) => {
     try {
         const totalCandidates = await User.countDocuments({ role: 'candidate' });
         const totalCompanies = await User.countDocuments({ role: 'company' });
 
-        const pendingCompanies = await User.find({
-            role: 'company',
-            $or: [
-                { 'companyDetails.isVerified': false },
-                { 'companyDetails.isVerified': { $exists: false } }
-            ]
-        });
+        const [pendingCompanies, approvedCompanies] = await Promise.all([
+            User.find(pendingCompanyQuery).sort({ 'companyDetails.verificationSubmittedAt': 1, createdAt: 1 }),
+            User.find(approvedCompanyQuery).sort({ 'companyDetails.verificationReviewedAt': -1, createdAt: -1 }).limit(20)
+        ]);
 
         const allUsers = await User.find().sort({ createdAt: -1 }).limit(10);
 
@@ -27,6 +90,7 @@ router.get('/dashboard', isAuthenticated, authorize('admin'), async (req, res) =
                 pendingVerifications: pendingCompanies.length
             },
             pendingCompanies,
+            approvedCompanies,
             recentUsers: allUsers
         });
     } catch (err) {
@@ -37,20 +101,7 @@ router.get('/dashboard', isAuthenticated, authorize('admin'), async (req, res) =
 
 router.post('/approve-company/:id', isAuthenticated, authorize('admin'), async (req, res) => {
     try {
-        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-            req.flash('error_msg', 'Invalid company ID.');
-            return res.redirect('/admin/dashboard');
-        }
-        const result = await User.findOneAndUpdate(
-            { _id: req.params.id, role: 'company' },
-            { 'companyDetails.isVerified': true }
-        );
-        if (!result) {
-            req.flash('error_msg', 'Company not found.');
-            return res.redirect('/admin/dashboard');
-        }
-        req.flash('success_msg', 'Company verified successfully.');
-        res.redirect('/admin/dashboard');
+        return await reviewCompany(req, res, 'approved');
     } catch (err) {
         console.error('Approve error:', err);
         req.flash('error_msg', 'Failed to approve company.');
@@ -60,18 +111,7 @@ router.post('/approve-company/:id', isAuthenticated, authorize('admin'), async (
 
 router.post('/reject-company/:id', isAuthenticated, authorize('admin'), async (req, res) => {
     try {
-        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-            req.flash('error_msg', 'Invalid company ID.');
-            return res.redirect('/admin/dashboard');
-        }
-        const result = await User.findOneAndDelete({ _id: req.params.id, role: 'company' });
-        if (!result) {
-            req.flash('error_msg', 'Company not found or already removed.');
-            return res.redirect('/admin/dashboard');
-        }
-
-        req.flash('success_msg', 'Company registration rejected.');
-        res.redirect('/admin/dashboard');
+        return await reviewCompany(req, res, 'rejected');
     } catch (err) {
         console.error('Reject error:', err);
         req.flash('error_msg', 'Failed to reject company.');
@@ -79,4 +119,15 @@ router.post('/reject-company/:id', isAuthenticated, authorize('admin'), async (r
     }
 });
 
+router.post('/suspend-company/:id', isAuthenticated, authorize('admin'), async (req, res) => {
+    try {
+        return await reviewCompany(req, res, 'suspended');
+    } catch (err) {
+        console.error('Suspend error:', err);
+        return redirectWithReviewError(req, res, 'Failed to suspend company.');
+    }
+});
+
 module.exports = router;
+module.exports.pendingCompanyQuery = pendingCompanyQuery;
+module.exports.approvedCompanyQuery = approvedCompanyQuery;
